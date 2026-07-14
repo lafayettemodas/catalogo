@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <h1 id="storeName">Minha Loja</h1>
+  <p>Catálogo de peças disponíveis</p>
+</header>
+
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="Buscar por nome...">
+  <select id="categoryFilter">
+    <option value="">Todas as categorias</option>
+  </select>
+  <select id="sizeFilter">
+    <option value="">Todos os tamanhos</option>
+  </select>
+</div>
+
+<main class="grid" id="grid">
+  <p class="empty-state">Carregando produtos...</p>
+</main>
+
+<!-- Modal de detalhes do produto -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="gallery">
+      <img id="galleryImg" src="" alt="">
+      <button class="gallery-nav prev" id="galleryPrev">‹</button>
+      <button class="gallery-nav next" id="galleryNext">›</button>
+    </div>
+    <div class="details">
+      <button class="close-btn" id="closeModal">×</button>
+      <h2 id="modalName"></h2>
+      <div class="price" id="modalPrice"></div>
+      <div class="desc" id="modalDesc"></div>
+      <div class="tag-row"><strong>Tamanhos:</strong> <span id="modalSizes"></span></div>
+      <div class="tag-row"><strong>Cores:</strong> <span id="modalColors"></span></div>
+      <a href="#" target="_blank" class="whatsapp-btn" id="whatsappBtn">Perguntar no WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabaseClient.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
