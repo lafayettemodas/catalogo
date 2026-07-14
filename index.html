@@ -4,13 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Catálogo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <header class="site-header">
+  <span class="eyebrow">Coleção atual</span>
   <h1 id="storeName">Minha Loja</h1>
-  <p>Catálogo de peças disponíveis</p>
+  <p>Peças selecionadas com carinho. Toque em uma foto para ver detalhes e falar com a gente.</p>
 </header>
 
 <div class="controls">
@@ -26,6 +30,10 @@
 <main class="grid" id="grid">
   <p class="empty-state">Carregando produtos...</p>
 </main>
+
+<footer class="site-footer">
+  <span id="footerStoreName">Minha Loja</span> — catálogo online
+</footer>
 
 <!-- Modal de detalhes do produto -->
 <div class="modal-overlay" id="modalOverlay">
