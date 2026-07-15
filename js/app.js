@@ -87,7 +87,7 @@ function renderGrid(products) {
         <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
       </div>
       <div class="info">
-        ${p.referencia ? `<div class="ref">Ref. ${p.referencia}</div>` : ""}
+        ${p.referencia ? `<div class="ref">${p.referencia}</div>` : ""}
         <h3>${p.name}</h3>
         <div class="price">${formatPrice(p.price)}</div>
         <div class="meta">${(p.sizes || []).join(", ")}</div>
@@ -134,7 +134,7 @@ function openModal(product) {
   currentGalleryIndex = 0;
 
   document.getElementById("modalName").textContent = product.name;
-  document.getElementById("modalRef").textContent = product.referencia ? `Ref. ${product.referencia}` : "";
+  document.getElementById("modalRef").textContent = product.referencia || "";
   document.getElementById("modalPrice").textContent = formatPrice(product.price);
   document.getElementById("modalDesc").textContent = product.description || "";
   document.getElementById("modalColors").textContent = (product.colors || []).join(", ") || "-";
