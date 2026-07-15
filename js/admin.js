@@ -94,7 +94,7 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
 async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
-    .select(`id, name, referencia, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
+    .select(`id, name, ref_fabrica, ref_loja, promocao, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
     .order("created_at", { ascending: false });
 
   if (error) { console.error(error); return; }
@@ -108,10 +108,12 @@ async function loadProducts() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${firstImg ? `<img src="${firstImg}">` : ""}</td>
-      <td>${p.referencia || "-"}</td>
+      <td>${p.ref_fabrica || "-"}</td>
+      <td>${p.ref_loja || "-"}</td>
       <td>${p.name}</td>
       <td>${p.price != null ? "R$ " + Number(p.price).toFixed(2) : "-"}</td>
       <td>${catName}</td>
+      <td>${p.promocao ? "Sim" : "Não"}</td>
       <td>
         <button class="secondary" data-edit="${p.id}">Editar</button>
         <button class="danger" data-delete="${p.id}">Excluir</button>
@@ -137,12 +139,14 @@ function editProduct(id, list) {
   document.getElementById("formTitle").textContent = "Editar produto";
   document.getElementById("productId").value = id;
   document.getElementById("fieldName").value = p.name || "";
-  document.getElementById("fieldReferencia").value = p.referencia || "";
+  document.getElementById("fieldRefFabrica").value = p.ref_fabrica || "";
+  document.getElementById("fieldRefLoja").value = p.ref_loja || "";
   document.getElementById("fieldPrice").value = p.price || "";
   document.getElementById("fieldCategory").value = p.category_id || "";
   document.getElementById("fieldDescription").value = p.description || "";
   document.getElementById("fieldSizes").value = (p.sizes || []).join(", ");
   document.getElementById("fieldColors").value = (p.colors || []).join(", ");
+  document.getElementById("fieldPromocao").checked = !!p.promocao;
   document.getElementById("cancelEditBtn").style.display = "inline-block";
   showView("incluir");
 }
@@ -157,12 +161,14 @@ function resetForm() {
   document.getElementById("formTitle").textContent = "Novo produto";
   document.getElementById("productId").value = "";
   document.getElementById("fieldName").value = "";
-  document.getElementById("fieldReferencia").value = "";
+  document.getElementById("fieldRefFabrica").value = "";
+  document.getElementById("fieldRefLoja").value = "";
   document.getElementById("fieldPrice").value = "";
   document.getElementById("fieldCategory").value = "";
   document.getElementById("fieldSizes").value = "";
   document.getElementById("fieldColors").value = "";
   document.getElementById("fieldDescription").value = "";
+  document.getElementById("fieldPromocao").checked = false;
   document.getElementById("fieldImages").value = "";
   document.getElementById("cancelEditBtn").style.display = "none";
   document.getElementById("formError").textContent = "";
@@ -184,12 +190,14 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   errorEl.textContent = "";
 
   const name = document.getElementById("fieldName").value.trim();
-  const referencia = document.getElementById("fieldReferencia").value.trim() || null;
+  const refFabrica = document.getElementById("fieldRefFabrica").value.trim() || null;
+  const refLoja = document.getElementById("fieldRefLoja").value.trim() || null;
   const price = parseFloat(document.getElementById("fieldPrice").value) || null;
   const categoryId = document.getElementById("fieldCategory").value || null;
   const sizes = splitCsv(document.getElementById("fieldSizes").value);
   const colors = splitCsv(document.getElementById("fieldColors").value);
   const description = document.getElementById("fieldDescription").value.trim();
+  const promocao = document.getElementById("fieldPromocao").checked;
   const files = document.getElementById("fieldImages").files;
 
   if (!name) { errorEl.textContent = "Informe o nome do produto."; return; }
@@ -200,13 +208,13 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if (productId) {
       const { error } = await supabaseClient
         .from("produtos")
-        .update({ name, referencia, price, category_id: categoryId, sizes, colors, description })
+        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao })
         .eq("id", productId);
       if (error) throw error;
     } else {
       const { data, error } = await supabaseClient
         .from("produtos")
-        .insert({ name, referencia, price, category_id: categoryId, sizes, colors, description })
+        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao })
         .select()
         .single();
       if (error) throw error;

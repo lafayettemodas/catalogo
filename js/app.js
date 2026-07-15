@@ -11,6 +11,28 @@ document.getElementById("storeName").textContent = STORE_NAME;
 document.getElementById("footerStoreName").textContent = STORE_NAME;
 document.title = STORE_NAME + " — Catálogo";
 
+// ---------- Instagram / endereço / telefone (cabeçalho) ----------
+document.getElementById("instagramLink").href = INSTAGRAM_URL;
+document.getElementById("instagramHandle").textContent = INSTAGRAM_HANDLE;
+
+const addressLink = document.getElementById("addressLink");
+addressLink.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(STORE_ADDRESS);
+addressLink.textContent = STORE_ADDRESS;
+
+function formatPhone(raw) {
+  const digits = (raw || "").replace(/\D/g, "");
+  const local = digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
+  const ddd = local.slice(0, 2);
+  const rest = local.slice(2);
+  if (rest.length === 9) return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`;
+  if (rest.length === 8) return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`;
+  return raw;
+}
+
+const phoneLink = document.getElementById("phoneLink");
+phoneLink.href = "tel:+" + WHATSAPP_NUMBER;
+phoneLink.textContent = formatPhone(WHATSAPP_NUMBER);
+
 async function loadCategories() {
   const { data, error } = await supabaseClient
     .from("categories")
@@ -35,7 +57,7 @@ async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
     .select(`
-      id, name, referencia, description, price, sizes, colors, category_id,
+      id, name, ref_loja, promocao, description, price, sizes, colors, category_id,
       product_images ( id, url, position )
     `)
     .eq("active", true)
@@ -86,8 +108,9 @@ function renderGrid(products) {
       <div class="thumb-wrap">
         <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
       </div>
+      ${p.promocao ? `<span class="promo-badge">Promoção</span>` : ""}
       <div class="info">
-        ${p.referencia ? `<div class="ref">${p.referencia}</div>` : ""}
+        ${p.ref_loja ? `<div class="ref">${p.ref_loja}</div>` : ""}
         <h3>${p.name}</h3>
         <div class="price">${formatPrice(p.price)}</div>
         <div class="meta">${(p.sizes || []).join(", ")}</div>
@@ -107,15 +130,17 @@ function applyFilters() {
   const search = document.getElementById("searchInput").value.trim().toLowerCase();
   const category = document.getElementById("categoryFilter").value;
   const size = document.getElementById("sizeFilter").value;
+  const promo = document.getElementById("promoFilter").value;
 
   const filtered = allProducts.filter((p) => {
     const matchesSearch =
       !search ||
       p.name.toLowerCase().includes(search) ||
-      (p.referencia || "").toLowerCase().includes(search);
+      (p.ref_loja || "").toLowerCase().includes(search);
     const matchesCategory = !category || p.category_id === category;
     const matchesSize = !size || (p.sizes || []).includes(size);
-    return matchesSearch && matchesCategory && matchesSize;
+    const matchesPromo = !promo || p.promocao === true;
+    return matchesSearch && matchesCategory && matchesSize && matchesPromo;
   });
 
   renderGrid(filtered);
@@ -124,6 +149,7 @@ function applyFilters() {
 document.getElementById("searchInput").addEventListener("input", applyFilters);
 document.getElementById("categoryFilter").addEventListener("change", applyFilters);
 document.getElementById("sizeFilter").addEventListener("change", applyFilters);
+document.getElementById("promoFilter").addEventListener("change", applyFilters);
 
 // ---------- Modal ----------
 function openModal(product) {
@@ -134,7 +160,7 @@ function openModal(product) {
   currentGalleryIndex = 0;
 
   document.getElementById("modalName").textContent = product.name;
-  document.getElementById("modalRef").textContent = product.referencia || "";
+  document.getElementById("modalRef").textContent = product.ref_loja || "";
   document.getElementById("modalPrice").textContent = formatPrice(product.price);
   document.getElementById("modalDesc").textContent = product.description || "";
   document.getElementById("modalColors").textContent = (product.colors || []).join(", ") || "-";
@@ -181,7 +207,7 @@ function updateWhatsappLink() {
   if (!currentProduct) return;
   const size = getSelectedSize();
   const sizeText = size ? `, tamanho ${size}` : "";
-  const refText = currentProduct.referencia ? ` (ref. ${currentProduct.referencia})` : "";
+  const refText = currentProduct.ref_loja ? ` (ref. ${currentProduct.ref_loja})` : "";
   const message = encodeURIComponent(
     `Olá! Tenho interesse na peça "${currentProduct.name}"${refText} (${formatPrice(currentProduct.price)})${sizeText}. Ainda está disponível?`
   );

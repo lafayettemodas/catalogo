@@ -14,3 +14,10 @@ const WHATSAPP_NUMBER = "5548988012779";
 
 // Nome da loja (aparece no topo do site)
 const STORE_NAME = "Lafayette Modas";
+
+// Instagram da loja (aparece no topo do site, linkado)
+const INSTAGRAM_HANDLE = "@lafayettemodas";
+const INSTAGRAM_URL = "https://instagram.com/lafayettemodas";
+
+// Endereço físico da loja (aparece no topo do site, linkado ao Google Maps)
+const STORE_ADDRESS = "Rua Salvador di Bernardi, 792 - Campinas - São José";
