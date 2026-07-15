@@ -37,69 +37,89 @@
 
 <!-- Área logada -->
 <main id="adminArea">
+  <div class="admin-layout">
 
-  <div class="panel">
-    <h2>Categorias</h2>
-    <div class="inline-cat-add">
-      <input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
-      <button class="secondary" id="addCategoryBtn">Adicionar</button>
+    <nav class="admin-sidebar">
+      <button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
+      <button type="button" class="sidebar-link" data-view="editar">Editar</button>
+    </nav>
+
+    <div class="admin-content">
+
+      <!-- ---------- INCLUIR (cadastro de categorias/produtos) ---------- -->
+      <div class="admin-view active" id="viewIncluir">
+
+        <div class="panel">
+          <h2>Categorias</h2>
+          <div class="inline-cat-add">
+            <input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
+            <button class="secondary" id="addCategoryBtn">Adicionar</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 id="formTitle">Novo produto</h2>
+          <input type="hidden" id="productId">
+          <div class="row">
+            <div class="field">
+              <label>Nome</label>
+              <input type="text" id="fieldName">
+            </div>
+            <div class="field">
+              <label>Referência</label>
+              <input type="text" id="fieldReferencia" placeholder="Ex: LM-0123">
+            </div>
+            <div class="field">
+              <label>Preço (R$)</label>
+              <input type="number" step="0.01" id="fieldPrice">
+            </div>
+            <div class="field">
+              <label>Categoria</label>
+              <select id="fieldCategory"></select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Tamanhos (separados por vírgula)</label>
+              <input type="text" id="fieldSizes" placeholder="P, M, G">
+            </div>
+            <div class="field">
+              <label>Cores (separadas por vírgula)</label>
+              <input type="text" id="fieldColors" placeholder="Preto, Branco">
+            </div>
+          </div>
+          <div class="field">
+            <label>Descrição</label>
+            <textarea id="fieldDescription"></textarea>
+          </div>
+          <div class="field">
+            <label>Fotos (pode selecionar várias)</label>
+            <input type="file" id="fieldImages" accept="image/*" multiple>
+          </div>
+          <button class="primary" id="saveProductBtn">Salvar produto</button>
+          <button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
+          <div class="error-msg" id="formError"></div>
+        </div>
+
+      </div>
+
+      <!-- ---------- EDITAR (produtos já publicados) ---------- -->
+      <div class="admin-view" id="viewEditar">
+
+        <div class="panel">
+          <h2>Produtos publicados</h2>
+          <table>
+            <thead>
+              <tr><th>Foto</th><th>Referência</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="productsTableBody"></tbody>
+          </table>
+        </div>
+
+      </div>
+
     </div>
   </div>
-
-  <div class="panel">
-    <h2 id="formTitle">Novo produto</h2>
-    <input type="hidden" id="productId">
-    <div class="row">
-      <div class="field">
-        <label>Nome</label>
-        <input type="text" id="fieldName">
-      </div>
-      <div class="field">
-        <label>Referência</label>
-        <input type="text" id="fieldReferencia" placeholder="Ex: LM-0123">
-      </div>
-      <div class="field">
-        <label>Preço (R$)</label>
-        <input type="number" step="0.01" id="fieldPrice">
-      </div>
-      <div class="field">
-        <label>Categoria</label>
-        <select id="fieldCategory"></select>
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Tamanhos (separados por vírgula)</label>
-        <input type="text" id="fieldSizes" placeholder="P, M, G">
-      </div>
-      <div class="field">
-        <label>Cores (separadas por vírgula)</label>
-        <input type="text" id="fieldColors" placeholder="Preto, Branco">
-      </div>
-    </div>
-    <div class="field">
-      <label>Descrição</label>
-      <textarea id="fieldDescription"></textarea>
-    </div>
-    <div class="field">
-      <label>Fotos (pode selecionar várias)</label>
-      <input type="file" id="fieldImages" accept="image/*" multiple>
-    </div>
-    <button class="primary" id="saveProductBtn">Salvar produto</button>
-    <button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
-    <div class="error-msg" id="formError"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Produtos cadastrados</h2>
-    <table>
-      <thead>
-        <tr><th>Foto</th><th>Referência</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Ações</th></tr>
-      </thead>
-      <tbody id="productsTableBody"></tbody>
-    </table>
-  </div>
-
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
