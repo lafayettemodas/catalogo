@@ -224,27 +224,32 @@ header.site-header p {
   background: #ece7e0;
 }
 
+.card .info .ref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.card .info .ref-row .ref { margin-bottom: 0; }
+
 .card .share-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
-  width: 30px;
-  height: 30px;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255,255,255,0.92);
-  color: var(--text);
+  background: transparent;
+  color: var(--muted);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-.card .share-btn:hover { background: #fff; transform: scale(1.06); }
-.card .share-btn svg { width: 15px; height: 15px; }
+.card .share-btn:hover { color: var(--accent-dark); background: var(--bg); }
+.card .share-btn svg { width: 14px; height: 14px; }
 
 .card .photo-count {
   position: absolute;
