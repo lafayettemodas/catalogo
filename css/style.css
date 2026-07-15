@@ -171,8 +171,8 @@ header.site-header p {
 
 .card .info { padding: 16px 16px 18px; }
 .card .info .ref {
-  color: var(--muted);
-  font-size: 0.72rem;
+  color: #cfcac2;
+  font-size: 0.36rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -266,8 +266,8 @@ footer.site-footer {
   padding-right: 24px;
 }
 .modal .details .ref {
-  color: var(--muted);
-  font-size: 0.78rem;
+  color: #cfcac2;
+  font-size: 0.39rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin: -4px 0 10px;
