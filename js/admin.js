@@ -48,6 +48,20 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   showLoginScreen();
 });
 
+// ---------- Menu lateral (Incluir / Editar) ----------
+function showView(view) {
+  document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(".sidebar-link").forEach((btn) => btn.classList.remove("active"));
+
+  document.getElementById(view === "editar" ? "viewEditar" : "viewIncluir").classList.add("active");
+  document.querySelector(`.sidebar-link[data-view="${view}"]`).classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.querySelectorAll(".sidebar-link").forEach((btn) => {
+  btn.addEventListener("click", () => showView(btn.dataset.view));
+});
+
 // ---------- Categorias ----------
 async function loadCategories() {
   const { data, error } = await supabaseClient.from("categories").select("id, name").order("name");
@@ -130,10 +144,13 @@ function editProduct(id, list) {
   document.getElementById("fieldSizes").value = (p.sizes || []).join(", ");
   document.getElementById("fieldColors").value = (p.colors || []).join(", ");
   document.getElementById("cancelEditBtn").style.display = "inline-block";
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  showView("incluir");
 }
 
-document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
+document.getElementById("cancelEditBtn").addEventListener("click", () => {
+  resetForm();
+  showView("editar");
+});
 
 function resetForm() {
   editingProductId = null;
@@ -200,8 +217,10 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
       await uploadImages(productId, files);
     }
 
+    const wasEditing = !!editingProductId;
     resetForm();
     loadProducts();
+    if (wasEditing) showView("editar");
   } catch (err) {
     errorEl.textContent = "Erro ao salvar: " + err.message;
   }
