@@ -33,9 +33,9 @@ async function loadCategories() {
 
 async function loadProducts() {
   const { data, error } = await supabaseClient
-    .from("products")
+    .from("produtos")
     .select(`
-      id, name, description, price, sizes, colors, category_id,
+      id, name, referencia, description, price, sizes, colors, category_id,
       product_images ( id, url, position )
     `)
     .eq("active", true)
@@ -87,6 +87,7 @@ function renderGrid(products) {
         <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
       </div>
       <div class="info">
+        ${p.referencia ? `<div class="ref">Ref. ${p.referencia}</div>` : ""}
         <h3>${p.name}</h3>
         <div class="price">${formatPrice(p.price)}</div>
         <div class="meta">${(p.sizes || []).join(", ")}</div>
@@ -108,7 +109,10 @@ function applyFilters() {
   const size = document.getElementById("sizeFilter").value;
 
   const filtered = allProducts.filter((p) => {
-    const matchesSearch = !search || p.name.toLowerCase().includes(search);
+    const matchesSearch =
+      !search ||
+      p.name.toLowerCase().includes(search) ||
+      (p.referencia || "").toLowerCase().includes(search);
     const matchesCategory = !category || p.category_id === category;
     const matchesSize = !size || (p.sizes || []).includes(size);
     return matchesSearch && matchesCategory && matchesSize;
@@ -130,19 +134,65 @@ function openModal(product) {
   currentGalleryIndex = 0;
 
   document.getElementById("modalName").textContent = product.name;
+  document.getElementById("modalRef").textContent = product.referencia ? `Ref. ${product.referencia}` : "";
   document.getElementById("modalPrice").textContent = formatPrice(product.price);
   document.getElementById("modalDesc").textContent = product.description || "";
-  document.getElementById("modalSizes").textContent = (product.sizes || []).join(", ") || "-";
   document.getElementById("modalColors").textContent = (product.colors || []).join(", ") || "-";
 
-  const message = encodeURIComponent(
-    `Olá! Tenho interesse na peça "${product.name}" (${formatPrice(product.price)}). Ainda está disponível?`
-  );
-  document.getElementById("whatsappBtn").href = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  renderSizeOptions(product);
+  updateWhatsappLink();
 
   updateGalleryImage();
   document.getElementById("modalOverlay").classList.add("open");
 }
+
+// Renderiza os tamanhos como radios (em vez de texto), para o cliente
+// escolher o tamanho desejado antes de perguntar no WhatsApp.
+function renderSizeOptions(product) {
+  const container = document.getElementById("modalSizes");
+  container.innerHTML = "";
+  const sizes = product.sizes || [];
+
+  if (sizes.length === 0) {
+    container.textContent = "-";
+    return;
+  }
+
+  sizes.forEach((size, index) => {
+    const id = `size-opt-${index}`;
+    const label = document.createElement("label");
+    label.className = "size-option";
+    label.setAttribute("for", id);
+    label.innerHTML = `
+      <input type="radio" name="productSize" id="${id}" value="${size}" ${index === 0 ? "checked" : ""}>
+      <span>${size}</span>
+    `;
+    container.appendChild(label);
+  });
+}
+
+function getSelectedSize() {
+  const checked = document.querySelector('input[name="productSize"]:checked');
+  return checked ? checked.value : null;
+}
+
+// Monta o link do WhatsApp com referência do produto e o tamanho escolhido no radio.
+function updateWhatsappLink() {
+  if (!currentProduct) return;
+  const size = getSelectedSize();
+  const sizeText = size ? `, tamanho ${size}` : "";
+  const refText = currentProduct.referencia ? ` (ref. ${currentProduct.referencia})` : "";
+  const message = encodeURIComponent(
+    `Olá! Tenho interesse na peça "${currentProduct.name}"${refText} (${formatPrice(currentProduct.price)})${sizeText}. Ainda está disponível?`
+  );
+  document.getElementById("whatsappBtn").href = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+}
+
+document.getElementById("modalSizes").addEventListener("change", (e) => {
+  if (e.target.name === "productSize") {
+    updateWhatsappLink();
+  }
+});
 
 function updateGalleryImage() {
   document.getElementById("galleryImg").src = currentGallery[currentGalleryIndex].url;

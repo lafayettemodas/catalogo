@@ -79,8 +79,8 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
 // ---------- Produtos: listar ----------
 async function loadProducts() {
   const { data, error } = await supabaseClient
-    .from("products")
-    .select(`id, name, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
+    .from("produtos")
+    .select(`id, name, referencia, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
     .order("created_at", { ascending: false });
 
   if (error) { console.error(error); return; }
@@ -94,6 +94,7 @@ async function loadProducts() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${firstImg ? `<img src="${firstImg}">` : ""}</td>
+      <td>${p.referencia || "-"}</td>
       <td>${p.name}</td>
       <td>${p.price != null ? "R$ " + Number(p.price).toFixed(2) : "-"}</td>
       <td>${catName}</td>
@@ -122,6 +123,7 @@ function editProduct(id, list) {
   document.getElementById("formTitle").textContent = "Editar produto";
   document.getElementById("productId").value = id;
   document.getElementById("fieldName").value = p.name || "";
+  document.getElementById("fieldReferencia").value = p.referencia || "";
   document.getElementById("fieldPrice").value = p.price || "";
   document.getElementById("fieldCategory").value = p.category_id || "";
   document.getElementById("fieldDescription").value = p.description || "";
@@ -138,6 +140,7 @@ function resetForm() {
   document.getElementById("formTitle").textContent = "Novo produto";
   document.getElementById("productId").value = "";
   document.getElementById("fieldName").value = "";
+  document.getElementById("fieldReferencia").value = "";
   document.getElementById("fieldPrice").value = "";
   document.getElementById("fieldCategory").value = "";
   document.getElementById("fieldSizes").value = "";
@@ -152,7 +155,7 @@ function resetForm() {
 async function deleteProduct(id) {
   if (!confirm("Excluir este produto? Essa ação não pode ser desfeita.")) return;
 
-  const { error } = await supabaseClient.from("products").delete().eq("id", id);
+  const { error } = await supabaseClient.from("produtos").delete().eq("id", id);
   if (error) { alert("Erro ao excluir: " + error.message); return; }
 
   loadProducts();
@@ -164,6 +167,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   errorEl.textContent = "";
 
   const name = document.getElementById("fieldName").value.trim();
+  const referencia = document.getElementById("fieldReferencia").value.trim() || null;
   const price = parseFloat(document.getElementById("fieldPrice").value) || null;
   const categoryId = document.getElementById("fieldCategory").value || null;
   const sizes = splitCsv(document.getElementById("fieldSizes").value);
@@ -178,14 +182,14 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
 
     if (productId) {
       const { error } = await supabaseClient
-        .from("products")
-        .update({ name, price, category_id: categoryId, sizes, colors, description })
+        .from("produtos")
+        .update({ name, referencia, price, category_id: categoryId, sizes, colors, description })
         .eq("id", productId);
       if (error) throw error;
     } else {
       const { data, error } = await supabaseClient
-        .from("products")
-        .insert({ name, price, category_id: categoryId, sizes, colors, description })
+        .from("produtos")
+        .insert({ name, referencia, price, category_id: categoryId, sizes, colors, description })
         .select()
         .single();
       if (error) throw error;
