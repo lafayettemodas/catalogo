@@ -17,13 +17,15 @@ create table if not exists categories (
 create table if not exists produtos (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  referencia text,                -- código/referência interna da peça
+  ref_fabrica text,                -- referência do fabricante/fornecedor (uso interno)
+  ref_loja text,                   -- referência da loja (aparece pro cliente no site)
   description text,
   price numeric(10,2),
   category_id uuid references categories(id) on delete set null,
   sizes text[] default '{}',      -- ex: {"P","M","G"}
   colors text[] default '{}',     -- ex: {"Preto","Branco"}
   active boolean default true,    -- desativa sem apagar
+  promocao boolean not null default false,  -- exibe selo "Promoção" e entra no filtro
   created_at timestamptz default now()
 );
 
@@ -37,7 +39,9 @@ create table if not exists product_images (
 
 create index if not exists idx_product_images_product on product_images(product_id);
 create index if not exists idx_produtos_category on produtos(category_id);
-create index if not exists idx_produtos_referencia on produtos(referencia);
+create index if not exists idx_produtos_ref_fabrica on produtos(ref_fabrica);
+create index if not exists idx_produtos_ref_loja on produtos(ref_loja);
+create index if not exists idx_produtos_promocao on produtos(promocao);
 
 -- ============================================================
 -- ROW LEVEL SECURITY
