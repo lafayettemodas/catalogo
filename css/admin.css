@@ -242,6 +242,8 @@ td img { width: 46px; height: 60px; object-fit: cover; border-radius: 6px; }
 .inline-cat-add { display: flex; gap: 10px; margin-top: 10px; }
 .inline-cat-add input { flex: 1; }
 
+.hint-text { color: var(--muted); font-size: 0.85rem; margin-top: -6px; margin-bottom: 4px; }
+
 /* ---------- Fotos atuais (edição) ---------- */
 .current-photos-grid {
   display: flex;
