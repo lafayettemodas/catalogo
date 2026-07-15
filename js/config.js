@@ -5,8 +5,14 @@
 const SUPABASE_URL = "https://nsjnrpdxumxcrluxjxac.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zam5ycGR4dW14Y3JsdXhqeGFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5ODEyNzQsImV4cCI6MjA5OTU1NzI3NH0.KrSYrxXbEXIpdskxfZKsj0494yCjxqJO0B_mRZs_mzk";
 
-// Nome do bucket de imagens criado no Storage
+// Nome do bucket de imagens criado no Storage (legado - fotos antigas podem
+// ainda existir aqui, mas novas fotos são salvas no GitHub, ver IMAGE_BASE_URL)
 const STORAGE_BUCKET = "product-images";
+
+// As fotos dos produtos ficam versionadas no repositório do GitHub Pages,
+// na pasta fotos-produtos/<product_id>/<arquivo>. O Supabase guarda apenas
+// esse caminho relativo (product_images.path); a URL final é montada aqui.
+const IMAGE_BASE_URL = "https://lafayettemodas.github.io/catalogo/";
 
 // Seu número de WhatsApp com código do país e DDD, só números.
 // Exemplo Brasil (SP, celular 91234-5678): "5511912345678"

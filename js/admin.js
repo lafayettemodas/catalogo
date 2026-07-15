@@ -94,10 +94,15 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
 async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
-    .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
+    .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, price, category_id, description, sizes, colors, product_images ( id, path, position )`)
     .order("created_at", { ascending: false });
 
   if (error) { console.error(error); return; }
+
+  // as fotos ficam no GitHub Pages; o Supabase só guarda o caminho relativo
+  data.forEach((p) => {
+    p.product_images = (p.product_images || []).map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path }));
+  });
 
   const tbody = document.getElementById("productsTableBody");
   tbody.innerHTML = "";
@@ -209,7 +214,7 @@ function renderCurrentPhotos(images) {
     div.querySelector("img").addEventListener("click", () => openLightbox(img.url));
     div.querySelector(".remove-photo").addEventListener("click", (e) => {
       e.stopPropagation();
-      deleteProductImage(img.id, img.url, div);
+      deleteProductImage(img.id, img.path, div);
     });
     grid.appendChild(div);
   });
@@ -224,19 +229,16 @@ document.getElementById("lightboxOverlay").addEventListener("click", () => {
   document.getElementById("lightboxOverlay").classList.remove("open");
 });
 
-async function deleteProductImage(imageId, url, el) {
+async function deleteProductImage(imageId, path, el) {
   if (!confirm("Excluir esta foto? Essa ação não pode ser desfeita.")) return;
 
   const { error } = await supabaseClient.from("product_images").delete().eq("id", imageId);
   if (error) { alert("Erro ao excluir foto: " + error.message); return; }
 
-  // tenta remover também o arquivo do storage (best-effort, não bloqueia a UI)
-  const marker = `/object/public/${STORAGE_BUCKET}/`;
-  const idx = url.indexOf(marker);
-  if (idx !== -1) {
-    const path = url.slice(idx + marker.length);
-    supabaseClient.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {});
-  }
+  // remove também o arquivo no GitHub via Edge Function (best-effort, não bloqueia a UI)
+  supabaseClient.functions.invoke("manage-product-photo", {
+    body: { action: "delete", path },
+  }).catch(() => {});
 
   el.remove();
   const grid = document.getElementById("currentPhotosGrid");
@@ -310,6 +312,19 @@ function splitCsv(value) {
   return value.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+// Converte um File em base64 puro (sem o prefixo "data:...;base64,")
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Envia as fotos para a Edge Function "manage-product-photo", que as
+// commita no repositório do GitHub (fotos-produtos/<productId>/<arquivo>)
+// usando o GITHUB_TOKEN guardado como secret — nunca exposto no admin.js.
 async function uploadImages(productId, files) {
   // pega a maior "position" já usada para continuar a numeração
   const { data: existing } = await supabaseClient
@@ -322,27 +337,25 @@ async function uploadImages(productId, files) {
   let nextPosition = existing && existing.length ? existing[0].position + 1 : 0;
 
   for (const file of files) {
-    const ext = file.name.split(".").pop();
-    const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    try {
+      const contentBase64 = await fileToBase64(file);
+      const { data, error } = await supabaseClient.functions.invoke("manage-product-photo", {
+        body: { action: "upload", productId, filename: file.name, contentBase64 },
+      });
 
-    const { error: uploadError } = await supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .upload(path, file);
+      if (error || !data || data.error) {
+        throw new Error((data && data.error) || error?.message || "erro desconhecido");
+      }
 
-    if (uploadError) {
-      alert("Erro ao enviar imagem " + file.name + ": " + uploadError.message);
-      continue;
+      const { error: insertError } = await supabaseClient.from("product_images").insert({
+        product_id: productId,
+        path: data.path,
+        position: nextPosition++,
+      });
+      if (insertError) throw insertError;
+    } catch (err) {
+      alert("Erro ao enviar imagem " + file.name + ": " + err.message);
     }
-
-    const { data: publicUrlData } = supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(path);
-
-    await supabaseClient.from("product_images").insert({
-      product_id: productId,
-      url: publicUrlData.publicUrl,
-      position: nextPosition++,
-    });
   }
 }
 

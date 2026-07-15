@@ -58,7 +58,7 @@ async function loadProducts() {
     .from("produtos")
     .select(`
       id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id,
-      product_images ( id, url, position )
+      product_images ( id, path, position )
     `)
     .eq("active", true)
     .order("created_at", { ascending: false });
@@ -72,7 +72,10 @@ async function loadProducts() {
 
   allProducts = data.map((p) => ({
     ...p,
-    product_images: (p.product_images || []).sort((a, b) => a.position - b.position),
+    product_images: (p.product_images || [])
+      .sort((a, b) => a.position - b.position)
+      // as fotos ficam no GitHub Pages; o Supabase só guarda o caminho relativo
+      .map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path })),
   }));
 
   populateSizeFilter(allProducts);
