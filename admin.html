@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260715a">
+<link rel="stylesheet" href="css/admin.css?v=20260715b">
 </head>
 <body>
 
@@ -42,6 +42,7 @@
     <nav class="admin-sidebar">
       <button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
       <button type="button" class="sidebar-link" data-view="editar">Editar</button>
+      <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
     </nav>
 
     <div class="admin-content">
@@ -140,6 +141,24 @@
 
       </div>
 
+      <!-- ---------- ACESSOS (visitas ao catálogo, mês a mês) ---------- -->
+      <div class="admin-view" id="viewAcessos">
+
+        <div class="panel">
+          <h2>Acessos ao catálogo</h2>
+          <p class="hint-text">Quantidade de visitantes distintos (por IP) em cada mês. Acessos repetidos do mesmo IP não são contados mais de uma vez.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Mês</th><th>Acessos (IPs distintos)</th></tr>
+              </thead>
+              <tbody id="visitsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 </main>
@@ -150,8 +169,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260715a"></script>
-<script src="js/supabaseClient.js?v=20260715a"></script>
-<script src="js/admin.js?v=20260715a"></script>
+<script src="js/config.js?v=20260715b"></script>
+<script src="js/supabaseClient.js?v=20260715b"></script>
+<script src="js/admin.js?v=20260715b"></script>
 </body>
 </html>
