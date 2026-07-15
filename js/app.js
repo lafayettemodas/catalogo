@@ -77,6 +77,14 @@ async function loadProducts() {
 
   populateSizeFilter(allProducts);
   renderGrid(allProducts);
+
+  // Se o link tiver ?produto=<id> (compartilhado via botão de compartilhar),
+  // abre o modal desse produto automaticamente.
+  const sharedId = new URLSearchParams(location.search).get("produto");
+  if (sharedId) {
+    const shared = allProducts.find((p) => p.id === sharedId);
+    if (shared) openModal(shared);
+  }
 }
 
 function populateSizeFilter(products) {
@@ -108,6 +116,15 @@ function renderGrid(products) {
     card.innerHTML = `
       <div class="thumb-wrap">
         <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
+        <button type="button" class="share-btn" title="Compartilhar" aria-label="Compartilhar produto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+        </button>
         ${photoCount > 0 ? `<span class="photo-count">${photoCount} ${photoCount === 1 ? "foto" : "fotos"}</span>` : ""}
       </div>
       ${p.promocao ? `<span class="promo-badge">Promoção</span>` : ""}
@@ -119,8 +136,52 @@ function renderGrid(products) {
       </div>
     `;
     card.addEventListener("click", () => openModal(p));
+    card.querySelector(".share-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      shareProduct(p);
+    });
     grid.appendChild(card);
   });
+}
+
+// Compartilha a imagem + link do produto (Web Share API, com fallback de copiar link).
+function getShareUrl(product) {
+  const url = new URL(location.href);
+  url.search = "";
+  url.searchParams.set("produto", product.id);
+  return url.toString();
+}
+
+async function shareProduct(product) {
+  const shareUrl = getShareUrl(product);
+  const shareText = `${product.name} — ${formatPrice(effectivePrice(product))}`;
+  const imgUrl = product.product_images[0]?.url;
+
+  try {
+    if (navigator.canShare && imgUrl) {
+      const resp = await fetch(imgUrl);
+      const blob = await resp.blob();
+      const file = new File([blob], "produto.jpg", { type: blob.type || "image/jpeg" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: product.name, text: shareText, url: shareUrl, files: [file] });
+        return;
+      }
+    }
+    if (navigator.share) {
+      await navigator.share({ title: product.name, text: shareText, url: shareUrl });
+      return;
+    }
+    await navigator.clipboard.writeText(shareUrl);
+    alert("Link do produto copiado!");
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Link do produto copiado!");
+    } catch (e) {
+      // silencioso
+    }
+  }
 }
 
 function formatPrice(price) {
