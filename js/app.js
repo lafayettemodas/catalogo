@@ -33,6 +33,14 @@ const phoneLink = document.getElementById("phoneLink");
 phoneLink.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(HEADER_WHATSAPP_MESSAGE)}`;
 phoneLink.textContent = formatPhone(WHATSAPP_NUMBER);
 
+// Registra o acesso (IP + horário) para o relatório de acessos no admin.
+// Fire-and-forget: não bloqueia nem afeta a navegação do visitante.
+fetch(`${SUPABASE_URL}/functions/v1/track-visit`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+  body: "{}",
+}).catch(() => {});
+
 async function loadCategories() {
   const { data, error } = await supabaseClient
     .from("categories")

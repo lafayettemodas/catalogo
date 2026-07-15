@@ -48,14 +48,18 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   showLoginScreen();
 });
 
-// ---------- Menu lateral (Incluir / Editar) ----------
+// ---------- Menu lateral (Incluir / Editar / Acessos) ----------
+const VIEW_IDS = { incluir: "viewIncluir", editar: "viewEditar", acessos: "viewAcessos" };
+
 function showView(view) {
   document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
   document.querySelectorAll(".sidebar-link").forEach((btn) => btn.classList.remove("active"));
 
-  document.getElementById(view === "editar" ? "viewEditar" : "viewIncluir").classList.add("active");
+  document.getElementById(VIEW_IDS[view] || "viewIncluir").classList.add("active");
   document.querySelector(`.sidebar-link[data-view="${view}"]`).classList.add("active");
   window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if (view === "acessos") loadVisits();
 }
 
 document.querySelectorAll(".sidebar-link").forEach((btn) => {
@@ -132,6 +136,33 @@ async function loadProducts() {
   });
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", () => deleteProduct(btn.dataset.delete));
+  });
+}
+
+// ---------- Acessos (visitantes distintos por mês) ----------
+async function loadVisits() {
+  const tbody = document.getElementById("visitsTableBody");
+  tbody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
+
+  const { data, error } = await supabaseClient.rpc("get_monthly_visits");
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="2">Erro ao carregar acessos: ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2">Nenhum acesso registrado ainda.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = "";
+  data.forEach((row) => {
+    const date = new Date(row.month + "T00:00:00");
+    const label = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${label.charAt(0).toUpperCase() + label.slice(1)}</td><td>${row.visits}</td>`;
+    tbody.appendChild(tr);
   });
 }
 
