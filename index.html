@@ -20,7 +20,7 @@
 </header>
 
 <div class="controls">
-  <input type="text" id="searchInput" placeholder="Buscar por nome...">
+  <input type="text" id="searchInput" placeholder="Buscar por nome ou referência...">
   <select id="categoryFilter">
     <option value="">Todas as categorias</option>
   </select>
@@ -48,9 +48,10 @@
     <div class="details">
       <button class="close-btn" id="closeModal">×</button>
       <h2 id="modalName"></h2>
+      <div class="ref" id="modalRef"></div>
       <div class="price" id="modalPrice"></div>
       <div class="desc" id="modalDesc"></div>
-      <div class="tag-row"><strong>Tamanhos:</strong> <span id="modalSizes"></span></div>
+      <div class="tag-row"><strong>Tamanhos:</strong> <div class="size-options" id="modalSizes"></div></div>
       <div class="tag-row"><strong>Cores:</strong> <span id="modalColors"></span></div>
       <a href="#" target="_blank" class="whatsapp-btn" id="whatsappBtn">Perguntar no WhatsApp</a>
     </div>
