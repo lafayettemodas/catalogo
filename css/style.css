@@ -44,7 +44,7 @@ h1, h2, h3 {
 /* ---------- Header / Hero ---------- */
 header.site-header {
   position: relative;
-  padding: 100px 20px 56px;
+  padding: 60px 20px 40px;
   text-align: center;
   background:
     radial-gradient(1200px 400px at 50% -10%, rgba(169,118,79,0.10), transparent 60%),
