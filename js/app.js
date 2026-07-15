@@ -57,7 +57,7 @@ async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
     .select(`
-      id, name, ref_loja, ref_fabrica, promocao, description, price, sizes, colors, category_id,
+      id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id,
       product_images ( id, url, position )
     `)
     .eq("active", true)
@@ -114,7 +114,7 @@ function renderGrid(products) {
       <div class="info">
         ${p.ref_loja ? `<div class="ref">${p.ref_loja}</div>` : ""}
         <h3>${p.name}</h3>
-        <div class="price">${formatPrice(p.price)}</div>
+        <div class="price">${priceHTML(p)}</div>
         <div class="meta">${(p.sizes || []).join(", ")}</div>
       </div>
     `;
@@ -125,7 +125,20 @@ function renderGrid(products) {
 
 function formatPrice(price) {
   if (price == null) return "";
-  return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return Number(price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// Se o produto está em promoção e tem valor promocional definido, mostra o
+// preço original riscado e o valor promocional em destaque.
+function priceHTML(p) {
+  if (p.promocao && p.preco_promocao != null) {
+    return `<span class="price-original">${formatPrice(p.price)}</span><span class="price-promo">${formatPrice(p.preco_promocao)}</span>`;
+  }
+  return formatPrice(p.price);
+}
+
+function effectivePrice(p) {
+  return p.promocao && p.preco_promocao != null ? p.preco_promocao : p.price;
 }
 
 function applyFilters() {
@@ -164,7 +177,7 @@ function openModal(product) {
 
   document.getElementById("modalName").textContent = product.name;
   document.getElementById("modalRef").textContent = product.ref_loja || "";
-  document.getElementById("modalPrice").textContent = formatPrice(product.price);
+  document.getElementById("modalPrice").innerHTML = priceHTML(product);
   document.getElementById("modalDesc").textContent = product.description || "";
   document.getElementById("modalColors").textContent = (product.colors || []).join(", ") || "-";
 
@@ -212,7 +225,7 @@ function updateWhatsappLink() {
   const sizeText = size ? `, tamanho ${size}` : "";
   const refText = currentProduct.ref_loja ? ` (ref. ${currentProduct.ref_loja})` : "";
   const message = encodeURIComponent(
-    `Olá! Tenho interesse na peça "${currentProduct.name}"${refText} (${formatPrice(currentProduct.price)})${sizeText}. Ainda está disponível?`
+    `Olá! Tenho interesse na peça "${currentProduct.name}"${refText} (${formatPrice(effectivePrice(currentProduct))})${sizeText}. Ainda está disponível?`
   );
   document.getElementById("whatsappBtn").href = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
 }
