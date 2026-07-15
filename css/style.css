@@ -219,8 +219,23 @@ header.site-header p {
 }
 
 .card .thumb-wrap {
+  position: relative;
   overflow: hidden;
   background: #ece7e0;
+}
+
+.card .photo-count {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+  background: rgba(20,18,15,0.6);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .card .thumb {
@@ -322,6 +337,21 @@ footer.site-footer {
 .modal .gallery-nav:hover { background: #fff; }
 .modal .gallery-nav.prev { left: 10px; }
 .modal .gallery-nav.next { right: 10px; }
+
+.modal .gallery-counter {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,18,15,0.65);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  display: none;
+}
 
 .modal .details { padding: 28px; position: relative; }
 .modal .details h2 {
