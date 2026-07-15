@@ -21,3 +21,7 @@ const INSTAGRAM_URL = "https://instagram.com/lafayettemodas";
 
 // Endereço físico da loja (aparece no topo do site, linkado ao Google Maps)
 const STORE_ADDRESS = "Rua Salvador di Bernardi, 792 - Campinas - São José";
+
+// Mensagem enviada ao WhatsApp quando o cliente clica no telefone do cabeçalho
+const HEADER_WHATSAPP_MESSAGE =
+  "Olá, desejo atendimento. Lhe convido para ver nossas novidades em nosso instagram http://instagram.com/lafayettemodas";

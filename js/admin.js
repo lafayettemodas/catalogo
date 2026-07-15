@@ -94,7 +94,7 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
 async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
-    .select(`id, name, ref_fabrica, ref_loja, promocao, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
+    .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, price, category_id, description, sizes, colors, product_images ( id, url, position )`)
     .order("created_at", { ascending: false });
 
   if (error) { console.error(error); return; }
@@ -147,9 +147,19 @@ function editProduct(id, list) {
   document.getElementById("fieldSizes").value = (p.sizes || []).join(", ");
   document.getElementById("fieldColors").value = (p.colors || []).join(", ");
   document.getElementById("fieldPromocao").checked = !!p.promocao;
+  document.getElementById("fieldValorPromocaoWrap").style.display = p.promocao ? "block" : "none";
+  document.getElementById("fieldValorPromocao").value = p.preco_promocao || "";
   document.getElementById("cancelEditBtn").style.display = "inline-block";
+
+  const sortedImages = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
+  renderCurrentPhotos(sortedImages);
+
   showView("incluir");
 }
+
+document.getElementById("fieldPromocao").addEventListener("change", (e) => {
+  document.getElementById("fieldValorPromocaoWrap").style.display = e.target.checked ? "block" : "none";
+});
 
 document.getElementById("cancelEditBtn").addEventListener("click", () => {
   resetForm();
@@ -169,9 +179,70 @@ function resetForm() {
   document.getElementById("fieldColors").value = "";
   document.getElementById("fieldDescription").value = "";
   document.getElementById("fieldPromocao").checked = false;
+  document.getElementById("fieldValorPromocaoWrap").style.display = "none";
+  document.getElementById("fieldValorPromocao").value = "";
   document.getElementById("fieldImages").value = "";
   document.getElementById("cancelEditBtn").style.display = "none";
   document.getElementById("formError").textContent = "";
+  renderCurrentPhotos([]);
+}
+
+// ---------- Fotos atuais: visualizar / ampliar / excluir ----------
+function renderCurrentPhotos(images) {
+  const field = document.getElementById("currentPhotosField");
+  const grid = document.getElementById("currentPhotosGrid");
+  grid.innerHTML = "";
+
+  if (!images || images.length === 0) {
+    field.style.display = "none";
+    return;
+  }
+  field.style.display = "block";
+
+  images.forEach((img) => {
+    const div = document.createElement("div");
+    div.className = "current-photo";
+    div.innerHTML = `
+      <img src="${img.url}" alt="Foto do produto">
+      <button type="button" class="remove-photo" title="Excluir foto">×</button>
+    `;
+    div.querySelector("img").addEventListener("click", () => openLightbox(img.url));
+    div.querySelector(".remove-photo").addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteProductImage(img.id, img.url, div);
+    });
+    grid.appendChild(div);
+  });
+}
+
+function openLightbox(url) {
+  document.getElementById("lightboxImg").src = url;
+  document.getElementById("lightboxOverlay").classList.add("open");
+}
+
+document.getElementById("lightboxOverlay").addEventListener("click", () => {
+  document.getElementById("lightboxOverlay").classList.remove("open");
+});
+
+async function deleteProductImage(imageId, url, el) {
+  if (!confirm("Excluir esta foto? Essa ação não pode ser desfeita.")) return;
+
+  const { error } = await supabaseClient.from("product_images").delete().eq("id", imageId);
+  if (error) { alert("Erro ao excluir foto: " + error.message); return; }
+
+  // tenta remover também o arquivo do storage (best-effort, não bloqueia a UI)
+  const marker = `/object/public/${STORAGE_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx !== -1) {
+    const path = url.slice(idx + marker.length);
+    supabaseClient.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {});
+  }
+
+  el.remove();
+  const grid = document.getElementById("currentPhotosGrid");
+  if (!grid.children.length) {
+    document.getElementById("currentPhotosField").style.display = "none";
+  }
 }
 
 // ---------- Produtos: excluir ----------
@@ -198,6 +269,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   const colors = splitCsv(document.getElementById("fieldColors").value);
   const description = document.getElementById("fieldDescription").value.trim();
   const promocao = document.getElementById("fieldPromocao").checked;
+  const precoPromocao = promocao ? (parseFloat(document.getElementById("fieldValorPromocao").value) || null) : null;
   const files = document.getElementById("fieldImages").files;
 
   if (!name) { errorEl.textContent = "Informe o nome do produto."; return; }
@@ -208,13 +280,13 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if (productId) {
       const { error } = await supabaseClient
         .from("produtos")
-        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao })
+        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao })
         .eq("id", productId);
       if (error) throw error;
     } else {
       const { data, error } = await supabaseClient
         .from("produtos")
-        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao })
+        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao })
         .select()
         .single();
       if (error) throw error;
@@ -273,6 +345,19 @@ async function uploadImages(productId, files) {
     });
   }
 }
+
+// ---------- Uppercase automático nos campos de texto do cadastro ----------
+function toUpper(el) {
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  el.value = el.value.toUpperCase();
+  if (start !== null && end !== null) el.setSelectionRange(start, end);
+}
+
+["fieldName", "fieldRefFabrica", "fieldRefLoja", "fieldSizes", "fieldColors", "fieldDescription"].forEach((id) => {
+  const el = document.getElementById(id);
+  el.addEventListener("input", () => toUpper(el));
+});
 
 // ---------- Init ----------
 checkSession();

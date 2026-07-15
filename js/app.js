@@ -30,7 +30,7 @@ function formatPhone(raw) {
 }
 
 const phoneLink = document.getElementById("phoneLink");
-phoneLink.href = "tel:+" + WHATSAPP_NUMBER;
+phoneLink.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(HEADER_WHATSAPP_MESSAGE)}`;
 phoneLink.textContent = formatPhone(WHATSAPP_NUMBER);
 
 async function loadCategories() {
@@ -57,7 +57,7 @@ async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
     .select(`
-      id, name, ref_loja, promocao, description, price, sizes, colors, category_id,
+      id, name, ref_loja, ref_fabrica, promocao, description, price, sizes, colors, category_id,
       product_images ( id, url, position )
     `)
     .eq("active", true)
@@ -104,9 +104,11 @@ function renderGrid(products) {
     const card = document.createElement("div");
     card.className = "card";
     const firstImg = p.product_images[0]?.url || "";
+    const photoCount = p.product_images.length;
     card.innerHTML = `
       <div class="thumb-wrap">
         <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
+        ${photoCount > 0 ? `<span class="photo-count">${photoCount} ${photoCount === 1 ? "foto" : "fotos"}</span>` : ""}
       </div>
       ${p.promocao ? `<span class="promo-badge">Promoção</span>` : ""}
       <div class="info">
@@ -136,7 +138,8 @@ function applyFilters() {
     const matchesSearch =
       !search ||
       p.name.toLowerCase().includes(search) ||
-      (p.ref_loja || "").toLowerCase().includes(search);
+      (p.ref_loja || "").toLowerCase().includes(search) ||
+      (p.ref_fabrica || "").toLowerCase().includes(search);
     const matchesCategory = !category || p.category_id === category;
     const matchesSize = !size || (p.sizes || []).includes(size);
     const matchesPromo = !promo || p.promocao === true;
@@ -222,6 +225,13 @@ document.getElementById("modalSizes").addEventListener("change", (e) => {
 
 function updateGalleryImage() {
   document.getElementById("galleryImg").src = currentGallery[currentGalleryIndex].url;
+  const counter = document.getElementById("galleryCounter");
+  if (currentGallery.length > 1) {
+    counter.textContent = `${currentGalleryIndex + 1}/${currentGallery.length}`;
+    counter.style.display = "inline-block";
+  } else {
+    counter.style.display = "none";
+  }
 }
 
 document.getElementById("galleryPrev").addEventListener("click", () => {
