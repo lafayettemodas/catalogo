@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260714b">
+<link rel="stylesheet" href="css/admin.css?v=20260714d">
 </head>
 <body>
 
@@ -96,15 +96,17 @@
             <label>Descrição</label>
             <textarea id="fieldDescription"></textarea>
           </div>
-          <div class="checkbox-field">
-            <label class="checkbox-label">
-              <input type="checkbox" id="fieldPromocao">
-              <span>Produto em promoção</span>
-            </label>
-          </div>
-          <div class="field" id="fieldValorPromocaoWrap" style="display:none;">
-            <label>Valor promoção (R$)</label>
-            <input type="number" step="0.01" id="fieldValorPromocao">
+          <div class="promo-row">
+            <div class="checkbox-field">
+              <label class="checkbox-label">
+                <input type="checkbox" id="fieldPromocao">
+                <span>Produto em promoção</span>
+              </label>
+            </div>
+            <div class="field field-narrow" id="fieldValorPromocaoWrap" style="display:none;">
+              <label>Valor promoção (R$)</label>
+              <input type="number" step="0.01" id="fieldValorPromocao">
+            </div>
           </div>
           <div class="field" id="currentPhotosField" style="display:none;">
             <label>Fotos atuais (clique para ampliar, × para excluir)</label>
@@ -148,8 +150,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260714b"></script>
-<script src="js/supabaseClient.js?v=20260714b"></script>
-<script src="js/admin.js?v=20260714b"></script>
+<script src="js/config.js?v=20260714d"></script>
+<script src="js/supabaseClient.js?v=20260714d"></script>
+<script src="js/admin.js?v=20260714d"></script>
 </body>
 </html>
