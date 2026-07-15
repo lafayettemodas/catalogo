@@ -66,8 +66,12 @@
               <input type="text" id="fieldName">
             </div>
             <div class="field">
-              <label>Referência</label>
-              <input type="text" id="fieldReferencia" placeholder="Ex: LM-0123">
+              <label>Ref. Fábrica</label>
+              <input type="text" id="fieldRefFabrica" placeholder="Ex: LM-0123">
+            </div>
+            <div class="field">
+              <label>Ref. Loja</label>
+              <input type="text" id="fieldRefLoja" placeholder="Ex: 0123">
             </div>
             <div class="field">
               <label>Preço (R$)</label>
@@ -92,6 +96,12 @@
             <label>Descrição</label>
             <textarea id="fieldDescription"></textarea>
           </div>
+          <div class="checkbox-field">
+            <label class="checkbox-label">
+              <input type="checkbox" id="fieldPromocao">
+              <span>Produto em promoção</span>
+            </label>
+          </div>
           <div class="field">
             <label>Fotos (pode selecionar várias)</label>
             <input type="file" id="fieldImages" accept="image/*" multiple>
@@ -108,12 +118,14 @@
 
         <div class="panel">
           <h2>Produtos publicados</h2>
-          <table>
-            <thead>
-              <tr><th>Foto</th><th>Referência</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Ações</th></tr>
-            </thead>
-            <tbody id="productsTableBody"></tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="productsTableBody"></tbody>
+            </table>
+          </div>
         </div>
 
       </div>
