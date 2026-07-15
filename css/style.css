@@ -268,6 +268,19 @@ header.site-header p {
   color: var(--accent-dark);
   font-size: 1rem;
 }
+
+.price-original {
+  text-decoration: line-through;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.85em;
+  margin-right: 7px;
+}
+
+.price-promo {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
 .card .info .meta {
   color: var(--muted);
   font-size: 0.78rem;
