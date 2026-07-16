@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260715b">
+<link rel="stylesheet" href="css/admin.css?v=20260715c">
 </head>
 <body>
 
@@ -117,8 +117,13 @@
             <label>Fotos (pode selecionar várias)</label>
             <input type="file" id="fieldImages" accept="image/*" multiple>
           </div>
+          <div class="field" id="uploadProgressWrap" style="display:none;">
+            <div class="progress-bar"><div class="progress-bar-fill" id="uploadProgressFill"></div></div>
+            <div class="progress-text" id="uploadProgressText"></div>
+          </div>
           <button class="primary" id="saveProductBtn">Salvar produto</button>
           <button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
+          <div class="upload-success-msg" id="uploadSuccessMsg"></div>
           <div class="error-msg" id="formError"></div>
         </div>
 
@@ -169,8 +174,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260715b"></script>
-<script src="js/supabaseClient.js?v=20260715b"></script>
-<script src="js/admin.js?v=20260715b"></script>
+<script src="js/config.js?v=20260715c"></script>
+<script src="js/supabaseClient.js?v=20260715c"></script>
+<script src="js/admin.js?v=20260715c"></script>
 </body>
 </html>
