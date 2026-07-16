@@ -221,6 +221,7 @@ function resetForm() {
   document.getElementById("cancelEditBtn").style.display = "none";
   document.getElementById("formError").textContent = "";
   renderCurrentPhotos([]);
+  hideUploadProgress();
 }
 
 // ---------- Fotos atuais: visualizar / ampliar / excluir ----------
@@ -292,6 +293,7 @@ async function deleteProduct(id) {
 document.getElementById("saveProductBtn").addEventListener("click", async () => {
   const errorEl = document.getElementById("formError");
   errorEl.textContent = "";
+  document.getElementById("uploadSuccessMsg").style.display = "none";
 
   const name = document.getElementById("fieldName").value.trim();
   const refFabrica = document.getElementById("fieldRefFabrica").value.trim() || null;
@@ -306,6 +308,11 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   const files = document.getElementById("fieldImages").files;
 
   if (!name) { errorEl.textContent = "Informe o nome do produto."; return; }
+
+  const saveBtn = document.getElementById("saveProductBtn");
+  const originalLabel = saveBtn.textContent;
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Salvando...";
 
   try {
     let productId = editingProductId;
@@ -331,11 +338,18 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     }
 
     const wasEditing = !!editingProductId;
+    const successMsg = document.getElementById("uploadSuccessMsg").style.display === "block"
+      ? null
+      : "✓ Produto salvo com sucesso!";
     resetForm();
+    if (successMsg) showUploadSuccess(successMsg);
     loadProducts();
     if (wasEditing) showView("editar");
   } catch (err) {
     errorEl.textContent = "Erro ao salvar: " + err.message;
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = originalLabel;
   }
 });
 
@@ -353,6 +367,28 @@ function fileToBase64(file) {
   });
 }
 
+function showUploadProgress(done, total) {
+  const wrap = document.getElementById("uploadProgressWrap");
+  const fill = document.getElementById("uploadProgressFill");
+  const text = document.getElementById("uploadProgressText");
+  wrap.style.display = "block";
+  fill.style.width = (total ? Math.round((done / total) * 100) : 0) + "%";
+  text.textContent = `Enviando fotos... (${done}/${total})`;
+}
+
+function hideUploadProgress() {
+  document.getElementById("uploadProgressWrap").style.display = "none";
+  document.getElementById("uploadProgressFill").style.width = "0%";
+}
+
+function showUploadSuccess(message) {
+  const el = document.getElementById("uploadSuccessMsg");
+  el.textContent = message;
+  el.style.display = "block";
+  clearTimeout(showUploadSuccess._timer);
+  showUploadSuccess._timer = setTimeout(() => { el.style.display = "none"; }, 5000);
+}
+
 // Envia as fotos para a Edge Function "manage-product-photo", que as
 // commita no repositório do GitHub (fotos-produtos/<productId>/<arquivo>)
 // usando o GITHUB_TOKEN guardado como secret — nunca exposto no admin.js.
@@ -366,6 +402,11 @@ async function uploadImages(productId, files) {
     .limit(1);
 
   let nextPosition = existing && existing.length ? existing[0].position + 1 : 0;
+  const total = files.length;
+  let done = 0;
+  let failed = 0;
+
+  showUploadProgress(0, total);
 
   for (const file of files) {
     try {
@@ -385,8 +426,19 @@ async function uploadImages(productId, files) {
       });
       if (insertError) throw insertError;
     } catch (err) {
+      failed++;
       alert("Erro ao enviar imagem " + file.name + ": " + err.message);
+    } finally {
+      done++;
+      showUploadProgress(done, total);
     }
+  }
+
+  hideUploadProgress();
+  if (failed === 0) {
+    showUploadSuccess(`✓ ${total} foto${total > 1 ? "s" : ""} enviada${total > 1 ? "s" : ""} com sucesso!`);
+  } else {
+    showUploadSuccess(`${total - failed} de ${total} foto(s) enviada(s). ${failed} falharam.`);
   }
 }
 
