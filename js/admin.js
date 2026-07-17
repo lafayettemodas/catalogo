@@ -136,7 +136,7 @@ async function loadProducts() {
     btn.addEventListener("click", () => editProduct(btn.dataset.edit, data));
   });
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => deleteProduct(btn.dataset.delete));
+    btn.addEventListener("click", () => deleteProduct(btn.dataset.delete, data));
   });
 }
 
@@ -283,8 +283,18 @@ async function deleteProductImage(imageId, path, el) {
 }
 
 // ---------- Produtos: excluir ----------
-async function deleteProduct(id) {
-  if (!confirm("Excluir este produto? Essa ação não pode ser desfeita.")) return;
+async function deleteProduct(id, list) {
+  const p = (list || []).find((x) => x.id === id);
+
+  let label = "este produto";
+  if (p) {
+    const refs = [];
+    if (p.ref_fabrica) refs.push(`Ref. Fábrica: ${p.ref_fabrica}`);
+    if (p.ref_loja) refs.push(`Ref. Loja: ${p.ref_loja}`);
+    label = `"${p.name}"${refs.length ? " (" + refs.join(", ") + ")" : ""}`;
+  }
+
+  if (!confirm(`Excluir o produto ${label}? Essa ação não pode ser desfeita.`)) return;
 
   const { error } = await supabaseClient.from("produtos").delete().eq("id", id);
   if (error) { alert("Erro ao excluir: " + error.message); return; }
