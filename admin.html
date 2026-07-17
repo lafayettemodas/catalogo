@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260715e">
+<link rel="stylesheet" href="css/admin.css?v=20260716a">
 </head>
 <body>
 
@@ -43,6 +43,7 @@
       <button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
       <button type="button" class="sidebar-link" data-view="editar">Editar</button>
       <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
+      <button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
     </nav>
 
     <div class="admin-content">
@@ -170,6 +171,28 @@
 
       </div>
 
+      <!-- ---------- RELATÓRIO (PDF de produtos ocultos) ---------- -->
+      <div class="admin-view" id="viewRelatorio">
+
+        <div class="panel">
+          <h2>Relatório de produtos ocultos</h2>
+          <p class="hint-text">Gera um catálogo em PDF (fotos + valores) apenas com os produtos marcados como "Ocultar produto". Você pode baixar o arquivo ou enviar direto pelo WhatsApp.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th></tr>
+              </thead>
+              <tbody id="hiddenProductsTableBody"></tbody>
+            </table>
+          </div>
+          <div class="report-actions">
+            <button class="primary" id="btnDownloadPdf">Baixar PDF</button>
+            <button class="whatsapp" id="btnShareWhatsapp">Enviar por WhatsApp</button>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 </main>
@@ -180,8 +203,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260715e"></script>
-<script src="js/supabaseClient.js?v=20260715e"></script>
-<script src="js/admin.js?v=20260715e"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="js/config.js?v=20260716a"></script>
+<script src="js/supabaseClient.js?v=20260716a"></script>
+<script src="js/admin.js?v=20260716a"></script>
 </body>
 </html>
