@@ -134,7 +134,7 @@ async function loadProducts() {
   });
 
   tbody.querySelectorAll("[data-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => editProduct(btn.dataset.edit, data));
+    btn.addEventListener("click", () => editProduct(btn.dataset.edit));
   });
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", () => deleteProduct(btn.dataset.delete, data));
@@ -169,9 +169,20 @@ async function loadVisits() {
 }
 
 // ---------- Produtos: editar ----------
-function editProduct(id, list) {
-  const p = list.find((x) => x.id === id);
-  if (!p) return;
+// Busca o produto direto no banco (não usa a lista em memória, que pode estar
+// desatualizada se houve alguma edição em outra aba/sessão) para garantir que
+// o formulário — inclusive o campo "Ocultar produto" — sempre reflita o valor
+// real e atual do banco. Assim o campo só muda quando o usuário decide mudar.
+async function editProduct(id) {
+  const { data: p, error } = await supabaseClient
+    .from("produtos")
+    .select("id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, product_images ( id, path, position )")
+    .eq("id", id)
+    .single();
+
+  if (error || !p) { alert("Erro ao carregar produto: " + (error?.message || "não encontrado")); return; }
+
+  p.product_images = (p.product_images || []).map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path }));
 
   editingProductId = id;
   document.getElementById("formTitle").textContent = "Editar produto";
@@ -478,7 +489,7 @@ function formatPrice(v) {
 async function fetchHiddenProductsForReport() {
   const { data, error } = await supabaseClient
     .from("produtos")
-    .select("id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, product_images ( path, position )")
+    .select("id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, sizes, product_images ( path, position )")
     .eq("ocultar", true)
     .order("created_at", { ascending: false });
 
@@ -492,15 +503,23 @@ async function fetchHiddenProductsForReport() {
   return data;
 }
 
+// Guarda a última lista carregada para que a seleção de checkboxes na tela
+// use exatamente os mesmos dados mostrados ao usuário (sem precisar buscar de novo).
+let hiddenProductsCache = [];
+
 async function loadHiddenProductsPreview() {
   const tbody = document.getElementById("hiddenProductsTableBody");
-  tbody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
 
   const products = await fetchHiddenProductsForReport();
-  if (!products) { tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar produtos ocultos.</td></tr>'; return; }
+  hiddenProductsCache = products || [];
+
+  if (!products) { tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar produtos ocultos.</td></tr>'; return; }
 
   if (products.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum produto oculto no momento.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Nenhum produto oculto no momento.</td></tr>';
+    const selectAll = document.getElementById("selectAllHidden");
+    if (selectAll) selectAll.checked = false;
     return;
   }
 
@@ -508,14 +527,28 @@ async function loadHiddenProductsPreview() {
   products.forEach((p) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td><input type="checkbox" class="hidden-select" data-id="${p.id}" checked></td>
       <td>${p.mainImageUrl ? `<img src="${p.mainImageUrl}">` : ""}</td>
       <td>${p.ref_fabrica || "-"}</td>
       <td>${p.ref_loja || "-"}</td>
       <td>${p.name}</td>
+      <td>${p.sizes && p.sizes.length ? p.sizes.join(", ") : "-"}</td>
       <td>${p.promocao && p.preco_promocao ? formatPrice(p.preco_promocao) : formatPrice(p.price)}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  const selectAll = document.getElementById("selectAllHidden");
+  if (selectAll) selectAll.checked = true;
+}
+
+document.getElementById("selectAllHidden").addEventListener("change", (e) => {
+  document.querySelectorAll(".hidden-select").forEach((cb) => { cb.checked = e.target.checked; });
+});
+
+function getSelectedHiddenProducts() {
+  const ids = [...document.querySelectorAll(".hidden-select:checked")].map((cb) => cb.dataset.id);
+  return hiddenProductsCache.filter((p) => ids.includes(p.id));
 }
 
 // Baixa a foto (mesma origem do GitHub Pages) e converte para JPEG base64,
@@ -539,6 +572,23 @@ async function imageUrlToDataUrl(url) {
     canvas.height = h;
     canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
     return canvas.toDataURL("image/jpeg", 0.72);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Mesma ideia, mas em PNG (preserva transparência) — usada só para a logo.
+async function imageUrlToDataUrlPNG(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("fetch falhou");
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    return canvas.toDataURL("image/png");
   } catch (e) {
     return null;
   }
@@ -594,6 +644,14 @@ function addProductCell(doc, x, y, w, h, product) {
     textY += 4.5;
   }
 
+  if (product.sizes && product.sizes.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(135, 128, 118);
+    doc.text("Tamanhos: " + product.sizes.join(", "), x + padding, textY);
+    textY += 4.5;
+  }
+
   textY += 1;
   if (product.promocao && product.preco_promocao) {
     doc.setFont("helvetica", "normal");
@@ -618,11 +676,62 @@ function addProductCell(doc, x, y, w, h, product) {
   }
 }
 
-async function buildHiddenCatalogPDF() {
-  const products = await fetchHiddenProductsForReport();
-  if (!products) return null;
-  if (products.length === 0) {
-    alert("Não há produtos ocultos no momento.");
+function drawReportHeader(doc, pageW, margin, logoDataUrl) {
+  const logoH = 13;
+  let textX = margin;
+
+  if (logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+      const logoW = (props.width / props.height) * logoH;
+      doc.addImage(logoDataUrl, "PNG", margin, margin - 2, logoW, logoH);
+      textX = margin + logoW + 6;
+    } catch (e) {
+      // segue sem logo se der erro
+    }
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(25, 22, 18);
+  doc.text(typeof STORE_NAME !== "undefined" && STORE_NAME ? STORE_NAME : "Catálogo", textX, margin + 3);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(135, 128, 118);
+  doc.text("Catálogo de Produtos Ocultos", textX, margin + 9);
+
+  doc.setFontSize(8.5);
+  doc.setTextColor(150, 140, 128);
+  doc.text("Gerado em " + new Date().toLocaleDateString("pt-BR"), pageW - margin, margin + 3, { align: "right" });
+
+  doc.setDrawColor(200, 190, 178);
+  doc.setLineWidth(0.4);
+  doc.line(margin, margin + 14, pageW - margin, margin + 14);
+}
+
+function drawReportFooter(doc, pageW, pageH, margin, pageNum, totalPages) {
+  const lineY = pageH - margin - 9;
+
+  doc.setDrawColor(200, 190, 178);
+  doc.setLineWidth(0.3);
+  doc.line(margin, lineY, pageW - margin, lineY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(135, 128, 118);
+
+  const contactParts = [];
+  if (typeof STORE_ADDRESS !== "undefined" && STORE_ADDRESS) contactParts.push(STORE_ADDRESS);
+  if (typeof INSTAGRAM_HANDLE !== "undefined" && INSTAGRAM_HANDLE) contactParts.push(INSTAGRAM_HANDLE);
+  doc.text(contactParts.join("   •   "), margin, lineY + 5);
+
+  doc.text(`Página ${pageNum} de ${totalPages}`, pageW - margin, lineY + 5, { align: "right" });
+}
+
+async function buildHiddenCatalogPDF(products) {
+  if (!products || products.length === 0) {
+    alert("Selecione ao menos um produto para gerar o relatório.");
     return null;
   }
 
@@ -630,36 +739,25 @@ async function buildHiddenCatalogPDF() {
     p.imageDataUrl = p.mainImageUrl ? await imageUrlToDataUrl(p.mainImageUrl) : null;
   }
 
+  const logoDataUrl = await imageUrlToDataUrlPNG(IMAGE_BASE_URL + "img/logo.png");
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = 210;
   const pageH = 297;
   const margin = 12;
-  const headerH = 20;
+  const headerH = 22;
+  const footerH = 16;
   const cols = 2;
   const rows = 2;
   const cellW = (pageW - margin * 2) / cols;
-  const cellH = (pageH - margin * 2 - headerH) / rows;
-
-  function drawHeader() {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(15);
-    doc.setTextColor(25, 22, 18);
-    doc.text("Lafayette Modas — Produtos Ocultos", margin, margin + 6);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(135, 128, 118);
-    doc.text("Gerado em " + new Date().toLocaleDateString("pt-BR"), margin, margin + 12);
-    doc.setDrawColor(225, 220, 212);
-    doc.setLineWidth(0.3);
-    doc.line(margin, margin + 15, pageW - margin, margin + 15);
-  }
+  const cellH = (pageH - margin * 2 - headerH - footerH) / rows;
 
   let idx = 0;
   let page = 0;
   while (idx < products.length) {
     if (page > 0) doc.addPage();
-    drawHeader();
+    drawReportHeader(doc, pageW, margin, logoDataUrl);
     for (let r = 0; r < rows && idx < products.length; r++) {
       for (let c = 0; c < cols && idx < products.length; c++) {
         const x = margin + c * cellW;
@@ -671,16 +769,24 @@ async function buildHiddenCatalogPDF() {
     page++;
   }
 
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    drawReportFooter(doc, pageW, pageH, margin, i, totalPages);
+  }
+
   return doc;
 }
 
 document.getElementById("btnDownloadPdf").addEventListener("click", async () => {
   const btn = document.getElementById("btnDownloadPdf");
   const original = btn.textContent;
+  const selected = getSelectedHiddenProducts();
+  if (selected.length === 0) { alert("Selecione ao menos um produto para gerar o relatório."); return; }
   btn.disabled = true;
   btn.textContent = "Gerando PDF...";
   try {
-    const doc = await buildHiddenCatalogPDF();
+    const doc = await buildHiddenCatalogPDF(selected);
     if (doc) doc.save(`catalogo-ocultos-${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (e) {
     alert("Erro ao gerar PDF: " + e.message);
@@ -693,10 +799,12 @@ document.getElementById("btnDownloadPdf").addEventListener("click", async () => 
 document.getElementById("btnShareWhatsapp").addEventListener("click", async () => {
   const btn = document.getElementById("btnShareWhatsapp");
   const original = btn.textContent;
+  const selected = getSelectedHiddenProducts();
+  if (selected.length === 0) { alert("Selecione ao menos um produto para gerar o relatório."); return; }
   btn.disabled = true;
   btn.textContent = "Gerando PDF...";
   try {
-    const doc = await buildHiddenCatalogPDF();
+    const doc = await buildHiddenCatalogPDF(selected);
     if (!doc) return;
 
     const fileName = `catalogo-ocultos-${new Date().toISOString().slice(0, 10)}.pdf`;
