@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260715c">
+<link rel="stylesheet" href="css/admin.css?v=20260715d">
 </head>
 <body>
 
@@ -109,6 +109,12 @@
               <input type="number" step="0.01" id="fieldValorPromocao">
             </div>
           </div>
+          <div class="checkbox-field">
+            <label class="checkbox-label">
+              <input type="checkbox" id="fieldOcultar">
+              <span>Ocultar produto (não aparece no catálogo)</span>
+            </label>
+          </div>
           <div class="field" id="currentPhotosField" style="display:none;">
             <label>Fotos atuais (clique para ampliar, × para excluir)</label>
             <div class="current-photos-grid" id="currentPhotosGrid"></div>
@@ -137,7 +143,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Ações</th></tr>
+                <tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Oculto</th><th>Ações</th></tr>
               </thead>
               <tbody id="productsTableBody"></tbody>
             </table>
@@ -174,8 +180,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260715c"></script>
-<script src="js/supabaseClient.js?v=20260715c"></script>
-<script src="js/admin.js?v=20260715c"></script>
+<script src="js/config.js?v=20260715d"></script>
+<script src="js/supabaseClient.js?v=20260715d"></script>
+<script src="js/admin.js?v=20260715d"></script>
 </body>
 </html>
