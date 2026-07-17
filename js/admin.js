@@ -383,7 +383,7 @@ function splitCsv(value) {
   return value.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-// Converte um File em base64 puro (sem o prefixo "data:...;base64,")
+// Converte um File/Blob em base64 puro (sem o prefixo "data:...;base64,")
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -391,6 +391,48 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+// Limite máximo de tamanho por foto. Fotos maiores que isso são recomprimidas
+// automaticamente antes do envio (reduzindo qualidade e, se necessário,
+// resolução) até caberem no limite.
+const MAX_IMAGE_BYTES = 1024 * 1024; // 1MB
+
+// Recomprime uma imagem em JPEG reduzindo qualidade (e resolução, se preciso)
+// até o tamanho ficar dentro do limite. Se já estiver dentro do limite,
+// devolve o blob original sem reprocessar (evita perda de qualidade à toa).
+async function compressImageToLimit(blob, maxBytes = MAX_IMAGE_BYTES) {
+  if (blob.size <= maxBytes) return blob;
+
+  const bitmap = await createImageBitmap(blob);
+  const w = bitmap.width;
+  const h = bitmap.height;
+
+  async function renderAt(scale, quality) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+  }
+
+  let scale = 1;
+  let quality = 0.85;
+  let result = await renderAt(scale, quality);
+  let attempts = 0;
+
+  while (result.size > maxBytes && attempts < 14) {
+    attempts++;
+    if (quality > 0.5) {
+      quality -= 0.1;
+    } else {
+      scale *= 0.85;
+      quality = 0.75;
+    }
+    result = await renderAt(scale, quality);
+  }
+
+  return result;
 }
 
 function showUploadProgress(done, total) {
@@ -436,9 +478,18 @@ async function uploadImages(productId, files) {
 
   for (const file of files) {
     try {
-      const contentBase64 = await fileToBase64(file);
+      let blobToSend = file;
+      let filename = file.name;
+
+      if (file.size > MAX_IMAGE_BYTES) {
+        blobToSend = await compressImageToLimit(file);
+        // a recompressão gera JPEG, então o nome do arquivo deve refletir isso
+        filename = filename.replace(/\.[^.]+$/, "") + ".jpg";
+      }
+
+      const contentBase64 = await fileToBase64(blobToSend);
       const { data, error } = await supabaseClient.functions.invoke("manage-product-photo", {
-        body: { action: "upload", productId, filename: file.name, contentBase64 },
+        body: { action: "upload", productId, filename, contentBase64 },
       });
 
       if (error || !data || data.error) {
