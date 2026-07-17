@@ -69,6 +69,7 @@ async function loadProducts() {
       product_images ( id, path, position )
     `)
     .eq("active", true)
+    .eq("ocultar", false)
     .order("created_at", { ascending: false });
 
   if (error) {

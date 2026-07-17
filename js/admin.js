@@ -98,7 +98,7 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
 async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("produtos")
-    .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, price, category_id, description, sizes, colors, product_images ( id, path, position )`)
+    .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, product_images ( id, path, position )`)
     .order("created_at", { ascending: false });
 
   if (error) { console.error(error); return; }
@@ -123,6 +123,7 @@ async function loadProducts() {
       <td>${p.price != null ? "R$ " + Number(p.price).toFixed(2) : "-"}</td>
       <td>${catName}</td>
       <td>${p.promocao ? "Sim" : "Não"}</td>
+      <td>${p.ocultar ? "Sim" : "Não"}</td>
       <td>
         <button class="secondary" data-edit="${p.id}">Editar</button>
         <button class="danger" data-delete="${p.id}">Excluir</button>
@@ -185,6 +186,7 @@ function editProduct(id, list) {
   document.getElementById("fieldPromocao").checked = !!p.promocao;
   document.getElementById("fieldValorPromocaoWrap").style.display = p.promocao ? "block" : "none";
   document.getElementById("fieldValorPromocao").value = p.preco_promocao || "";
+  document.getElementById("fieldOcultar").checked = !!p.ocultar;
   document.getElementById("cancelEditBtn").style.display = "inline-block";
 
   const sortedImages = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
@@ -217,6 +219,7 @@ function resetForm() {
   document.getElementById("fieldPromocao").checked = false;
   document.getElementById("fieldValorPromocaoWrap").style.display = "none";
   document.getElementById("fieldValorPromocao").value = "";
+  document.getElementById("fieldOcultar").checked = false;
   document.getElementById("fieldImages").value = "";
   document.getElementById("cancelEditBtn").style.display = "none";
   document.getElementById("formError").textContent = "";
@@ -305,6 +308,7 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   const description = document.getElementById("fieldDescription").value.trim();
   const promocao = document.getElementById("fieldPromocao").checked;
   const precoPromocao = promocao ? (parseFloat(document.getElementById("fieldValorPromocao").value) || null) : null;
+  const ocultar = document.getElementById("fieldOcultar").checked;
   const files = document.getElementById("fieldImages").files;
 
   if (!name) { errorEl.textContent = "Informe o nome do produto."; return; }
@@ -320,13 +324,13 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if (productId) {
       const { error } = await supabaseClient
         .from("produtos")
-        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao })
+        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao, ocultar })
         .eq("id", productId);
       if (error) throw error;
     } else {
       const { data, error } = await supabaseClient
         .from("produtos")
-        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao })
+        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao, ocultar })
         .select()
         .single();
       if (error) throw error;
