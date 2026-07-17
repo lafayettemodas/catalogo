@@ -578,16 +578,26 @@ async function imageUrlToDataUrl(url) {
 }
 
 // Mesma ideia, mas em PNG (preserva transparência) — usada só para a logo.
-async function imageUrlToDataUrlPNG(url) {
+// A logo aparece pequena no cabeçalho, então limitamos bem a resolução para
+// não inflar o tamanho do PDF (PNG recodificado no canvas pesa bem mais que
+// o arquivo original).
+async function imageUrlToDataUrlPNG(url, maxDim = 300) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error("fetch falhou");
     const blob = await res.blob();
     const bitmap = await createImageBitmap(blob);
+    let w = bitmap.width;
+    let h = bitmap.height;
+    if (w > maxDim || h > maxDim) {
+      const scale = maxDim / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
     const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
     return canvas.toDataURL("image/png");
   } catch (e) {
     return null;
