@@ -244,6 +244,28 @@ td img { width: 46px; height: 60px; object-fit: cover; border-radius: 6px; }
 
 .hint-text { color: var(--muted); font-size: 0.85rem; margin-top: -6px; margin-bottom: 4px; }
 
+/* ---------- Relatório de produtos ocultos ---------- */
+.report-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+button.whatsapp {
+  background: #25d366;
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+button.whatsapp:hover { background: #1fb457; transform: translateY(-1px); }
+button.whatsapp:disabled { opacity: 0.6; cursor: default; transform: none; }
+
 /* ---------- Progresso de envio de fotos ---------- */
 .progress-bar {
   width: 100%;
