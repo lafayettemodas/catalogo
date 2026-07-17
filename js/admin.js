@@ -48,8 +48,8 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   showLoginScreen();
 });
 
-// ---------- Menu lateral (Incluir / Editar / Acessos) ----------
-const VIEW_IDS = { incluir: "viewIncluir", editar: "viewEditar", acessos: "viewAcessos" };
+// ---------- Menu lateral (Incluir / Editar / Acessos / Relatório) ----------
+const VIEW_IDS = { incluir: "viewIncluir", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio" };
 
 function showView(view) {
   document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
@@ -60,6 +60,7 @@ function showView(view) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (view === "acessos") loadVisits();
+  if (view === "relatorio") loadHiddenProductsPreview();
 }
 
 document.querySelectorAll(".sidebar-link").forEach((btn) => {
@@ -467,6 +468,257 @@ function toUpper(el) {
 ["fieldName", "fieldRefFabrica", "fieldRefLoja", "fieldSizes", "fieldColors", "fieldDescription"].forEach((id) => {
   const el = document.getElementById(id);
   el.addEventListener("input", () => toUpper(el));
+});
+
+// ---------- Relatório PDF: produtos ocultos ----------
+function formatPrice(v) {
+  return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function fetchHiddenProductsForReport() {
+  const { data, error } = await supabaseClient
+    .from("produtos")
+    .select("id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, product_images ( path, position )")
+    .eq("ocultar", true)
+    .order("created_at", { ascending: false });
+
+  if (error) { alert("Erro ao buscar produtos ocultos: " + error.message); return null; }
+
+  data.forEach((p) => {
+    const imgs = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
+    p.mainImageUrl = imgs.length ? IMAGE_BASE_URL + imgs[0].path : null;
+  });
+
+  return data;
+}
+
+async function loadHiddenProductsPreview() {
+  const tbody = document.getElementById("hiddenProductsTableBody");
+  tbody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
+
+  const products = await fetchHiddenProductsForReport();
+  if (!products) { tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar produtos ocultos.</td></tr>'; return; }
+
+  if (products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5">Nenhum produto oculto no momento.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = "";
+  products.forEach((p) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.mainImageUrl ? `<img src="${p.mainImageUrl}">` : ""}</td>
+      <td>${p.ref_fabrica || "-"}</td>
+      <td>${p.ref_loja || "-"}</td>
+      <td>${p.name}</td>
+      <td>${p.promocao && p.preco_promocao ? formatPrice(p.preco_promocao) : formatPrice(p.price)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Baixa a foto (mesma origem do GitHub Pages) e converte para JPEG base64,
+// já redimensionada, para embutir no PDF sem deixar o arquivo gigante.
+async function imageUrlToDataUrl(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("fetch falhou");
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    const maxDim = 900;
+    let w = bitmap.width;
+    let h = bitmap.height;
+    if (w > maxDim || h > maxDim) {
+      const scale = maxDim / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.72);
+  } catch (e) {
+    return null;
+  }
+}
+
+function addProductCell(doc, x, y, w, h, product) {
+  const padding = 4;
+  const imgBoxW = w - padding * 2;
+  const imgBoxH = h * 0.62;
+  const imgBoxX = x + padding;
+  const imgBoxY = y + padding;
+
+  doc.setDrawColor(225, 220, 212);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(x + 2, y + 2, w - 4, h - 4, 2, 2);
+
+  if (product.imageDataUrl) {
+    try {
+      const props = doc.getImageProperties(product.imageDataUrl);
+      const ratio = Math.min(imgBoxW / props.width, imgBoxH / props.height);
+      const iw = props.width * ratio;
+      const ih = props.height * ratio;
+      const ix = imgBoxX + (imgBoxW - iw) / 2;
+      const iy = imgBoxY + (imgBoxH - ih) / 2;
+      doc.addImage(product.imageDataUrl, "JPEG", ix, iy, iw, ih);
+    } catch (e) {
+      doc.setFontSize(9);
+      doc.setTextColor(160, 150, 138);
+      doc.text("Erro ao carregar foto", x + w / 2, y + imgBoxH / 2, { align: "center" });
+    }
+  } else {
+    doc.setFontSize(9);
+    doc.setTextColor(160, 150, 138);
+    doc.text("Sem foto", x + w / 2, y + imgBoxH / 2, { align: "center" });
+  }
+
+  let textY = y + imgBoxH + padding + 5;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(25, 22, 18);
+  const nameLines = doc.splitTextToSize(product.name || "", w - padding * 2);
+  doc.text(nameLines, x + padding, textY);
+  textY += nameLines.length * 4.6;
+
+  const refParts = [];
+  if (product.ref_fabrica) refParts.push("Ref. Fábrica: " + product.ref_fabrica);
+  if (product.ref_loja) refParts.push("Ref. Loja: " + product.ref_loja);
+  if (refParts.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(135, 128, 118);
+    doc.text(refParts.join("  |  "), x + padding, textY);
+    textY += 4.5;
+  }
+
+  textY += 1;
+  if (product.promocao && product.preco_promocao) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(150, 140, 128);
+    const oldPriceStr = formatPrice(product.price);
+    doc.text(oldPriceStr, x + padding, textY);
+    const strW = doc.getTextWidth(oldPriceStr);
+    doc.setDrawColor(150, 140, 128);
+    doc.setLineWidth(0.25);
+    doc.line(x + padding, textY - 1.3, x + padding + strW, textY - 1.3);
+    textY += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(179, 69, 47);
+    doc.text(formatPrice(product.preco_promocao), x + padding, textY);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(25, 22, 18);
+    doc.text(formatPrice(product.price), x + padding, textY);
+  }
+}
+
+async function buildHiddenCatalogPDF() {
+  const products = await fetchHiddenProductsForReport();
+  if (!products) return null;
+  if (products.length === 0) {
+    alert("Não há produtos ocultos no momento.");
+    return null;
+  }
+
+  for (const p of products) {
+    p.imageDataUrl = p.mainImageUrl ? await imageUrlToDataUrl(p.mainImageUrl) : null;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = 210;
+  const pageH = 297;
+  const margin = 12;
+  const headerH = 20;
+  const cols = 2;
+  const rows = 2;
+  const cellW = (pageW - margin * 2) / cols;
+  const cellH = (pageH - margin * 2 - headerH) / rows;
+
+  function drawHeader() {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(25, 22, 18);
+    doc.text("Lafayette Modas — Produtos Ocultos", margin, margin + 6);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(135, 128, 118);
+    doc.text("Gerado em " + new Date().toLocaleDateString("pt-BR"), margin, margin + 12);
+    doc.setDrawColor(225, 220, 212);
+    doc.setLineWidth(0.3);
+    doc.line(margin, margin + 15, pageW - margin, margin + 15);
+  }
+
+  let idx = 0;
+  let page = 0;
+  while (idx < products.length) {
+    if (page > 0) doc.addPage();
+    drawHeader();
+    for (let r = 0; r < rows && idx < products.length; r++) {
+      for (let c = 0; c < cols && idx < products.length; c++) {
+        const x = margin + c * cellW;
+        const y = margin + headerH + r * cellH;
+        addProductCell(doc, x, y, cellW, cellH, products[idx]);
+        idx++;
+      }
+    }
+    page++;
+  }
+
+  return doc;
+}
+
+document.getElementById("btnDownloadPdf").addEventListener("click", async () => {
+  const btn = document.getElementById("btnDownloadPdf");
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Gerando PDF...";
+  try {
+    const doc = await buildHiddenCatalogPDF();
+    if (doc) doc.save(`catalogo-ocultos-${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (e) {
+    alert("Erro ao gerar PDF: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+
+document.getElementById("btnShareWhatsapp").addEventListener("click", async () => {
+  const btn = document.getElementById("btnShareWhatsapp");
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Gerando PDF...";
+  try {
+    const doc = await buildHiddenCatalogPDF();
+    if (!doc) return;
+
+    const fileName = `catalogo-ocultos-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const blob = doc.output("blob");
+    const file = new File([blob], fileName, { type: "application/pdf" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Catálogo - Produtos Ocultos",
+        text: "Catálogo de produtos ocultos - Lafayette Modas",
+      });
+    } else {
+      alert("Este navegador não permite anexar o arquivo direto no compartilhamento. O PDF foi baixado — anexe manualmente na conversa do WhatsApp.");
+      doc.save(fileName);
+    }
+  } catch (e) {
+    if (e.name !== "AbortError") alert("Erro ao compartilhar: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 });
 
 // ---------- Init ----------
