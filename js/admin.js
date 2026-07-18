@@ -4,6 +4,7 @@
 
 let categories = [];
 let editingProductId = null;
+let allProducts = [];
 
 // ---------- Login / sessão ----------
 async function checkSession() {
@@ -109,10 +110,16 @@ async function loadProducts() {
     p.product_images = (p.product_images || []).map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path }));
   });
 
+  allProducts = data;
+  applyEditSearchFilter();
+}
+
+// Renderiza a tabela de produtos publicados a partir de uma lista já filtrada
+function renderProductsTable(list) {
   const tbody = document.getElementById("productsTableBody");
   tbody.innerHTML = "";
 
-  data.forEach((p) => {
+  list.forEach((p) => {
     const catName = categories.find((c) => c.id === p.category_id)?.name || "-";
     const firstImg = (p.product_images || []).sort((a, b) => a.position - b.position)[0]?.url || "";
     const tr = document.createElement("tr");
@@ -137,9 +144,31 @@ async function loadProducts() {
     btn.addEventListener("click", () => editProduct(btn.dataset.edit));
   });
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => deleteProduct(btn.dataset.delete, data));
+    btn.addEventListener("click", () => deleteProduct(btn.dataset.delete, list));
   });
 }
+
+// Filtra allProducts pelo texto digitado em #editSearchInput (busca por
+// Ref. Fábrica ou Ref. Loja, sem diferenciar maiúsculas/minúsculas) e
+// re-renderiza a tabela. Chamada tanto ao digitar quanto após recarregar.
+function applyEditSearchFilter() {
+  const input = document.getElementById("editSearchInput");
+  const term = (input?.value || "").trim().toLowerCase();
+
+  if (!term) {
+    renderProductsTable(allProducts);
+    return;
+  }
+
+  const filtered = allProducts.filter((p) => {
+    const ref1 = (p.ref_fabrica || "").toLowerCase();
+    const ref2 = (p.ref_loja || "").toLowerCase();
+    return ref1.includes(term) || ref2.includes(term);
+  });
+  renderProductsTable(filtered);
+}
+
+document.getElementById("editSearchInput")?.addEventListener("input", applyEditSearchFilter);
 
 // ---------- Acessos (visitantes distintos por mês) ----------
 async function loadVisits() {
