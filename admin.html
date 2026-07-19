@@ -8,210 +8,216 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260718a">
+<link rel="stylesheet" href="css/admin.css?v=20260719a">
 </head>
 <body>
 
 <header>
-  <div class="header-brand">
-    <img class="site-logo" src="img/logo.png" alt="Lafayette Moda Feminina">
-    <h1>Painel Admin</h1>
-  </div>
-  <button class="secondary" id="logoutBtn" style="display:none;">Sair</button>
+<div class="header-brand">
+<img class="site-logo" src="img/logo.png" alt="Lafayette Moda Feminina">
+<h1>Painel Admin</h1>
+</div>
+<button class="secondary" id="logoutBtn" style="display:none;">Sair</button>
 </header>
 
 <!-- Tela de login -->
 <div id="loginScreen">
-  <h2>Entrar</h2>
-  <div class="field">
-    <label>E-mail</label>
-    <input type="email" id="loginEmail" placeholder="voce@email.com">
-  </div>
-  <div class="field">
-    <label>Senha</label>
-    <input type="password" id="loginPassword" placeholder="••••••••">
-  </div>
-  <button class="primary" id="loginBtn">Entrar</button>
-  <div class="error-msg" id="loginError"></div>
+<h2>Entrar</h2>
+<div class="field">
+<label>E-mail</label>
+<input type="email" id="loginEmail" placeholder="voce@email.com">
+</div>
+<div class="field">
+<label>Senha</label>
+<input type="password" id="loginPassword" placeholder="••••••••">
+</div>
+<button class="primary" id="loginBtn">Entrar</button>
+<div class="error-msg" id="loginError"></div>
 </div>
 
 <!-- Área logada -->
 <main id="adminArea">
-  <div class="admin-layout">
+<div class="admin-layout">
 
-    <nav class="admin-sidebar">
-      <button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
-      <button type="button" class="sidebar-link" data-view="editar">Editar</button>
-      <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
-      <button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
-    </nav>
+<nav class="admin-sidebar">
+<button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
+<button type="button" class="sidebar-link" data-view="editar">Editar</button>
+<button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
+<button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
+</nav>
 
-    <div class="admin-content">
+<div class="admin-content">
 
-      <!-- ---------- INCLUIR (cadastro de categorias/produtos) ---------- -->
-      <div class="admin-view active" id="viewIncluir">
+<!-- ---------- INCLUIR (cadastro de categorias/produtos) ---------- -->
+<div class="admin-view active" id="viewIncluir">
 
-        <div class="panel">
-          <h2>Categorias</h2>
-          <div class="inline-cat-add">
-            <input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
-            <button class="secondary" id="addCategoryBtn">Adicionar</button>
-          </div>
-        </div>
+<div class="panel">
+<h2>Categorias</h2>
+<div class="inline-cat-add">
+<input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
+<button class="secondary" id="addCategoryBtn">Adicionar</button>
+</div>
+</div>
 
-        <div class="panel">
-          <h2 id="formTitle">Novo produto</h2>
-          <input type="hidden" id="productId">
-          <div class="row">
-            <div class="field">
-              <label>Nome</label>
-              <input type="text" id="fieldName">
-            </div>
-            <div class="field">
-              <label>Ref. Fábrica</label>
-              <input type="text" id="fieldRefFabrica" placeholder="Ex: LM-0123">
-            </div>
-            <div class="field">
-              <label>Ref. Loja</label>
-              <input type="text" id="fieldRefLoja" placeholder="Ex: 0123">
-            </div>
-            <div class="field">
-              <label>Preço (R$)</label>
-              <input type="number" step="0.01" id="fieldPrice">
-            </div>
-            <div class="field">
-              <label>Categoria</label>
-              <select id="fieldCategory"></select>
-            </div>
-          </div>
-          <div class="row">
-            <div class="field">
-              <label>Tamanhos (separados por vírgula)</label>
-              <input type="text" id="fieldSizes" placeholder="P, M, G">
-            </div>
-            <div class="field">
-              <label>Cores (separadas por vírgula)</label>
-              <input type="text" id="fieldColors" placeholder="Preto, Branco">
-            </div>
-          </div>
-          <div class="field">
-            <label>Descrição</label>
-            <textarea id="fieldDescription"></textarea>
-          </div>
-          <div class="promo-row">
-            <div class="checkbox-field">
-              <label class="checkbox-label">
-                <input type="checkbox" id="fieldPromocao">
-                <span>Produto em promoção</span>
-              </label>
-            </div>
-            <div class="field field-narrow" id="fieldValorPromocaoWrap" style="display:none;">
-              <label>Valor promoção (R$)</label>
-              <input type="number" step="0.01" id="fieldValorPromocao">
-            </div>
-          </div>
-          <div class="checkbox-field">
-            <label class="checkbox-label">
-              <input type="checkbox" id="fieldOcultar">
-              <span>Ocultar produto (não aparece no catálogo)</span>
-            </label>
-          </div>
-          <div class="field" id="currentPhotosField" style="display:none;">
-            <label>Fotos atuais (clique para ampliar, × para excluir)</label>
-            <div class="current-photos-grid" id="currentPhotosGrid"></div>
-          </div>
-          <div class="field">
-            <label>Fotos (pode selecionar várias)</label>
-            <input type="file" id="fieldImages" accept="image/*" multiple>
-          </div>
-          <div class="field" id="uploadProgressWrap" style="display:none;">
-            <div class="progress-bar"><div class="progress-bar-fill" id="uploadProgressFill"></div></div>
-            <div class="progress-text" id="uploadProgressText"></div>
-          </div>
-          <button class="primary" id="saveProductBtn">Salvar produto</button>
-          <button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
-          <div class="upload-success-msg" id="uploadSuccessMsg"></div>
-          <div class="error-msg" id="formError"></div>
-        </div>
+<div class="panel">
+<h2 id="formTitle">Novo produto</h2>
+<input type="hidden" id="productId">
+<div class="row">
+<div class="field">
+<label>Nome</label>
+<input type="text" id="fieldName">
+</div>
+<div class="field">
+<label>Ref. Fábrica</label>
+<input type="text" id="fieldRefFabrica" placeholder="Ex: LM-0123">
+</div>
+<div class="field">
+<label>Ref. Loja</label>
+<input type="text" id="fieldRefLoja" placeholder="Ex: 0123">
+</div>
+<div class="field">
+<label>Preço (R$)</label>
+<input type="number" step="0.01" id="fieldPrice">
+</div>
+<div class="field">
+<label>Categoria</label>
+<select id="fieldCategory"></select>
+</div>
+</div>
+<div class="row">
+<div class="field">
+<label>Tamanhos (separados por vírgula)</label>
+<input type="text" id="fieldSizes" placeholder="P, M, G">
+</div>
+<div class="field">
+<label>Cores (separadas por vírgula)</label>
+<input type="text" id="fieldColors" placeholder="Preto, Branco">
+</div>
+</div>
+<div class="field">
+<label>Descrição</label>
+<textarea id="fieldDescription"></textarea>
+</div>
+<div class="promo-row">
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="fieldPromocao">
+<span>Produto em promoção</span>
+</label>
+</div>
+<div class="field field-narrow" id="fieldValorPromocaoWrap" style="display:none;">
+<label>Valor promoção (R$)</label>
+<input type="number" step="0.01" id="fieldValorPromocao">
+</div>
+</div>
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="fieldOcultar">
+<span>Ocultar produto (não aparece no catálogo)</span>
+</label>
+</div>
+<div class="field" id="currentPhotosField" style="display:none;">
+<label>Fotos atuais (clique para ampliar, × para excluir)</label>
+<div class="current-photos-grid" id="currentPhotosGrid"></div>
+</div>
+<div class="field">
+<label>Fotos (pode selecionar várias)</label>
+<input type="file" id="fieldImages" accept="image/*" multiple>
+</div>
+<div class="field" id="uploadProgressWrap" style="display:none;">
+<div class="progress-bar"><div class="progress-bar-fill" id="uploadProgressFill"></div></div>
+<div class="progress-text" id="uploadProgressText"></div>
+</div>
+<button class="primary" id="saveProductBtn">Salvar produto</button>
+<button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
+<div class="upload-success-msg" id="uploadSuccessMsg"></div>
+<div class="error-msg" id="formError"></div>
+</div>
 
-      </div>
+</div>
 
-      <!-- ---------- EDITAR (produtos já publicados) ---------- -->
-      <div class="admin-view" id="viewEditar">
+<!-- ---------- EDITAR (produtos já publicados) ---------- -->
+<div class="admin-view" id="viewEditar">
 
-        <div class="panel">
-          <h2>Produtos publicados</h2>
-          <div class="search-filter-row">
-            <div class="field">
-              <label>Buscar por Ref. Fábrica ou Ref. Loja</label>
-              <input type="text" id="editSearchInput" placeholder="Digite a referência...">
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Oculto</th><th>Ações</th></tr>
-              </thead>
-              <tbody id="productsTableBody"></tbody>
-            </table>
-          </div>
-        </div>
+<div class="panel">
+<h2>Produtos publicados</h2>
+<div class="search-filter-row">
+<div class="field">
+<label>Buscar por Ref. Fábrica ou Ref. Loja</label>
+<input type="text" id="editSearchInput" placeholder="Digite a referência...">
+</div>
+<div class="field">
+<label>Categoria</label>
+<select id="editCategoryFilter">
+<option value="">Todas as categorias</option>
+</select>
+</div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Oculto</th><th>Ações</th></tr>
+</thead>
+<tbody id="productsTableBody"></tbody>
+</table>
+</div>
+</div>
 
-      </div>
+</div>
 
-      <!-- ---------- ACESSOS (visitas ao catálogo, mês a mês) ---------- -->
-      <div class="admin-view" id="viewAcessos">
+<!-- ---------- ACESSOS (visitas ao catálogo, mês a mês) ---------- -->
+<div class="admin-view" id="viewAcessos">
 
-        <div class="panel">
-          <h2>Acessos ao catálogo</h2>
-          <p class="hint-text">Quantidade de visitantes distintos (por IP) em cada mês. Acessos repetidos do mesmo IP não são contados mais de uma vez.</p>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Mês</th><th>Acessos (IPs distintos)</th></tr>
-              </thead>
-              <tbody id="visitsTableBody"></tbody>
-            </table>
-          </div>
-        </div>
+<div class="panel">
+<h2>Acessos ao catálogo</h2>
+<p class="hint-text">Quantidade de visitantes distintos (por IP) em cada mês. Acessos repetidos do mesmo IP não são contados mais de uma vez.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Mês</th><th>Acessos (IPs distintos)</th></tr>
+</thead>
+<tbody id="visitsTableBody"></tbody>
+</table>
+</div>
+</div>
 
-      </div>
+</div>
 
-      <!-- ---------- RELATÓRIO (PDF de produtos ocultos) ---------- -->
-      <div class="admin-view" id="viewRelatorio">
+<!-- ---------- RELATÓRIO (PDF de produtos ocultos) ---------- -->
+<div class="admin-view" id="viewRelatorio">
 
-        <div class="panel">
-          <h2>Relatório de produtos ocultos</h2>
-          <p class="hint-text">Gera um catálogo em PDF (fotos + valores) apenas com os produtos marcados como "Ocultar produto". Você pode baixar o arquivo ou enviar direto pelo WhatsApp.</p>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th><input type="checkbox" id="selectAllHidden" checked></th><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Tamanho</th><th>Preço</th></tr>
-              </thead>
-              <tbody id="hiddenProductsTableBody"></tbody>
-            </table>
-          </div>
-          <div class="report-actions">
-            <button class="primary" id="btnDownloadPdf">Baixar PDF</button>
-            <button class="whatsapp" id="btnShareWhatsapp">Enviar por WhatsApp</button>
-          </div>
-        </div>
+<div class="panel">
+<h2>Relatório de produtos ocultos</h2>
+<p class="hint-text">Gera um catálogo em PDF (fotos + valores) apenas com os produtos marcados como "Ocultar produto". Você pode baixar o arquivo ou enviar direto pelo WhatsApp.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th><input type="checkbox" id="selectAllHidden" checked></th><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Tamanho</th><th>Preço</th></tr>
+</thead>
+<tbody id="hiddenProductsTableBody"></tbody>
+</table>
+</div>
+<div class="report-actions">
+<button class="primary" id="btnDownloadPdf">Baixar PDF</button>
+<button class="whatsapp" id="btnShareWhatsapp">Enviar por WhatsApp</button>
+</div>
+</div>
 
-      </div>
+</div>
 
-    </div>
-  </div>
+</div>
+</div>
 </main>
 
 <!-- Lightbox para ampliar fotos -->
 <div class="lightbox-overlay" id="lightboxOverlay">
-  <img id="lightboxImg" src="" alt="Foto ampliada">
+<img id="lightboxImg" src="" alt="Foto ampliada">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/config.js?v=20260718a"></script>
-<script src="js/supabaseClient.js?v=20260718a"></script>
-<script src="js/admin.js?v=20260718a"></script>
+<script src="js/config.js?v=20260719a"></script>
+<script src="js/supabaseClient.js?v=20260719a"></script>
+<script src="js/admin.js?v=20260719a"></script>
 </body>
-</html>
+  </html>
