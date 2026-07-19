@@ -61,22 +61,37 @@ async function loadCategories() {
   });
 }
 
+// O Supabase/PostgREST limita cada resposta a no máximo 1000 linhas por
+// padrão. Com mais de 1000 produtos cadastrados, uma única consulta deixava
+// os produtos mais antigos de fora do catálogo (invisíveis para os
+// clientes). Por isso paginamos com .range() até trazer todas as linhas.
 async function loadProducts() {
-  const { data, error } = await supabaseClient
-    .from("produtos")
-    .select(`
-      id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id,
-      product_images ( id, path, position )
-    `)
-    .eq("active", true)
-    .eq("ocultar", false)
-    .order("created_at", { ascending: false });
+  const pageSize = 1000;
+  let data = [];
+  let from = 0;
 
-  if (error) {
-    console.error("Erro ao carregar produtos:", error);
-    document.getElementById("grid").innerHTML =
-      '<p class="empty-state">Erro ao carregar produtos. Confira o js/config.js.</p>';
-    return;
+  while (true) {
+    const { data: page, error } = await supabaseClient
+      .from("produtos")
+      .select(`
+        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id,
+        product_images ( id, path, position )
+      `)
+      .eq("active", true)
+      .eq("ocultar", false)
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error("Erro ao carregar produtos:", error);
+      document.getElementById("grid").innerHTML =
+        '<p class="empty-state">Erro ao carregar produtos. Confira o js/config.js.</p>';
+      return;
+    }
+
+    data = data.concat(page);
+    if (page.length < pageSize) break;
+    from += pageSize;
   }
 
   allProducts = data.map((p) => ({
