@@ -104,3 +104,4 @@ git push -u origin main
 - Compactação automática de imagens antes do upload.
 - Ordenação/drag-and-drop das fotos no admin.
 - Estoque/quantidade disponível por tamanho.
+
