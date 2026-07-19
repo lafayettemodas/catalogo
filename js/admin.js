@@ -110,20 +110,36 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
 });
 
 // ---------- Produtos: listar ----------
+// O Supabase/PostgREST limita cada resposta a no máximo 1000 linhas por
+// padrão. Com mais de 1000 produtos cadastrados, uma única consulta deixava
+// os produtos mais antigos de fora da lista (e, portanto, invisíveis na
+// busca e no filtro de categoria). Por isso paginamos com .range() até
+// trazer todas as linhas.
 async function loadProducts() {
-  const { data, error } = await supabaseClient
-    .from("produtos")
-    .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, product_images ( id, path, position )`)
-    .order("created_at", { ascending: false });
+  const pageSize = 1000;
+  let allRows = [];
+  let from = 0;
 
-  if (error) { console.error(error); return; }
+  while (true) {
+    const { data, error } = await supabaseClient
+      .from("produtos")
+      .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, product_images ( id, path, position )`)
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) { console.error(error); return; }
+
+    allRows = allRows.concat(data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
 
   // as fotos ficam no GitHub Pages; o Supabase só guarda o caminho relativo
-  data.forEach((p) => {
+  allRows.forEach((p) => {
     p.product_images = (p.product_images || []).map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path }));
   });
 
-  allProducts = data;
+  allProducts = allRows;
   applyEditSearchFilter();
 }
 
