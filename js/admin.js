@@ -82,6 +82,19 @@ async function loadCategories() {
     opt.textContent = c.name;
     select.appendChild(opt);
   });
+
+  const filterSelect = document.getElementById("editCategoryFilter");
+  if (filterSelect) {
+    const previousValue = filterSelect.value;
+    filterSelect.innerHTML = '<option value="">Todas as categorias</option>';
+    categories.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      filterSelect.appendChild(opt);
+    });
+    filterSelect.value = previousValue;
+  }
 }
 
 document.getElementById("addCategoryBtn").addEventListener("click", async () => {
@@ -149,26 +162,35 @@ function renderProductsTable(list) {
 }
 
 // Filtra allProducts pelo texto digitado em #editSearchInput (busca por
-// Ref. Fábrica ou Ref. Loja, sem diferenciar maiúsculas/minúsculas) e
-// re-renderiza a tabela. Chamada tanto ao digitar quanto após recarregar.
+// Ref. Fábrica ou Ref. Loja, sem diferenciar maiúsculas/minúsculas) e pela
+// categoria selecionada em #editCategoryFilter, combinando os dois filtros.
+// Re-renderiza a tabela. Chamada tanto ao digitar/selecionar quanto após recarregar.
 function applyEditSearchFilter() {
   const input = document.getElementById("editSearchInput");
   const term = (input?.value || "").trim().toLowerCase();
 
-  if (!term) {
-    renderProductsTable(allProducts);
-    return;
+  const categorySelect = document.getElementById("editCategoryFilter");
+  const categoryId = categorySelect?.value || "";
+
+  let filtered = allProducts;
+
+  if (categoryId) {
+    filtered = filtered.filter((p) => p.category_id === categoryId);
   }
 
-  const filtered = allProducts.filter((p) => {
-    const ref1 = (p.ref_fabrica || "").toLowerCase();
-    const ref2 = (p.ref_loja || "").toLowerCase();
-    return ref1.includes(term) || ref2.includes(term);
-  });
+  if (term) {
+    filtered = filtered.filter((p) => {
+      const ref1 = (p.ref_fabrica || "").toLowerCase();
+      const ref2 = (p.ref_loja || "").toLowerCase();
+      return ref1.includes(term) || ref2.includes(term);
+    });
+  }
+
   renderProductsTable(filtered);
 }
 
 document.getElementById("editSearchInput")?.addEventListener("input", applyEditSearchFilter);
+document.getElementById("editCategoryFilter")?.addEventListener("change", applyEditSearchFilter);
 
 // ---------- Acessos (visitantes distintos por mês) ----------
 async function loadVisits() {
