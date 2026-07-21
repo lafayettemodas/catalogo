@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260720c">
+<link rel="stylesheet" href="css/admin.css?v=20260720d">
 </head>
 <body>
 
@@ -41,6 +41,7 @@
 
 <nav class="admin-sidebar">
 <button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
+<button type="button" class="sidebar-link" data-view="categorias">Categorias</button>
 <button type="button" class="sidebar-link" data-view="editar">Editar</button>
 <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
 <button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
@@ -50,14 +51,6 @@
 
 <!-- ---------- INCLUIR (cadastro de categorias/produtos) ---------- -->
 <div class="admin-view active" id="viewIncluir">
-
-<div class="panel">
-<h2>Categorias</h2>
-<div class="inline-cat-add">
-<input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
-<button class="secondary" id="addCategoryBtn">Adicionar</button>
-</div>
-</div>
 
 <div class="panel">
 <h2 id="formTitle">Novo produto</h2>
@@ -132,6 +125,27 @@
 <button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
 <div class="upload-success-msg" id="uploadSuccessMsg"></div>
 <div class="error-msg" id="formError"></div>
+</div>
+
+</div>
+
+<!-- ---------- CATEGORIAS (incluir, editar e excluir) ---------- -->
+<div class="admin-view" id="viewCategorias">
+
+<div class="panel">
+<h2>Categorias</h2>
+<div class="inline-cat-add">
+<input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
+<button class="secondary" id="addCategoryBtn">Adicionar</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Nome</th><th>Ações</th></tr>
+</thead>
+<tbody id="categoriesTableBody"></tbody>
+</table>
+</div>
 </div>
 
 </div>
@@ -216,8 +230,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/config.js?v=20260720c"></script>
-<script src="js/supabaseClient.js?v=20260720c"></script>
-<script src="js/admin.js?v=20260720c"></script>
+<script src="js/config.js?v=20260720d"></script>
+<script src="js/supabaseClient.js?v=20260720d"></script>
+<script src="js/admin.js?v=20260720d"></script>
 </body>
   </html>
