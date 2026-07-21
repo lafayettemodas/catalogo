@@ -114,16 +114,37 @@ async function loadProducts() {
   }
 }
 
+// Ordem fixa dos tamanhos em letra; tamanhos não listados aqui aparecem
+// depois, em ordem alfabética, mas ainda antes dos tamanhos numéricos.
+const SIZE_LETTER_ORDER = ["PP", "P", "PM", "M", "MG", "G", "GG", "XG", "EG", "EGG", "UNICO", "ÚNICO"];
+
+function sizeSortKey(size) {
+  const normalized = size.trim().toUpperCase();
+  if (/^\d+$/.test(normalized)) {
+    return { group: 1, rank: parseInt(normalized, 10), text: normalized };
+  }
+  const idx = SIZE_LETTER_ORDER.indexOf(normalized);
+  return { group: 0, rank: idx === -1 ? SIZE_LETTER_ORDER.length : idx, text: normalized };
+}
+
 function populateSizeFilter(products) {
   const sizes = new Set();
   products.forEach((p) => (p.sizes || []).forEach((s) => sizes.add(s)));
   const select = document.getElementById("sizeFilter");
-  [...sizes].sort().forEach((size) => {
-    const opt = document.createElement("option");
-    opt.value = size;
-    opt.textContent = size;
-    select.appendChild(opt);
-  });
+  [...sizes]
+    .sort((a, b) => {
+      const ka = sizeSortKey(a);
+      const kb = sizeSortKey(b);
+      if (ka.group !== kb.group) return ka.group - kb.group;
+      if (ka.rank !== kb.rank) return ka.rank - kb.rank;
+      return ka.text.localeCompare(kb.text);
+    })
+    .forEach((size) => {
+      const opt = document.createElement("option");
+      opt.value = size;
+      opt.textContent = size;
+      select.appendChild(opt);
+    });
 }
 
 function renderGrid(products) {
