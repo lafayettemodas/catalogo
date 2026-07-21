@@ -370,3 +370,48 @@ button.whatsapp:disabled { opacity: 0.6; cursor: default; transform: none; }
 #productsTableBody td:nth-child(6) {
   text-transform: uppercase;
 }
+
+
+/* Lista de categorias com icones de editar/excluir */
+.category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f4f1ec;
+  border: 1px solid #ddd6ca;
+  border-radius: 20px;
+  padding: 6px 8px 6px 14px;
+  font-size: 0.9rem;
+}
+.category-item-name {
+  color: #3a3a3a;
+  white-space: nowrap;
+}
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.icon-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.icon-btn.icon-edit {
+  color: #2f6f4f;
+}
+.icon-btn.icon-delete {
+  color: #a83232;
+}
