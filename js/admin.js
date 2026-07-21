@@ -50,7 +50,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 
 // ---------- Menu lateral (Incluir / Editar / Acessos / Relatório) ----------
-const VIEW_IDS = { incluir: "viewIncluir", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio" };
+const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio" };
 
 function showView(view) {
   document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
@@ -73,6 +73,7 @@ async function loadCategories() {
   const { data, error } = await supabaseClient.from("categories").select("id, name").order("name");
   if (error) { console.error(error); return; }
   categories = data;
+  renderCategoriesTable(data);
 
   const select = document.getElementById("fieldCategory");
   select.innerHTML = '<option value="">Sem categoria</option>';
@@ -378,6 +379,60 @@ async function deleteProduct(id, list) {
   const { error } = await supabaseClient.from("produtos").delete().eq("id", id);
   if (error) { alert("Erro ao excluir: " + error.message); return; }
 
+  loadProducts();
+}
+
+function renderCategoriesTable(list) {
+  const tbody = document.getElementById("categoriesTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  (list || categories).forEach((c) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${c.name}</td>
+      <td>
+        <button class="secondary" data-edit-cat="${c.id}">Editar</button>
+        <button class="danger" data-delete-cat="${c.id}">Excluir</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("[data-edit-cat]").forEach((btn) => {
+    btn.addEventListener("click", () => editCategory(btn.dataset.editCat));
+  });
+  tbody.querySelectorAll("[data-delete-cat]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteCategory(btn.dataset.deleteCat));
+  });
+}
+
+async function editCategory(id) {
+  const cat = categories.find((c) => c.id === id);
+  if (!cat) return;
+
+  const novoNome = prompt("Novo nome da categoria:", cat.name);
+  if (novoNome === null) return;
+  const trimmed = novoNome.trim();
+  if (!trimmed || trimmed === cat.name) return;
+
+  const { error } = await supabaseClient.from("categories").update({ name: trimmed }).eq("id", id);
+  if (error) { alert("Erro ao editar categoria: " + error.message); return; }
+
+  loadCategories();
+  loadProducts();
+}
+
+async function deleteCategory(id) {
+  const cat = categories.find((c) => c.id === id);
+  const label = cat ? `"${cat.name}"` : "esta categoria";
+
+  if (!confirm(`Excluir a categoria ${label}? Os produtos cadastrados nela ficarão sem categoria. Essa ação não pode ser desfeita.`)) return;
+
+  const { error } = await supabaseClient.from("categories").delete().eq("id", id);
+  if (error) { alert("Erro ao excluir categoria: " + error.message); return; }
+
+  loadCategories();
   loadProducts();
 }
 
