@@ -73,6 +73,7 @@ async function loadCategories() {
   const { data, error } = await supabaseClient.from("categories").select("id, name").order("name");
   if (error) { console.error(error); return; }
   categories = data;
+  renderCategoryList(data);
 
   const select = document.getElementById("fieldCategory");
   select.innerHTML = '<option value="">Sem categoria</option>';
@@ -96,6 +97,60 @@ async function loadCategories() {
     filterSelect.value = previousValue;
   }
 }
+function renderCategoryList(list) {
+  const container = document.getElementById("categoryList");
+  if (!container) return;
+  container.innerHTML = "";
+  list.forEach((c) => {
+    const item = document.createElement("div");
+    item.className = "category-item";
+
+    const name = document.createElement("span");
+    name.className = "category-item-name";
+    name.textContent = c.name;
+    item.appendChild(name);
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "icon-btn icon-edit";
+    editBtn.title = "Editar categoria";
+    editBtn.setAttribute("aria-label", "Editar categoria");
+    editBtn.textContent = "\u270E";
+    editBtn.addEventListener("click", () => editCategory(c.id, c.name));
+    item.appendChild(editBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "icon-btn icon-delete";
+    delBtn.title = "Excluir categoria";
+    delBtn.setAttribute("aria-label", "Excluir categoria");
+    delBtn.textContent = "\u{1F5D1}";
+    delBtn.addEventListener("click", () => deleteCategory(c.id, c.name));
+    item.appendChild(delBtn);
+
+    container.appendChild(item);
+  });
+}
+
+async function editCategory(id, oldName) {
+  const novoNome = prompt("Novo nome da categoria:", oldName);
+  if (novoNome === null) return;
+  const trimmed = novoNome.trim();
+  if (!trimmed || trimmed === oldName) return;
+
+  const { error } = await supabaseClient.from("categories").update({ name: trimmed }).eq("id", id);
+  if (error) { alert("Erro ao renomear categoria: " + error.message); return; }
+  loadCategories();
+}
+
+async function deleteCategory(id, name) {
+  if (!confirm('Excluir a categoria "' + name + '"? Produtos que usam esta categoria ficarão sem categoria.')) return;
+
+  const { error } = await supabaseClient.from("categories").delete().eq("id", id);
+  if (error) { alert("Erro ao excluir categoria: " + error.message); return; }
+  loadCategories();
+}
+
 
 document.getElementById("addCategoryBtn").addEventListener("click", async () => {
   const input = document.getElementById("newCategoryName");
