@@ -142,6 +142,7 @@ async function loadProducts() {
 
   allProducts = allRows;
   applyEditSearchFilter();
+  renderCategoriesTable();
 }
 
 // Renderiza a tabela de produtos publicados a partir de uma lista já filtrada
@@ -389,8 +390,10 @@ function renderCategoriesTable(list) {
 
   (list || categories).forEach((c) => {
     const tr = document.createElement("tr");
+    const qtd = allProducts.filter((p) => p.category_id === c.id).length;
     tr.innerHTML = `
       <td>${c.name}</td>
+      <td>${qtd}</td>
       <td>
         <button class="secondary" data-edit-cat="${c.id}">Editar</button>
         <button class="danger" data-delete-cat="${c.id}">Excluir</button>
