@@ -500,3 +500,10 @@ footer.site-footer {
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(37,211,102,0.4);
 }
+
+
+/* Categorias em maiusculas no filtro do catalogo publico */
+#categoryFilter,
+#categoryFilter option {
+  text-transform: uppercase;
+}
