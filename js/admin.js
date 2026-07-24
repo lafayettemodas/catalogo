@@ -309,7 +309,10 @@ function resetForm() {
 }
 
 // ---------- Fotos atuais: visualizar / ampliar / excluir ----------
+let currentEditingImages = [];
+
 function renderCurrentPhotos(images) {
+  currentEditingImages = images || [];
   const field = document.getElementById("currentPhotosField");
   const grid = document.getElementById("currentPhotosGrid");
   grid.innerHTML = "";
@@ -320,21 +323,48 @@ function renderCurrentPhotos(images) {
   }
   field.style.display = "block";
 
-  images.forEach((img) => {
+  images.forEach((img, idx) => {
     const div = document.createElement("div");
-    div.className = "current-photo";
+    div.className = "current-photo" + (idx === 0 ? " is-main" : "");
     div.innerHTML = `
       <img src="${img.url}" alt="Foto do produto">
-      <button type="button" class="remove-photo" title="Excluir foto">×</button>
+      ${idx === 0
+        ? `<span class="main-photo-badge" title="Foto principal">\u2605 Principal</span>`
+        : `<button type="button" class="set-main-photo" title="Tornar foto principal">\u2605</button>`}
+      <button type="button" class="remove-photo" title="Excluir foto">\u00d7</button>
     `;
     div.querySelector("img").addEventListener("click", () => openLightbox(img.url));
     div.querySelector(".remove-photo").addEventListener("click", (e) => {
       e.stopPropagation();
       deleteProductImage(img.id, img.path, div);
     });
+    const setMainBtn = div.querySelector(".set-main-photo");
+    if (setMainBtn) {
+      setMainBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setMainPhoto(img);
+      });
+    }
     grid.appendChild(div);
   });
 }
+
+async function setMainPhoto(img) {
+  const minPosition = Math.min(...currentEditingImages.map((i) => i.position));
+  const newPosition = minPosition - 1;
+
+  const { error } = await supabaseClient
+    .from("product_images")
+    .update({ position: newPosition })
+    .eq("id", img.id);
+
+  if (error) { alert("Erro ao definir foto principal: " + error.message); return; }
+
+  img.position = newPosition;
+  const reordered = currentEditingImages.slice().sort((a, b) => a.position - b.position);
+  renderCurrentPhotos(reordered);
+}
+
 
 function openLightbox(url) {
   document.getElementById("lightboxImg").src = url;
@@ -356,14 +386,11 @@ async function deleteProductImage(imageId, path, el) {
     body: { action: "delete", path },
   }).catch(() => {});
 
-  el.remove();
-  const grid = document.getElementById("currentPhotosGrid");
-  if (!grid.children.length) {
-    document.getElementById("currentPhotosField").style.display = "none";
-  }
+  currentEditingImages = currentEditingImages.filter((i) => i.id !== imageId);
+  renderCurrentPhotos(currentEditingImages);
 }
 
-// ---------- Produtos: excluir ----------
+
 async function deleteProduct(id, list) {
   const p = (list || []).find((x) => x.id === id);
 
