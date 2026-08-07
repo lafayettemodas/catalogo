@@ -145,17 +145,33 @@ async function loadProducts() {
   renderCategoriesTable();
 }
 
-// Renderiza a tabela de produtos publicados a partir de uma lista já filtrada
+// Renderiza a tabela de produtos publicados a partir de uma lista já filtrada.
+// Para não travar a tela carregando centenas de fotos em tamanho original de
+// uma vez, a lista é paginada (PRODUCTS_PAGE_SIZE por vez) e as imagens usam
+// loading="lazy" para só baixar quando a linha entra na tela.
+const PRODUCTS_PAGE_SIZE = 60;
+let productsCurrentPage = 1;
+let productsFullList = [];
+
 function renderProductsTable(list) {
+  productsFullList = list;
+  productsCurrentPage = 1;
+  renderProductsPage();
+}
+
+function renderProductsPage() {
   const tbody = document.getElementById("productsTableBody");
   tbody.innerHTML = "";
 
-  list.forEach((p) => {
+  const visibleCount = productsCurrentPage * PRODUCTS_PAGE_SIZE;
+  const pageList = productsFullList.slice(0, visibleCount);
+
+  pageList.forEach((p) => {
     const catName = categories.find((c) => c.id === p.category_id)?.name || "-";
     const firstImg = (p.product_images || []).sort((a, b) => a.position - b.position)[0]?.url || "";
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${firstImg ? `<img src="${firstImg}">` : ""}</td>
+      <td>${firstImg ? `<img src="${firstImg}" loading="lazy" decoding="async">` : ""}</td>
       <td>${p.ref_fabrica || "-"}</td>
       <td>${p.ref_loja || "-"}</td>
       <td>${p.name}</td>
@@ -175,8 +191,45 @@ function renderProductsTable(list) {
     btn.addEventListener("click", () => editProduct(btn.dataset.edit));
   });
   tbody.querySelectorAll("[data-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => deleteProduct(btn.dataset.delete, list));
+    btn.addEventListener("click", () => deleteProduct(btn.dataset.delete, pageList));
   });
+
+  renderProductsLoadMore();
+}
+
+function renderProductsLoadMore() {
+  const tbody = document.getElementById("productsTableBody");
+  const table = tbody.closest("table");
+  let container = document.getElementById("productsLoadMoreContainer");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "productsLoadMoreContainer";
+    container.style.textAlign = "center";
+    container.style.margin = "16px 0";
+    table.insertAdjacentElement("afterend", container);
+  }
+  container.innerHTML = "";
+
+  const total = productsFullList.length;
+  const shown = Math.min(productsCurrentPage * PRODUCTS_PAGE_SIZE, total);
+
+  const info = document.createElement("span");
+  info.textContent = `Mostrando ${shown} de ${total} produtos`;
+  info.style.marginRight = "12px";
+  info.style.color = "#666";
+  container.appendChild(info);
+
+  if (shown < total) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.textContent = "Carregar mais";
+    btn.addEventListener("click", () => {
+      productsCurrentPage++;
+      renderProductsPage();
+    });
+    container.appendChild(btn);
+  }
 }
 
 // Filtra allProducts pelo texto digitado em #editSearchInput (busca por
