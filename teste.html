@@ -27,6 +27,19 @@
       min-height: 110px;
     }
 
+    @media (max-width: 560px) {
+      header.site-header .site-logo {
+        position: static;
+        display: block;
+        top: auto;
+        left: auto;
+        margin: 0 0 10px;
+      }
+      header.site-header .eyebrow {
+        display: block;
+      }
+    }
+
     /* Carrossel de banners de destaque */
     .hero-banner {
       position: relative;
@@ -86,8 +99,8 @@
 <body>
 
 <header class="site-header">
-  <span class="eyebrow">Você merece estar linda todos os dias.</span>
   <img class="site-logo" src="img/logo.png" alt="Lafayette Moda Feminina">
+  <span class="eyebrow">Você merece estar linda todos os dias.</span>
   <div class="header-social">
     <a href="#" target="_blank" rel="noopener" id="instagramLink" class="instagram-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
