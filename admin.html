@@ -42,6 +42,7 @@
 <nav class="admin-sidebar">
 <button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
 <button type="button" class="sidebar-link" data-view="categorias">Categorias</button>
+<button type="button" class="sidebar-link" data-view="banners">Banners</button>
 <button type="button" class="sidebar-link" data-view="editar">Editar</button>
 <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
 <button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
@@ -144,6 +145,63 @@
 <tr><th>Nome</th><th>Quantidade</th><th>Ações</th></tr>
 </thead>
 <tbody id="categoriesTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- BANNERS (carrossel de destaque) ---------- -->
+<div class="admin-view" id="viewBanners">
+
+<div class="panel">
+<h2 id="bannerFormTitle">Novo banner</h2>
+<input type="hidden" id="bannerId">
+<div class="row">
+<div class="field">
+<label>Link do banner</label>
+<select id="bannerFilterType">
+<option value="category">Categoria</option>
+<option value="promo">Promoções</option>
+<option value="all">Todos os produtos</option>
+</select>
+</div>
+<div class="field" id="bannerCategoryWrap">
+<label>Categoria</label>
+<select id="bannerCategorySelect"></select>
+</div>
+<div class="field field-narrow">
+<label>Posição (ordem)</label>
+<input type="number" id="bannerPosition" value="0" min="0">
+</div>
+</div>
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="bannerActive" checked>
+<span>Banner ativo (visível no catálogo)</span>
+</label>
+</div>
+<div class="field" id="currentBannerImageField" style="display:none;">
+<label>Imagem atual</label>
+<div class="current-photos-grid" id="currentBannerImage"></div>
+</div>
+<div class="field">
+<label>Imagem do banner</label>
+<input type="file" id="bannerImageFile" accept="image/*">
+</div>
+<button class="primary" id="saveBannerBtn">Salvar banner</button>
+<button class="secondary" id="cancelBannerEditBtn" style="display:none;">Cancelar edição</button>
+<div class="error-msg" id="bannerFormError"></div>
+</div>
+
+<div class="panel">
+<h2>Banners cadastrados</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Imagem</th><th>Link</th><th>Posição</th><th>Ativo</th><th>Ações</th></tr>
+</thead>
+<tbody id="bannersTableBody"></tbody>
 </table>
 </div>
 </div>
