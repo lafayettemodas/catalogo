@@ -20,6 +20,61 @@
         grid-template-columns: repeat(6, 1fr) !important;
       }
     }
+
+    /* Carrossel de banners de destaque */
+    .hero-banner {
+      position: relative;
+      width: 100%;
+      max-width: 1600px;
+      margin: 0 auto 24px;
+      aspect-ratio: 3 / 1;
+      overflow: hidden;
+      background: var(--bg-alt, #ece7e0);
+    }
+    .hero-banner-track {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s ease;
+    }
+    .hero-banner-slide {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      display: block;
+      border: none;
+      padding: 0;
+      background: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hero-banner-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .hero-banner-dots {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 2;
+    }
+    .hero-banner-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.25);
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+    .hero-banner-dot.active {
+      background: rgba(0,0,0,0.7);
+    }
   </style>
 </head>
 <body>
@@ -42,6 +97,11 @@
   <h1 id="storeName" class="sr-only">Minha Loja</h1>
   <p>Peças selecionadas com carinho. Toque em uma foto para ver detalhes e falar com a gente.</p>
 </header>
+
+<section class="hero-banner" id="heroBanner" style="display:none;">
+  <div class="hero-banner-track" id="heroBannerTrack"></div>
+  <div class="hero-banner-dots" id="heroBannerDots"></div>
+</section>
 
 <div class="controls">
   <input type="text" id="searchInput" placeholder="Buscar por nome ou referência...">
@@ -91,5 +151,79 @@
 <script src="js/config.js?v=20260720b"></script>
 <script src="js/supabaseClient.js?v=20260720b"></script>
 <script src="js/app.js?v=20260720b"></script>
+<script>
+async function initHeroBanner() {
+  const section = document.getElementById('heroBanner');
+  const track = document.getElementById('heroBannerTrack');
+  const dotsWrap = document.getElementById('heroBannerDots');
+  if (!section || !track) return;
+
+  const { data, error } = await supabaseClient
+    .from('banners')
+    .select('id, image_path, filter_type, category_id, position')
+    .eq('active', true)
+    .order('position', { ascending: true });
+
+  if (error || !data || data.length === 0) return;
+
+  track.innerHTML = '';
+  dotsWrap.innerHTML = '';
+
+  let current = 0;
+  const total = data.length;
+
+  function goToSlide(index) {
+    current = ((index % total) + total) % total;
+    track.style.transform = 'translateX(-' + (current * 100) + '%)';
+    dotsWrap.querySelectorAll('.hero-banner-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+  }
+
+  data.forEach((b, i) => {
+    const slide = document.createElement('button');
+    slide.type = 'button';
+    slide.className = 'hero-banner-slide';
+    slide.setAttribute('aria-label', 'Ver produtos');
+    const img = document.createElement('img');
+    img.src = IMAGE_BASE_URL + b.image_path;
+    img.alt = 'Banner promocional';
+    img.loading = i === 0 ? 'eager' : 'lazy';
+    slide.appendChild(img);
+    slide.addEventListener('click', () => {
+      if (b.filter_type === 'category' && b.category_id) {
+        document.getElementById('categoryFilter').value = b.category_id;
+        document.getElementById('promoFilter').value = '';
+      } else if (b.filter_type === 'promo') {
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('promoFilter').value = 'promo';
+      } else {
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('promoFilter').value = '';
+      }
+      applyFilters();
+      document.querySelector('.controls').scrollIntoView({ behavior: 'smooth' });
+    });
+    track.appendChild(slide);
+
+    if (total > 1) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'hero-banner-dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('aria-label', 'Ir para banner ' + (i + 1));
+      dot.addEventListener('click', () => goToSlide(i));
+      dotsWrap.appendChild(dot);
+    }
+  });
+
+  section.style.display = 'block';
+
+  if (total > 1) {
+    setInterval(() => goToSlide(current + 1), 5000);
+  }
+}
+
+initHeroBanner();
+</script>
 </body>
 </html>
