@@ -50,7 +50,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 
 // ---------- Menu lateral (Incluir / Editar / Acessos / Relatório) ----------
-const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio" };
+const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio", banners: "viewBanners" };
 
 function showView(view) {
   document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
@@ -62,6 +62,7 @@ function showView(view) {
 
   if (view === "acessos") loadVisits();
   if (view === "relatorio") loadHiddenProductsPreview();
+  if (view === "banners") loadBanners();
 }
 
 document.querySelectorAll(".sidebar-link").forEach((btn) => {
@@ -1097,3 +1098,211 @@ document.getElementById("btnShareWhatsapp").addEventListener("click", async () =
 
 // ---------- Init ----------
 checkSession();
+
+
+// ---------- Banners (carrossel de destaque na home) ----------
+let banners = [];
+let editingBannerId = null;
+
+function bannerFilterLabel(b) {
+  if (b.filter_type === "promo") return "Promoções";
+  if (b.filter_type === "all") return "Todos os produtos";
+  const cat = categories.find((c) => c.id === b.category_id);
+  return cat ? "Categoria: " + cat.name : "Categoria (removida)";
+}
+
+function populateBannerCategorySelect() {
+  const select = document.getElementById("bannerCategorySelect");
+  if (!select) return;
+  const previousValue = select.value;
+  select.innerHTML = "";
+  categories.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    select.appendChild(opt);
+  });
+  if (previousValue) select.value = previousValue;
+}
+
+function toggleBannerCategoryField() {
+  const filterType = document.getElementById("bannerFilterType").value;
+  document.getElementById("bannerCategoryWrap").style.display = filterType === "category" ? "" : "none";
+}
+
+document.getElementById("bannerFilterType").addEventListener("change", toggleBannerCategoryField);
+
+async function loadBanners() {
+  populateBannerCategorySelect();
+  const { data, error } = await supabaseClient
+    .from("banners")
+    .select("id, image_path, filter_type, category_id, position, active")
+    .order("position", { ascending: true });
+  if (error) { console.error(error); return; }
+  banners = data;
+  renderBannersTable(banners);
+  if (!editingBannerId) document.getElementById("bannerPosition").value = banners.length;
+}
+
+function renderBannersTable(list) {
+  const tbody = document.getElementById("bannersTableBody");
+  tbody.innerHTML = "";
+  list.forEach((b) => {
+    const tr = document.createElement("tr");
+    const imgUrl = IMAGE_BASE_URL + b.image_path;
+    tr.innerHTML = `
+      <td><img src="${imgUrl}" style="width:80px;height:50px;object-fit:cover;border-radius:6px;" loading="lazy"></td>
+      <td>${bannerFilterLabel(b)}</td>
+      <td>${b.position}</td>
+      <td>${b.active ? "Sim" : "Não"}</td>
+      <td>
+        <button class="secondary" data-edit-banner="${b.id}">Editar</button>
+        <button class="danger" data-delete-banner="${b.id}">Excluir</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("[data-edit-banner]").forEach((btn) => {
+    btn.addEventListener("click", () => editBanner(btn.dataset.editBanner));
+  });
+  tbody.querySelectorAll("[data-delete-banner]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteBanner(btn.dataset.deleteBanner));
+  });
+}
+
+function editBanner(id) {
+  const b = banners.find((x) => x.id === id);
+  if (!b) return;
+  editingBannerId = id;
+  document.getElementById("bannerFormTitle").textContent = "Editar banner";
+  document.getElementById("bannerId").value = id;
+  document.getElementById("bannerFilterType").value = b.filter_type;
+  populateBannerCategorySelect();
+  toggleBannerCategoryField();
+  if (b.filter_type === "category") document.getElementById("bannerCategorySelect").value = b.category_id || "";
+  document.getElementById("bannerPosition").value = b.position;
+  document.getElementById("bannerActive").checked = b.active;
+
+  const currentField = document.getElementById("currentBannerImageField");
+  const currentGrid = document.getElementById("currentBannerImage");
+  currentGrid.innerHTML = `<img src="${IMAGE_BASE_URL + b.image_path}" style="max-width:220px;border-radius:8px;">`;
+  currentField.style.display = "";
+
+  document.getElementById("cancelBannerEditBtn").style.display = "";
+  document.getElementById("bannerImageFile").value = "";
+  document.getElementById("bannerFormError").textContent = "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetBannerForm() {
+  editingBannerId = null;
+  document.getElementById("bannerFormTitle").textContent = "Novo banner";
+  document.getElementById("bannerId").value = "";
+  document.getElementById("bannerFilterType").value = "category";
+  populateBannerCategorySelect();
+  toggleBannerCategoryField();
+  document.getElementById("bannerPosition").value = banners.length;
+  document.getElementById("bannerActive").checked = true;
+  document.getElementById("currentBannerImageField").style.display = "none";
+  document.getElementById("currentBannerImage").innerHTML = "";
+  document.getElementById("bannerImageFile").value = "";
+  document.getElementById("cancelBannerEditBtn").style.display = "none";
+  document.getElementById("bannerFormError").textContent = "";
+}
+
+document.getElementById("cancelBannerEditBtn").addEventListener("click", resetBannerForm);
+
+async function deleteBanner(id) {
+  const b = banners.find((x) => x.id === id);
+  if (!b) return;
+  if (!confirm("Excluir este banner? Essa ação não pode ser desfeita.")) return;
+
+  const { error } = await supabaseClient.from("banners").delete().eq("id", id);
+  if (error) { alert("Erro ao excluir: " + error.message); return; }
+
+  supabaseClient.functions.invoke("manage-repo-file", {
+    body: { action: "delete", path: b.image_path },
+  }).catch(() => {});
+
+  if (editingBannerId === id) resetBannerForm();
+  loadBanners();
+}
+
+document.getElementById("saveBannerBtn").addEventListener("click", async () => {
+  const errorEl = document.getElementById("bannerFormError");
+  errorEl.textContent = "";
+
+  const filterType = document.getElementById("bannerFilterType").value;
+  const categoryId = filterType === "category" ? document.getElementById("bannerCategorySelect").value : null;
+  const position = parseInt(document.getElementById("bannerPosition").value, 10) || 0;
+  const active = document.getElementById("bannerActive").checked;
+  const fileInput = document.getElementById("bannerImageFile");
+  const file = fileInput.files[0];
+
+  if (filterType === "category" && !categoryId) {
+    errorEl.textContent = "Selecione uma categoria para o banner.";
+    return;
+  }
+  if (!editingBannerId && !file) {
+    errorEl.textContent = "Selecione uma imagem para o banner.";
+    return;
+  }
+
+  const saveBtn = document.getElementById("saveBannerBtn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Salvando...";
+
+  try {
+    let imagePath = editingBannerId ? (banners.find((x) => x.id === editingBannerId) || {}).image_path : null;
+
+    if (file) {
+      let blobToSend = file;
+      let filename = file.name;
+      if (file.size > MAX_IMAGE_BYTES) {
+        blobToSend = await compressImageToLimit(file);
+        filename = filename.replace(/\.[^.]+$/, "") + ".jpg";
+      }
+      const contentBase64 = await fileToBase64(blobToSend);
+      const ext = (filename.split(".").pop() || "jpg").toLowerCase();
+      const uniqueName = Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+      const path = "img/banners/" + uniqueName;
+
+      const { data, error } = await supabaseClient.functions.invoke("manage-repo-file", {
+        body: { action: "put", path, contentBase64, message: "Adiciona/atualiza banner " + uniqueName },
+      });
+      if (error || !data || data.error) {
+        throw new Error((data && data.error) || (error && error.message) || "erro ao subir imagem");
+      }
+      imagePath = path;
+    }
+
+    if (!imagePath) throw new Error("Nenhuma imagem definida para o banner.");
+
+    const payload = {
+      image_path: imagePath,
+      filter_type: filterType,
+      category_id: categoryId,
+      position,
+      active,
+    };
+
+    if (editingBannerId) {
+      const { error: updateError } = await supabaseClient.from("banners").update(payload).eq("id", editingBannerId);
+      if (updateError) throw updateError;
+    } else {
+      const { error: insertError } = await supabaseClient.from("banners").insert(payload);
+      if (insertError) throw insertError;
+    }
+
+    resetBannerForm();
+    loadBanners();
+  } catch (err) {
+    errorEl.textContent = "Erro ao salvar banner: " + err.message;
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Salvar banner";
+  }
+});
+
+toggleBannerCategoryField();
