@@ -44,7 +44,8 @@ h1, h2, h3 {
 /* ---------- Header / Hero ---------- */
 header.site-header {
   position: relative;
-  padding: 60px 20px 40px;
+  padding: 32px 20px 20px;
+  min-height: 110px;
   text-align: center;
   background:
     radial-gradient(1200px 400px at 50% -10%, rgba(169,118,79,0.10), transparent 60%),
@@ -118,6 +119,16 @@ header.site-header .instagram-link svg {
 }
 
 @media (max-width: 560px) {
+  header.site-header .site-logo {
+    position: static;
+    display: block;
+    top: auto;
+    left: auto;
+    margin: 0 0 10px;
+  }
+  header.site-header .eyebrow {
+    display: block;
+  }
   header.site-header .header-social {
     position: static;
     align-items: center;
