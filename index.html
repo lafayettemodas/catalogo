@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260808a">
+<link rel="stylesheet" href="css/style.css?v=20260808c">
 </head>
 <body>
 
@@ -30,6 +30,11 @@
   <h1 id="storeName" class="sr-only">Minha Loja</h1>
   <p>Peças selecionadas com carinho. Toque em uma foto para ver detalhes e falar com a gente.</p>
 </header>
+
+<section class="hero-banner" id="heroBanner" style="display:none;">
+  <div class="hero-banner-track" id="heroBannerTrack"></div>
+  <div class="hero-banner-dots" id="heroBannerDots"></div>
+</section>
 
 <div class="controls">
   <input type="text" id="searchInput" placeholder="Buscar por nome ou referência...">
@@ -76,8 +81,83 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260720b"></script>
-<script src="js/supabaseClient.js?v=20260720b"></script>
-<script src="js/app.js?v=20260720b"></script>
+<script src="js/config.js?v=20260808c"></script>
+<script src="js/supabaseClient.js?v=20260808c"></script>
+<script src="js/app.js?v=20260808c"></script>
+
+<script>
+async function initHeroBanner() {
+  const section = document.getElementById('heroBanner');
+  const track = document.getElementById('heroBannerTrack');
+  const dotsWrap = document.getElementById('heroBannerDots');
+  if (!section || !track) return;
+
+  const { data, error } = await supabaseClient
+    .from('banners')
+    .select('id, image_path, filter_type, category_id, position')
+    .eq('active', true)
+    .order('position', { ascending: true });
+
+  if (error || !data || data.length === 0) return;
+
+  track.innerHTML = '';
+  dotsWrap.innerHTML = '';
+
+  let current = 0;
+  const total = data.length;
+
+  function goToSlide(index) {
+    current = ((index % total) + total) % total;
+    track.style.transform = 'translateX(-' + (current * 100) + '%)';
+    dotsWrap.querySelectorAll('.hero-banner-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+  }
+
+  data.forEach((b, i) => {
+    const slide = document.createElement('button');
+    slide.type = 'button';
+    slide.className = 'hero-banner-slide';
+    slide.setAttribute('aria-label', 'Ver produtos');
+    const img = document.createElement('img');
+    img.src = IMAGE_BASE_URL + b.image_path;
+    img.alt = 'Banner promocional';
+    img.loading = i === 0 ? 'eager' : 'lazy';
+    slide.appendChild(img);
+    slide.addEventListener('click', () => {
+      if (b.filter_type === 'category' && b.category_id) {
+        document.getElementById('categoryFilter').value = b.category_id;
+        document.getElementById('promoFilter').value = '';
+      } else if (b.filter_type === 'promo') {
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('promoFilter').value = 'promo';
+      } else {
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('promoFilter').value = '';
+      }
+      applyFilters();
+      document.querySelector('.controls').scrollIntoView({ behavior: 'smooth' });
+    });
+    track.appendChild(slide);
+
+    if (total > 1) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'hero-banner-dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('aria-label', 'Ir para banner ' + (i + 1));
+      dot.addEventListener('click', () => goToSlide(i));
+      dotsWrap.appendChild(dot);
+    }
+  });
+
+  section.style.display = 'block';
+
+  if (total > 1) {
+    setInterval(() => goToSlide(current + 1), 5000);
+  }
+}
+
+initHeroBanner();
+</script>
 </body>
 </html>
