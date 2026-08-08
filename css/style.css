@@ -177,12 +177,19 @@ header.site-header p {
 
 /* ---------- Grid ---------- */
 .grid {
-  max-width: 1100px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 28px 20px 80px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 24px;
+  }
 }
 
 .card {
