@@ -122,7 +122,7 @@ async function initHeroBanner() {
     const img = document.createElement('img');
     img.src = IMAGE_BASE_URL + b.image_path;
     img.alt = 'Banner promocional';
-    img.loading = i === 0 ? 'eager' : 'lazy';
+    img.loading = 'eager';
     slide.appendChild(img);
     slide.addEventListener('click', () => {
       if (b.filter_type === 'category' && b.category_id) {
