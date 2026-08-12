@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=20260724a">
+<link rel="stylesheet" href="css/admin.css?v=20260811a">
 </head>
 <body>
 
@@ -109,6 +109,19 @@
 <input type="checkbox" id="fieldOcultar">
 <span>Ocultar produto (não aparece no catálogo)</span>
 </label>
+</div>
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="fieldCombineToggle">
+<span>Combine com outra peça</span>
+</label>
+</div>
+<div class="field" id="fieldCombineWrap" style="display:none;">
+<label>Buscar produto para combinar (nome ou referência)</label>
+<input type="text" id="fieldCombineSearch" placeholder="Digite o nome ou referência...">
+<div class="combine-results" id="fieldCombineResults"></div>
+<div class="combine-selected" id="fieldCombineSelected" style="display:none;"></div>
+<input type="hidden" id="fieldCombineId">
 </div>
 <div class="field" id="currentPhotosField" style="display:none;">
 <label>Fotos atuais (clique para ampliar, × para excluir)</label>
@@ -290,6 +303,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/config.js?v=20260724a"></script>
 <script src="js/supabaseClient.js?v=20260724a"></script>
-<script src="js/admin.js?v=20260808b"></script>
+<script src="js/admin.js?v=20260811a"></script>
 </body>
   </html>
