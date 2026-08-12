@@ -322,7 +322,7 @@ function renderCombineWith(product) {
   const thumb = related.product_images && related.product_images[0]
     ? related.product_images[0].url
     : "";
-  const label = related.name + (related.ref_fabrica ? " (" + related.ref_fabrica + ")" : "");
+  const label = related.name + (related.ref_loja ? " (" + related.ref_loja + ")" : "");
 
   const imgEl = document.getElementById("combineWithImg");
   imgEl.src = thumb;
