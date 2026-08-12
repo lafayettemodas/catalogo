@@ -74,7 +74,7 @@ async function loadProducts() {
     const { data: page, error } = await supabaseClient
       .from("produtos")
       .select(`
-        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id,
+        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id, combine_com_id,
         product_images ( id, path, position )
       `)
       .eq("active", true)
@@ -296,7 +296,41 @@ function openModal(product) {
   updateWhatsappLink();
 
   updateGalleryImage();
+  renderCombineWith(product);
   document.getElementById("modalOverlay").classList.add("open");
+  document.querySelector(".modal")?.scrollTo({ top: 0 });
+}
+
+// Mostra, logo abaixo da imagem principal, a peça vinculada via "Combine
+// com" (combine_com_id). So aparece se o produto tiver essa relacao
+// configurada no admin; senao a secao fica oculta.
+function renderCombineWith(product) {
+  const wrap = document.getElementById("combineWith");
+  const itemBtn = document.getElementById("combineWithItem");
+  if (!wrap || !itemBtn) return;
+
+  const related = product.combine_com_id
+    ? allProducts.find((p) => p.id === product.combine_com_id)
+    : null;
+
+  if (!related) {
+    wrap.style.display = "none";
+    itemBtn.onclick = null;
+    return;
+  }
+
+  const thumb = related.product_images && related.product_images[0]
+    ? related.product_images[0].url
+    : "";
+  const label = related.name + (related.ref_fabrica ? " (" + related.ref_fabrica + ")" : "");
+
+  const imgEl = document.getElementById("combineWithImg");
+  imgEl.src = thumb;
+  imgEl.alt = related.name || "";
+  document.getElementById("combineWithName").textContent = label;
+
+  wrap.style.display = "block";
+  itemBtn.onclick = () => openModal(related);
 }
 
 // Renderiza os tamanhos como radios (em vez de texto), para o cliente
