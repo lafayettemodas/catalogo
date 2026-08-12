@@ -299,7 +299,7 @@ async function loadVisits() {
 async function editProduct(id) {
   const { data: p, error } = await supabaseClient
     .from("produtos")
-    .select("id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, product_images ( id, path, position )")
+    .select("id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, combine_com_id, combine_produto:combine_com_id ( id, name, ref_fabrica, ref_loja, product_images ( path, position ) ), product_images ( id, path, position )")
     .eq("id", id)
     .single();
 
@@ -322,6 +322,22 @@ async function editProduct(id) {
   document.getElementById("fieldValorPromocaoWrap").style.display = p.promocao ? "block" : "none";
   document.getElementById("fieldValorPromocao").value = p.preco_promocao || "";
   document.getElementById("fieldOcultar").checked = !!p.ocultar;
+
+  if (p.combine_com_id && p.combine_produto) {
+    document.getElementById("fieldCombineToggle").checked = true;
+    document.getElementById("fieldCombineWrap").style.display = "block";
+    document.getElementById("fieldCombineId").value = p.combine_com_id;
+    renderCombineSelected(p.combine_produto);
+  } else {
+    document.getElementById("fieldCombineToggle").checked = false;
+    document.getElementById("fieldCombineWrap").style.display = "none";
+    document.getElementById("fieldCombineId").value = "";
+    renderCombineSelected(null);
+  }
+  document.getElementById("fieldCombineSearch").value = "";
+  document.getElementById("fieldCombineResults").innerHTML = "";
+  document.getElementById("fieldCombineResults").style.display = "none";
+
   document.getElementById("cancelEditBtn").style.display = "inline-block";
 
   const sortedImages = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
@@ -355,6 +371,13 @@ function resetForm() {
   document.getElementById("fieldValorPromocaoWrap").style.display = "none";
   document.getElementById("fieldValorPromocao").value = "";
   document.getElementById("fieldOcultar").checked = false;
+  document.getElementById("fieldCombineToggle").checked = false;
+  document.getElementById("fieldCombineWrap").style.display = "none";
+  document.getElementById("fieldCombineId").value = "";
+  document.getElementById("fieldCombineSearch").value = "";
+  document.getElementById("fieldCombineResults").innerHTML = "";
+  document.getElementById("fieldCombineResults").style.display = "none";
+  renderCombineSelected(null);
   document.getElementById("fieldImages").value = "";
   document.getElementById("cancelEditBtn").style.display = "none";
   document.getElementById("formError").textContent = "";
@@ -537,6 +560,9 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   const promocao = document.getElementById("fieldPromocao").checked;
   const precoPromocao = promocao ? (parseFloat(document.getElementById("fieldValorPromocao").value) || null) : null;
   const ocultar = document.getElementById("fieldOcultar").checked;
+  const combineComId = document.getElementById("fieldCombineToggle").checked
+    ? (document.getElementById("fieldCombineId").value || null)
+    : null;
   const files = document.getElementById("fieldImages").files;
 
   if (!name) { errorEl.textContent = "Informe o nome do produto."; return; }
@@ -552,13 +578,13 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if (productId) {
       const { error } = await supabaseClient
         .from("produtos")
-        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao, ocultar })
+        .update({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao, ocultar, combine_com_id: combineComId })
         .eq("id", productId);
       if (error) throw error;
     } else {
       const { data, error } = await supabaseClient
         .from("produtos")
-        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao, ocultar })
+        .insert({ name, ref_fabrica: refFabrica, ref_loja: refLoja, price, category_id: categoryId, sizes, colors, description, promocao, preco_promocao: precoPromocao, ocultar, combine_com_id: combineComId })
         .select()
         .single();
       if (error) throw error;
@@ -1306,3 +1332,97 @@ document.getElementById("saveBannerBtn").addEventListener("click", async () => {
 });
 
 toggleBannerCategoryField();
+
+
+// ---------- Combine com outra peça ----------
+function renderCombineSelected(product) {
+  const wrap = document.getElementById("fieldCombineSelected");
+  if (!product) {
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+  const images = (product.product_images || []).slice().sort((a, b) => a.position - b.position);
+  const thumbUrl = images[0] ? IMAGE_BASE_URL + images[0].path : "";
+  const label = product.name + (product.ref_fabrica ? " (" + product.ref_fabrica + ")" : "");
+  wrap.innerHTML = `
+    <div class="combine-selected-card">
+      ${thumbUrl ? `<img src="${thumbUrl}" alt="">` : '<div class="combine-selected-noimg"></div>'}
+      <span>${label}</span>
+      <button type="button" class="combine-remove-btn" id="combineRemoveBtn">×</button>
+    </div>
+  `;
+  wrap.style.display = "block";
+  document.getElementById("combineRemoveBtn").addEventListener("click", () => {
+    document.getElementById("fieldCombineId").value = "";
+    renderCombineSelected(null);
+  });
+}
+
+document.getElementById("fieldCombineToggle").addEventListener("change", (e) => {
+  document.getElementById("fieldCombineWrap").style.display = e.target.checked ? "block" : "none";
+  if (!e.target.checked) {
+    document.getElementById("fieldCombineId").value = "";
+    document.getElementById("fieldCombineSearch").value = "";
+    document.getElementById("fieldCombineResults").innerHTML = "";
+    document.getElementById("fieldCombineResults").style.display = "none";
+    renderCombineSelected(null);
+  }
+});
+
+let combineSearchTimeout = null;
+document.getElementById("fieldCombineSearch").addEventListener("input", (e) => {
+  clearTimeout(combineSearchTimeout);
+  const term = e.target.value.trim();
+  const resultsEl = document.getElementById("fieldCombineResults");
+  if (!term) {
+    resultsEl.innerHTML = "";
+    resultsEl.style.display = "none";
+    return;
+  }
+  combineSearchTimeout = setTimeout(async () => {
+    const { data, error } = await supabaseClient
+      .from("produtos")
+      .select("id, name, ref_fabrica, ref_loja, product_images ( path, position )")
+      .or(`name.ilike.%${term}%,ref_fabrica.ilike.%${term}%,ref_loja.ilike.%${term}%`)
+      .limit(8);
+
+    if (error) {
+      resultsEl.innerHTML = "";
+      resultsEl.style.display = "none";
+      return;
+    }
+
+    const currentId = document.getElementById("productId").value;
+    const filtered = (data || []).filter((p) => p.id !== currentId);
+
+    if (filtered.length === 0) {
+      resultsEl.innerHTML = '<div class="combine-result-empty">Nenhum produto encontrado.</div>';
+      resultsEl.style.display = "block";
+      return;
+    }
+
+    resultsEl.innerHTML = filtered.map((p) => {
+      const images = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
+      const thumbUrl = images[0] ? IMAGE_BASE_URL + images[0].path : "";
+      const label = p.name + (p.ref_fabrica ? " (" + p.ref_fabrica + ")" : "");
+      return `<div class="combine-result-item" data-id="${p.id}">
+        ${thumbUrl ? `<img src="${thumbUrl}" alt="">` : '<div class="combine-selected-noimg"></div>'}
+        <span>${label}</span>
+      </div>`;
+    }).join("");
+    resultsEl.style.display = "block";
+
+    resultsEl.querySelectorAll("[data-id]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const chosen = filtered.find((x) => x.id === el.dataset.id);
+        if (!chosen) return;
+        document.getElementById("fieldCombineId").value = chosen.id;
+        renderCombineSelected(chosen);
+        document.getElementById("fieldCombineSearch").value = "";
+        resultsEl.innerHTML = "";
+        resultsEl.style.display = "none";
+      });
+    });
+  }, 300);
+});
