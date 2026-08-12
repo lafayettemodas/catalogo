@@ -466,6 +466,50 @@ footer.site-footer {
   display: none;
 }
 
+.modal .gallery .combine-with {
+  display: none;
+  padding: 14px 16px;
+  background: var(--bg-alt);
+  border-top: 1px solid var(--line);
+}
+.modal .gallery .combine-with-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.modal .gallery .combine-with-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.modal .gallery .combine-with-item img {
+  width: 52px;
+  height: 68px;
+  aspect-ratio: auto;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+}
+.modal .gallery .combine-with-item span {
+  font-size: 0.88rem;
+  color: var(--text);
+  font-weight: 500;
+}
+.modal .gallery .combine-with-item:hover span {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}
+
 .modal .details { padding: 28px; position: relative; }
 .modal .details h2 {
   margin: 0 0 8px;
