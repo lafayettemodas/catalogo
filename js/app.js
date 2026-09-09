@@ -167,9 +167,10 @@ function renderGrid(products) {
 
     let thumbsHtml;
     if (useCarousel) {
-      thumbsHtml = images.map((img, i) =>
-        `<img class="thumb${i === 0 ? " active" : ""}" src="${img.url}" alt="${p.name}" loading="lazy">`
+      const slidesHtml = images.map((img) =>
+        `<img class="thumb" src="${img.url}" alt="${p.name}" loading="lazy">`
       ).join("");
+      thumbsHtml = `<div class="thumb-track">${slidesHtml}</div>`;
     } else {
       const firstImg = images[0]?.url || "";
       thumbsHtml = `<img class="thumb active" src="${firstImg}" alt="${p.name}" loading="lazy">`;
@@ -226,18 +227,63 @@ const cardCarouselObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.25 });
 
 function initCardCarousel(card, images) {
-  const imgs = Array.from(card.querySelectorAll(".thumb-wrap .thumb"));
-  if (imgs.length <= 1) return;
-  let current = 0;
-  let timer = null;
+  const track = card.querySelector(".thumb-wrap .thumb-track");
+  if (!track) return;
+  const realImgs = Array.from(track.querySelectorAll(".thumb"));
+  const realCount = realImgs.length;
+  if (realCount <= 1) return;
 
-  function goTo(index) {
-    current = ((index % imgs.length) + imgs.length) % imgs.length;
-    imgs.forEach((img, i) => img.classList.toggle("active", i === current));
+  // Clona a primeira e a ultima foto nas pontas do track para permitir um
+  // loop horizontal continuo (desliza sempre na mesma direcao, sem "salto"
+  // visual ao voltar do ultimo para o primeiro slide).
+  const firstClone = realImgs[0].cloneNode(true);
+  const lastClone = realImgs[realCount - 1].cloneNode(true);
+  firstClone.setAttribute("aria-hidden", "true");
+  lastClone.setAttribute("aria-hidden", "true");
+  track.appendChild(firstClone);
+  track.insertBefore(lastClone, realImgs[0]);
+
+  const total = realCount + 2;
+  let current = 1; // posicao da primeira foto real (indice 0 = clone da ultima)
+  let timer = null;
+  let snapTimeout = null;
+
+  function setPosition(index, animate) {
+    track.style.transition = animate ? "transform 0.6s ease" : "none";
+    track.style.transform = "translateX(-" + (index * 100) + "%)";
   }
+
+  setPosition(current, false);
+  track.offsetHeight;
+
+  function afterTransitionSnap() {
+    if (current === total - 1) {
+      current = 1;
+      setPosition(current, false);
+      track.offsetHeight;
+    } else if (current === 0) {
+      current = realCount;
+      setPosition(current, false);
+      track.offsetHeight;
+    }
+  }
+
+  function goNext() {
+    current++;
+    setPosition(current, true);
+    clearTimeout(snapTimeout);
+    snapTimeout = setTimeout(afterTransitionSnap, 650);
+  }
+  function goPrev() {
+    current--;
+    setPosition(current, true);
+    clearTimeout(snapTimeout);
+    snapTimeout = setTimeout(afterTransitionSnap, 650);
+  }
+
   function start() {
     if (timer) return;
-    timer = setInterval(() => goTo(current + 1), 3000);
+    timer = setInterval(goNext, 3000);
   }
   function stop() {
     if (timer) { clearInterval(timer); timer = null; }
@@ -252,7 +298,7 @@ function initCardCarousel(card, images) {
     prevBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       stop();
-      goTo(current - 1);
+      goPrev();
       start();
     });
   }
@@ -260,7 +306,7 @@ function initCardCarousel(card, images) {
     nextBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       stop();
-      goTo(current + 1);
+      goNext();
       start();
     });
   }
