@@ -354,6 +354,21 @@ header.site-header p {
   opacity: 1;
   z-index: 1;
 }
+.thumb-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+.thumb-track .thumb {
+  position: static;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transition: none;
+}
 .thumb-nav {
   position: absolute;
   top: 50%;
