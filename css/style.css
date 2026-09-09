@@ -295,6 +295,7 @@ header.site-header p {
   position: relative;
   overflow: hidden;
   background: #ece7e0;
+  aspect-ratio: 3/4;
 }
 
 .card .info .ref-row {
@@ -339,12 +340,44 @@ header.site-header p {
 }
 
 .card .thumb {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  aspect-ratio: 3/4;
+  height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.5s ease;
+  opacity: 0;
+  z-index: 0;
+  transition: transform 0.5s ease, opacity 0.6s ease;
 }
+.thumb.active {
+  opacity: 1;
+  z-index: 1;
+}
+.thumb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  background: rgba(255,255,255,0.85);
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: background 0.15s ease;
+}
+.thumb-nav:hover { background: #fff; }
+.thumb-nav.prev { left: 6px; }
+.thumb-nav.next { right: 6px; }
 
 .card:hover .thumb { transform: scale(1.06); }
 
