@@ -147,6 +147,8 @@ function populateSizeFilter(products) {
     });
 }
 
+const IS_TEST_PAGE = /teste\.html/.test(location.pathname);
+
 function renderGrid(products) {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
@@ -159,11 +161,27 @@ function renderGrid(products) {
   products.forEach((p) => {
     const card = document.createElement("div");
     card.className = "card";
-    const firstImg = p.product_images[0]?.url || "";
-    const photoCount = p.product_images.length;
+    const images = p.product_images || [];
+    const photoCount = images.length;
+    const useCarousel = IS_TEST_PAGE && photoCount > 1;
+
+    let thumbsHtml;
+    if (useCarousel) {
+      thumbsHtml = images.map((img, i) =>
+        `<img class="thumb${i === 0 ? " active" : ""}" src="${img.url}" alt="${p.name}" loading="lazy">`
+      ).join("");
+    } else {
+      const firstImg = images[0]?.url || "";
+      thumbsHtml = `<img class="thumb active" src="${firstImg}" alt="${p.name}" loading="lazy">`;
+    }
+
     card.innerHTML = `
       <div class="thumb-wrap">
-        <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
+        ${thumbsHtml}
+        ${useCarousel ? `
+          <button type="button" class="thumb-nav prev" aria-label="Foto anterior">‹</button>
+          <button type="button" class="thumb-nav next" aria-label="Próxima foto">›</button>
+        ` : ""}
         ${photoCount > 0 ? `<span class="photo-count">${photoCount} ${photoCount === 1 ? "foto" : "fotos"}</span>` : ""}
       </div>
       ${p.promocao ? `<span class="promo-badge">Promoção</span>` : ""}
@@ -190,8 +208,62 @@ function renderGrid(products) {
       e.stopPropagation();
       shareProduct(p);
     });
+    if (useCarousel) initCardCarousel(card, images);
     grid.appendChild(card);
   });
+}
+
+// Carrossel automatico das miniaturas no card (somente teste.html por enquanto).
+// Usa um unico IntersectionObserver compartilhado para nao rodar setInterval
+// em cards fora da tela (evita sobrecarga com centenas de produtos).
+const cardCarouselObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    const controls = entry.target.__carouselControls;
+    if (!controls) return;
+    if (entry.isIntersecting) controls.start();
+    else controls.stop();
+  });
+}, { threshold: 0.25 });
+
+function initCardCarousel(card, images) {
+  const imgs = Array.from(card.querySelectorAll(".thumb-wrap .thumb"));
+  if (imgs.length <= 1) return;
+  let current = 0;
+  let timer = null;
+
+  function goTo(index) {
+    current = ((index % imgs.length) + imgs.length) % imgs.length;
+    imgs.forEach((img, i) => img.classList.toggle("active", i === current));
+  }
+  function start() {
+    if (timer) return;
+    timer = setInterval(() => goTo(current + 1), 3000);
+  }
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+
+  card.__carouselControls = { start, stop };
+  cardCarouselObserver.observe(card);
+
+  const prevBtn = card.querySelector(".thumb-nav.prev");
+  const nextBtn = card.querySelector(".thumb-nav.next");
+  if (prevBtn) {
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      stop();
+      goTo(current - 1);
+      start();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      stop();
+      goTo(current + 1);
+      start();
+    });
+  }
 }
 
 // Compartilha a imagem + link do produto (Web Share API, com fallback de copiar link).
