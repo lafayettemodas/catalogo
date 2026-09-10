@@ -217,14 +217,14 @@ function renderGrid(products) {
 // Carrossel automatico das miniaturas no card (somente teste.html por enquanto).
 // Usa um unico IntersectionObserver compartilhado para nao rodar setInterval
 // em cards fora da tela (evita sobrecarga com centenas de produtos).
-const cardCarouselObserver = new IntersectionObserver((entries) => {
-  entries.forEach((entry) => {
-    const controls = entry.target.__carouselControls;
-    if (!controls) return;
-    if (entry.isIntersecting) controls.start();
-    else controls.stop();
-  });
-}, { threshold: 0.25 });
+const activeCardCarousels = new Set();
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    activeCardCarousels.forEach((controls) => controls.stop());
+  } else {
+    activeCardCarousels.forEach((controls) => controls.start());
+  }
+});
 
 function initCardCarousel(card, images) {
   const track = card.querySelector(".thumb-wrap .thumb-track");
@@ -290,7 +290,8 @@ function initCardCarousel(card, images) {
   }
 
   card.__carouselControls = { start, stop };
-  cardCarouselObserver.observe(card);
+  activeCardCarousels.add(card.__carouselControls);
+  if (!document.hidden) start();
 
   const prevBtn = card.querySelector(".thumb-nav.prev");
   const nextBtn = card.querySelector(".thumb-nav.next");
