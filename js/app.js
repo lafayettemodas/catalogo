@@ -291,7 +291,7 @@ function initCardCarousel(card, images) {
 
   card.__carouselControls = { start, stop };
   activeCardCarousels.add(card.__carouselControls);
-  if (!document.hidden) start();
+  start();
 
   const prevBtn = card.querySelector(".thumb-nav.prev");
   const nextBtn = card.querySelector(".thumb-nav.next");
