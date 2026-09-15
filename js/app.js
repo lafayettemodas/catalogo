@@ -164,7 +164,7 @@ function renderGrid(products) {
     const photoCount = p.product_images.length;
     const useCardCarousel = IS_TEST_PAGE && photoCount > 1;
     const thumbHtml = useCardCarousel
-      ? `<div class="thumb-track">${p.product_images.map((img) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="lazy">`).join("")}</div>`
+      ? `<div class="thumb-track">${p.product_images.map((img, i) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="${i === 0 ? "lazy" : "eager"}">`).join("")}</div>`
       : `<img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">`;
     card.innerHTML = `
       <div class="thumb-wrap">
@@ -203,12 +203,25 @@ function renderGrid(products) {
 // Ativa a rotacao automatica dos cards com mais de uma foto; pausa quando a aba
 // do navegador fica em segundo plano (economiza recursos, evita timers inuteis).
 const activeCardCarousels = new Set();
+
+// So anima os cards que estao realmente visiveis (ou perto de ficar) na tela.
+// Com centenas de produtos na grid, rodar os 400+ carrosseis ao mesmo tempo
+// travava a pagina; agora cada card so liga o timer quando entra em cena.
+const cardCarouselObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    const controls = entry.target.__carouselControls;
+    if (!controls) return;
+    controls.isVisible = entry.isIntersecting;
+    if (entry.isIntersecting && !document.hidden) controls.start();
+    else controls.stop();
+  });
+}, { threshold: 0.1, rootMargin: "200px 0px" });
+
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    activeCardCarousels.forEach((controls) => controls.stop());
-  } else {
-    activeCardCarousels.forEach((controls) => controls.start());
-  }
+  activeCardCarousels.forEach((controls) => {
+    if (document.hidden) controls.stop();
+    else if (controls.isVisible) controls.start();
+  });
 });
 
 function initCardCarousel(card) {
@@ -232,6 +245,9 @@ function initCardCarousel(card) {
   let current = 1; // posicao da primeira foto real (indice 0 = clone da ultima)
   let timer = null;
   let snapTimeout = null;
+  // Pequena variacao no intervalo de cada card para eles nao "piscarem" todos
+  // juntos na tela (evita picos de trabalho sincronizados no navegador).
+  const period = 2800 + Math.floor(Math.random() * 600);
 
   function setPosition(index, animate) {
     track.style.transition = animate ? "transform 0.6s ease" : "none";
@@ -262,15 +278,15 @@ function initCardCarousel(card) {
 
   function start() {
     if (timer) return;
-    timer = setInterval(goNext, 3000);
+    timer = setInterval(goNext, period);
   }
   function stop() {
     if (timer) { clearInterval(timer); timer = null; }
   }
 
-  card.__carouselControls = { start, stop };
+  card.__carouselControls = { start, stop, isVisible: false };
   activeCardCarousels.add(card.__carouselControls);
-  start();
+  cardCarouselObserver.observe(card);
 }
 
 // Compartilha a imagem + link do produto (Web Share API, com fallback de copiar link).
