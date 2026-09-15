@@ -163,7 +163,7 @@ function renderGrid(products) {
     const photoCount = p.product_images.length;
     const useCardCarousel = photoCount > 1;
     const thumbHtml = useCardCarousel
-      ? `<div class="thumb-track">${p.product_images.map((img, i) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="${i === 0 ? "lazy" : "eager"}">`).join("")}</div>`
+      ? `<div class="thumb-track">${p.product_images.map((img) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="lazy">`).join("")}</div>`
       : `<img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">`;
     card.innerHTML = `
       <div class="thumb-wrap">
