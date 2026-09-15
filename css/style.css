@@ -304,6 +304,7 @@ header.site-header p {
   display: flex;
   width: 100%;
   height: 100%;
+  will-change: transform;
 }
 .thumb-track .thumb {
   position: static;
