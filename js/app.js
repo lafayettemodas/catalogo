@@ -6,6 +6,7 @@ let allProducts = [];
 let currentGallery = [];
 let currentGalleryIndex = 0;
 let currentProduct = null;
+const IS_TEST_PAGE = /teste\.html/.test(location.pathname);
 
 document.getElementById("storeName").textContent = STORE_NAME;
 document.getElementById("footerStoreName").textContent = STORE_NAME;
@@ -161,9 +162,13 @@ function renderGrid(products) {
     card.className = "card";
     const firstImg = p.product_images[0]?.url || "";
     const photoCount = p.product_images.length;
+    const useCardCarousel = IS_TEST_PAGE && photoCount > 1;
+    const thumbHtml = useCardCarousel
+      ? `<div class="thumb-track">${p.product_images.map((img) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="lazy">`).join("")}</div>`
+      : `<img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">`;
     card.innerHTML = `
       <div class="thumb-wrap">
-        <img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">
+        ${thumbHtml}
         ${photoCount > 0 ? `<span class="photo-count">${photoCount} ${photoCount === 1 ? "foto" : "fotos"}</span>` : ""}
       </div>
       ${p.promocao ? `<span class="promo-badge">Promoção</span>` : ""}
@@ -191,7 +196,81 @@ function renderGrid(products) {
       shareProduct(p);
     });
     grid.appendChild(card);
+    if (useCardCarousel) initCardCarousel(card);
   });
+}
+
+// Ativa a rotacao automatica dos cards com mais de uma foto; pausa quando a aba
+// do navegador fica em segundo plano (economiza recursos, evita timers inuteis).
+const activeCardCarousels = new Set();
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    activeCardCarousels.forEach((controls) => controls.stop());
+  } else {
+    activeCardCarousels.forEach((controls) => controls.start());
+  }
+});
+
+function initCardCarousel(card) {
+  const track = card.querySelector(".thumb-wrap .thumb-track");
+  if (!track) return;
+  const realImgs = Array.from(track.querySelectorAll(".thumb"));
+  const realCount = realImgs.length;
+  if (realCount <= 1) return;
+
+  // Clona a primeira e a ultima foto nas pontas do track para permitir um
+  // loop horizontal continuo (desliza sempre na mesma direcao, sem "salto"
+  // visual ao voltar do ultimo para o primeiro slide).
+  const firstClone = realImgs[0].cloneNode(true);
+  const lastClone = realImgs[realCount - 1].cloneNode(true);
+  firstClone.setAttribute("aria-hidden", "true");
+  lastClone.setAttribute("aria-hidden", "true");
+  track.appendChild(firstClone);
+  track.insertBefore(lastClone, realImgs[0]);
+
+  const total = realCount + 2;
+  let current = 1; // posicao da primeira foto real (indice 0 = clone da ultima)
+  let timer = null;
+  let snapTimeout = null;
+
+  function setPosition(index, animate) {
+    track.style.transition = animate ? "transform 0.6s ease" : "none";
+    track.style.transform = "translateX(-" + (index * 100) + "%)";
+  }
+
+  setPosition(current, false);
+  track.offsetHeight;
+
+  function afterTransitionSnap() {
+    if (current === total - 1) {
+      current = 1;
+      setPosition(current, false);
+      track.offsetHeight;
+    } else if (current === 0) {
+      current = realCount;
+      setPosition(current, false);
+      track.offsetHeight;
+    }
+  }
+
+  function goNext() {
+    current++;
+    setPosition(current, true);
+    clearTimeout(snapTimeout);
+    snapTimeout = setTimeout(afterTransitionSnap, 650);
+  }
+
+  function start() {
+    if (timer) return;
+    timer = setInterval(goNext, 3000);
+  }
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+
+  card.__carouselControls = { start, stop };
+  activeCardCarousels.add(card.__carouselControls);
+  start();
 }
 
 // Compartilha a imagem + link do produto (Web Share API, com fallback de copiar link).
