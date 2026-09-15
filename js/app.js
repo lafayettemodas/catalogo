@@ -6,7 +6,6 @@ let allProducts = [];
 let currentGallery = [];
 let currentGalleryIndex = 0;
 let currentProduct = null;
-const IS_TEST_PAGE = /teste\.html/.test(location.pathname);
 
 document.getElementById("storeName").textContent = STORE_NAME;
 document.getElementById("footerStoreName").textContent = STORE_NAME;
@@ -162,7 +161,7 @@ function renderGrid(products) {
     card.className = "card";
     const firstImg = p.product_images[0]?.url || "";
     const photoCount = p.product_images.length;
-    const useCardCarousel = IS_TEST_PAGE && photoCount > 1;
+    const useCardCarousel = photoCount > 1;
     const thumbHtml = useCardCarousel
       ? `<div class="thumb-track">${p.product_images.map((img, i) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="${i === 0 ? "lazy" : "eager"}">`).join("")}</div>`
       : `<img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">`;
