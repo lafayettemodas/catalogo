@@ -50,7 +50,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 
 // ---------- Menu lateral (Incluir / Editar / Acessos / Relatório) ----------
-const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio", banners: "viewBanners" };
+const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio", banners: "viewBanners", vitrine: "viewVitrine" };
 
 function showView(view) {
   document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
@@ -63,6 +63,7 @@ function showView(view) {
   if (view === "acessos") loadVisits();
   if (view === "relatorio") loadHiddenProductsPreview();
   if (view === "banners") loadBanners();
+  if (view === "vitrine") openVitrineView();
 }
 
 document.querySelectorAll(".sidebar-link").forEach((btn) => {
@@ -125,7 +126,7 @@ async function loadProducts() {
   while (true) {
     const { data, error } = await supabaseClient
       .from("produtos")
-      .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, product_images ( id, path, position )`)
+      .select(`id, name, ref_fabrica, ref_loja, promocao, preco_promocao, ocultar, price, category_id, description, sizes, colors, featured, vitrine_order, product_images ( id, path, position )`)
       .order("created_at", { ascending: false })
       .range(from, from + pageSize - 1);
 
@@ -1426,3 +1427,303 @@ document.getElementById("fieldCombineSearch").addEventListener("input", (e) => {
     });
   }, 300);
 });
+
+
+// ============================================================
+// Ordem da Vitrine (teste) - reordenar produtos na exibicao publica sem
+// alterar cadastro, estoque, preco ou qualquer outro dado do produto.
+// Usa duas colunas em produtos: featured (destaque) e vitrine_order
+// (posicao manual; null = automatico). Mesma logica de comparacao usada
+// em teste.html (js/app.js -> vitrineCompare) para o admin exibir a lista
+// na mesma ordem que o catalogo vai mostrar.
+// ============================================================
+
+const VITRINE_PAGE_SIZE = 60;
+let vitrineCurrentPage = 1;
+let vitrineFullList = [];
+let vitrineSelectedIds = new Set();
+
+function vitrineCompareAdmin(a, b) {
+  if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
+
+  const aOrder = a.vitrine_order;
+  const bOrder = b.vitrine_order;
+  const aHas = aOrder !== null && aOrder !== undefined;
+  const bHas = bOrder !== null && bOrder !== undefined;
+
+  const bandOf = (v, has) => {
+    if (!has) return 1;
+    return v < 0 ? 0 : 2;
+  };
+  const aBand = bandOf(aOrder, aHas);
+  const bBand = bandOf(bOrder, bHas);
+  if (aBand !== bBand) return aBand - bBand;
+  if (aBand === 1) return 0;
+  return aOrder - bOrder;
+}
+
+function vitrineStatusLabel(p) {
+  if (p.featured) return '<span class="vitrine-badge vitrine-badge-featured">Destaque</span>';
+  const v = p.vitrine_order;
+  if (v === null || v === undefined) return '<span class="vitrine-badge vitrine-badge-auto">Automático</span>';
+  if (v < 0) return '<span class="vitrine-badge vitrine-badge-front">Fixado no início</span>';
+  return '<span class="vitrine-badge vitrine-badge-back">Fixado no final</span>';
+}
+
+function openVitrineView() {
+  populateVitrineCategoryFilter();
+  applyVitrineSearchFilter();
+}
+
+function populateVitrineCategoryFilter() {
+  const sel = document.getElementById("vitrineCategoryFilter");
+  if (!sel || sel.dataset.populated === "1") return;
+  categories.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
+  sel.dataset.populated = "1";
+}
+
+function applyVitrineSearchFilter() {
+  const term = (document.getElementById("vitrineSearchInput")?.value || "").trim().toLowerCase();
+  const categoryId = document.getElementById("vitrineCategoryFilter")?.value || "";
+
+  let filtered = allProducts;
+  if (categoryId) filtered = filtered.filter((p) => p.category_id === categoryId);
+  if (term) {
+    filtered = filtered.filter((p) => {
+      const n = (p.name || "").toLowerCase();
+      const r1 = (p.ref_fabrica || "").toLowerCase();
+      const r2 = (p.ref_loja || "").toLowerCase();
+      return n.includes(term) || r1.includes(term) || r2.includes(term);
+    });
+  }
+
+  vitrineFullList = filtered.slice().sort(vitrineCompareAdmin);
+  vitrineCurrentPage = 1;
+  renderVitrinePage();
+}
+
+document.getElementById("vitrineSearchInput")?.addEventListener("input", applyVitrineSearchFilter);
+document.getElementById("vitrineCategoryFilter")?.addEventListener("change", applyVitrineSearchFilter);
+
+function renderVitrinePage() {
+  const tbody = document.getElementById("vitrineTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const visibleCount = vitrineCurrentPage * VITRINE_PAGE_SIZE;
+  const pageList = vitrineFullList.slice(0, visibleCount);
+
+  pageList.forEach((p) => {
+    const catName = categories.find((c) => c.id === p.category_id)?.name || "-";
+    const firstImg = (p.product_images || []).sort((a, b) => a.position - b.position)[0]?.url || "";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input type="checkbox" class="vitrine-row-check" data-id="${p.id}" ${vitrineSelectedIds.has(p.id) ? "checked" : ""}></td>
+      <td>${firstImg ? `<img src="${firstImg}" loading="lazy" decoding="async">` : ""}</td>
+      <td>${p.name}${p.ref_loja ? ` <span class="vitrine-ref">(${p.ref_loja})</span>` : ""}</td>
+      <td>${catName}</td>
+      <td>${p.promocao ? "Sim" : "Não"}</td>
+      <td>${vitrineStatusLabel(p)}</td>
+      <td class="vitrine-actions">
+        <button type="button" class="secondary small" data-vfront="${p.id}">Início</button>
+        <button type="button" class="secondary small" data-vback="${p.id}">Final</button>
+        <button type="button" class="secondary small" data-vfeat="${p.id}">${p.featured ? "Remover destaque" : "Destaque"}</button>
+        <button type="button" class="secondary small" data-vauto="${p.id}">Automático</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("[data-vfront]").forEach((btn) => {
+    btn.addEventListener("click", () => vitrineMoveToFront([btn.dataset.vfront]));
+  });
+  tbody.querySelectorAll("[data-vback]").forEach((btn) => {
+    btn.addEventListener("click", () => vitrineMoveToBack([btn.dataset.vback]));
+  });
+  tbody.querySelectorAll("[data-vfeat]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.vfeat;
+      const p = allProducts.find((x) => x.id === id);
+      vitrineSetFeatured(id, !(p && p.featured));
+    });
+  });
+  tbody.querySelectorAll("[data-vauto]").forEach((btn) => {
+    btn.addEventListener("click", () => vitrineResetAutomatic([btn.dataset.vauto]));
+  });
+  tbody.querySelectorAll(".vitrine-row-check").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = cb.dataset.id;
+      if (cb.checked) vitrineSelectedIds.add(id);
+      else vitrineSelectedIds.delete(id);
+      updateVitrineSelectionBar();
+      updateVitrineSelectAllState();
+    });
+  });
+
+  updateVitrineSelectAllState();
+  updateVitrineSelectionBar();
+  renderVitrineLoadMore();
+}
+
+function renderVitrineLoadMore() {
+  const tbody = document.getElementById("vitrineTableBody");
+  const table = tbody.closest("table");
+  let container = document.getElementById("vitrineLoadMoreContainer");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "vitrineLoadMoreContainer";
+    container.style.textAlign = "center";
+    container.style.margin = "16px 0";
+    table.insertAdjacentElement("afterend", container);
+  }
+  container.innerHTML = "";
+
+  const total = vitrineFullList.length;
+  const shown = Math.min(vitrineCurrentPage * VITRINE_PAGE_SIZE, total);
+
+  const info = document.createElement("span");
+  info.textContent = `Mostrando ${shown} de ${total} produtos`;
+  info.style.marginRight = "12px";
+  info.style.color = "#666";
+  container.appendChild(info);
+
+  if (shown < total) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.textContent = "Carregar mais";
+    btn.addEventListener("click", () => {
+      vitrineCurrentPage++;
+      renderVitrinePage();
+    });
+    container.appendChild(btn);
+  }
+}
+
+function updateVitrineSelectionBar() {
+  const bar = document.getElementById("vitrineSelectionBar");
+  const count = document.getElementById("vitrineSelectionCount");
+  if (!bar || !count) return;
+  const n = vitrineSelectedIds.size;
+  count.textContent = n === 1 ? "1 produto selecionado" : `${n} produtos selecionados`;
+  bar.style.display = n > 0 ? "flex" : "none";
+}
+
+function updateVitrineSelectAllState() {
+  const cb = document.getElementById("vitrineSelectAll");
+  if (!cb) return;
+  const total = vitrineFullList.length;
+  const selectedInList = vitrineFullList.filter((p) => vitrineSelectedIds.has(p.id)).length;
+  cb.checked = total > 0 && selectedInList === total;
+  cb.indeterminate = selectedInList > 0 && selectedInList < total;
+}
+
+document.getElementById("vitrineSelectAll")?.addEventListener("change", (e) => {
+  if (e.target.checked) {
+    vitrineFullList.forEach((p) => vitrineSelectedIds.add(p.id));
+  } else {
+    vitrineFullList.forEach((p) => vitrineSelectedIds.delete(p.id));
+  }
+  updateVitrineSelectionBar();
+  renderVitrinePage();
+});
+
+document.getElementById("btnBulkFront")?.addEventListener("click", () => {
+  const ids = Array.from(vitrineSelectedIds);
+  if (!ids.length) return;
+  if (!confirm(`Mover ${ids.length} produto(s) selecionado(s) para o início da vitrine?`)) return;
+  vitrineMoveToFront(ids);
+});
+document.getElementById("btnBulkBack")?.addEventListener("click", () => {
+  const ids = Array.from(vitrineSelectedIds);
+  if (!ids.length) return;
+  if (!confirm(`Mover ${ids.length} produto(s) selecionado(s) para o final da vitrine?`)) return;
+  vitrineMoveToBack(ids);
+});
+document.getElementById("btnBulkClear")?.addEventListener("click", () => {
+  vitrineSelectedIds.clear();
+  updateVitrineSelectionBar();
+  renderVitrinePage();
+});
+
+document.getElementById("btnPromoFront")?.addEventListener("click", () => {
+  const ids = allProducts.filter((p) => p.promocao).map((p) => p.id);
+  if (!ids.length) { alert("Nenhum produto em promoção encontrado."); return; }
+  if (!confirm(`Mover todos os ${ids.length} produtos em promoção para o início da vitrine?`)) return;
+  vitrineMoveToFront(ids);
+});
+document.getElementById("btnPromoBack")?.addEventListener("click", () => {
+  const ids = allProducts.filter((p) => p.promocao).map((p) => p.id);
+  if (!ids.length) { alert("Nenhum produto em promoção encontrado."); return; }
+  if (!confirm(`Mover todos os ${ids.length} produtos em promoção para o final da vitrine?`)) return;
+  vitrineMoveToBack(ids);
+});
+
+function currentVitrineExtent() {
+  let minNeg = 0;
+  let maxPos = 0;
+  allProducts.forEach((p) => {
+    const v = p.vitrine_order;
+    if (v !== null && v !== undefined) {
+      if (v < 0 && v < minNeg) minNeg = v;
+      if (v > 0 && v > maxPos) maxPos = v;
+    }
+  });
+  return { minNeg, maxPos };
+}
+
+async function vitrineBulkUpdate(rows) {
+  const results = await Promise.all(
+    rows.map((r) =>
+      supabaseClient.from("produtos").update({ vitrine_order: r.vitrine_order }).eq("id", r.id)
+    )
+  );
+  const firstError = results.find((r) => r.error);
+  if (firstError) {
+    alert("Erro ao atualizar a ordem: " + firstError.error.message);
+  }
+  rows.forEach((r) => {
+    const p = allProducts.find((x) => x.id === r.id);
+    if (p) p.vitrine_order = r.vitrine_order;
+  });
+  applyVitrineSearchFilter();
+}
+
+async function vitrineMoveToFront(ids) {
+  if (!ids.length) return;
+  const { minNeg } = currentVitrineExtent();
+  const start = minNeg - ids.length;
+  const rows = ids.map((id, i) => ({ id, vitrine_order: start + i }));
+  await vitrineBulkUpdate(rows);
+}
+
+async function vitrineMoveToBack(ids) {
+  if (!ids.length) return;
+  const { maxPos } = currentVitrineExtent();
+  const rows = ids.map((id, i) => ({ id, vitrine_order: maxPos + 1 + i }));
+  await vitrineBulkUpdate(rows);
+}
+
+async function vitrineSetFeatured(id, value) {
+  const { error } = await supabaseClient.from("produtos").update({ featured: value }).eq("id", id);
+  if (error) { alert("Erro ao atualizar destaque: " + error.message); return; }
+  const p = allProducts.find((x) => x.id === id);
+  if (p) p.featured = value;
+  applyVitrineSearchFilter();
+}
+
+async function vitrineResetAutomatic(ids) {
+  if (!ids.length) return;
+  const { error } = await supabaseClient.from("produtos").update({ featured: false, vitrine_order: null }).in("id", ids);
+  if (error) { alert("Erro ao voltar para ordem automática: " + error.message); return; }
+  ids.forEach((id) => {
+    const p = allProducts.find((x) => x.id === id);
+    if (p) { p.featured = false; p.vitrine_order = null; }
+  });
+  applyVitrineSearchFilter();
+}
