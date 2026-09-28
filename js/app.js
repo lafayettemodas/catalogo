@@ -6,7 +6,6 @@ let allProducts = [];
 let currentGallery = [];
 let currentGalleryIndex = 0;
 let currentProduct = null;
-const IS_TEST_PAGE = /teste\.html/.test(location.pathname);
 
 document.getElementById("storeName").textContent = STORE_NAME;
 document.getElementById("footerStoreName").textContent = STORE_NAME;
@@ -128,8 +127,7 @@ async function loadProducts() {
   // primeiro, ja vem assim da consulta acima), depois fixados no final
   // (mais positivo = mais para tras). Sort estavel preserva a ordem da
   // consulta (created_at desc) dentro da faixa automatica.
-  // Ordem da Vitrine ainda em teste: so aplica em teste.html ate ser aprovada.
-  if (IS_TEST_PAGE) allProducts.sort(vitrineCompare);
+  allProducts.sort(vitrineCompare);
 
   populateSizeFilter(allProducts);
   renderGrid(allProducts);
