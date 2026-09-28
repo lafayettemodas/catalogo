@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin TESTE - Catálogo</title>
+<link rel="icon" type="image/png" href="img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin.css?v=20260811a">
+</head>
+<body>
+
+<header>
+<div class="header-brand">
+<img class="site-logo" src="img/logo.png" alt="Lafayette Moda Feminina">
+<h1>Painel Admin</h1>
+</div>
+<button class="secondary" id="logoutBtn" style="display:none;">Sair</button>
+</header>
+
+<!-- Tela de login -->
+<div id="loginScreen">
+<h2>Entrar</h2>
+<div class="field">
+<label>E-mail</label>
+<input type="email" id="loginEmail" placeholder="voce@email.com">
+</div>
+<div class="field">
+<label>Senha</label>
+<input type="password" id="loginPassword" placeholder="••••••••">
+</div>
+<button class="primary" id="loginBtn">Entrar</button>
+<div class="error-msg" id="loginError"></div>
+</div>
+
+<!-- Área logada -->
+<main id="adminArea">
+<div class="admin-layout">
+
+<nav class="admin-sidebar">
+<button type="button" class="sidebar-link active" data-view="incluir">Incluir</button>
+<button type="button" class="sidebar-link" data-view="categorias">Categorias</button>
+<button type="button" class="sidebar-link" data-view="banners">Banners</button>
+<button type="button" class="sidebar-link" data-view="editar">Editar</button>
+<button type="button" class="sidebar-link" data-view="vitrine">Ordem da Vitrine</button>
+<button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
+<button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
+</nav>
+
+<div class="admin-content">
+
+<!-- ---------- INCLUIR (cadastro de categorias/produtos) ---------- -->
+<div class="admin-view active" id="viewIncluir">
+
+<div class="panel">
+<h2 id="formTitle">Novo produto</h2>
+<input type="hidden" id="productId">
+<div class="row">
+<div class="field">
+<label>Nome</label>
+<input type="text" id="fieldName">
+</div>
+<div class="field">
+<label>Ref. Fábrica</label>
+<input type="text" id="fieldRefFabrica" placeholder="Ex: LM-0123">
+</div>
+<div class="field">
+<label>Ref. Loja</label>
+<input type="text" id="fieldRefLoja" placeholder="Ex: 0123">
+</div>
+<div class="field">
+<label>Preço (R$)</label>
+<input type="number" step="0.01" id="fieldPrice">
+</div>
+<div class="field">
+<label>Categoria</label>
+<select id="fieldCategory"></select>
+</div>
+</div>
+<div class="row">
+<div class="field">
+<label>Tamanhos (separados por vírgula)</label>
+<input type="text" id="fieldSizes" placeholder="P, M, G">
+</div>
+<div class="field">
+<label>Cores (separadas por vírgula)</label>
+<input type="text" id="fieldColors" placeholder="Preto, Branco">
+</div>
+</div>
+<div class="field">
+<label>Descrição</label>
+<textarea id="fieldDescription"></textarea>
+</div>
+<div class="promo-row">
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="fieldPromocao">
+<span>Produto em promoção</span>
+</label>
+</div>
+<div class="field field-narrow" id="fieldValorPromocaoWrap" style="display:none;">
+<label>Valor promoção (R$)</label>
+<input type="number" step="0.01" id="fieldValorPromocao">
+</div>
+</div>
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="fieldOcultar">
+<span>Ocultar produto (não aparece no catálogo)</span>
+</label>
+</div>
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="fieldCombineToggle">
+<span>Combine com outra peça</span>
+</label>
+</div>
+<div class="field" id="fieldCombineWrap" style="display:none;">
+<label>Buscar produto para combinar (nome ou referência)</label>
+<input type="text" id="fieldCombineSearch" placeholder="Digite o nome ou referência...">
+<div class="combine-results" id="fieldCombineResults"></div>
+<div class="combine-selected" id="fieldCombineSelected" style="display:none;"></div>
+<input type="hidden" id="fieldCombineId">
+</div>
+<div class="field" id="currentPhotosField" style="display:none;">
+<label>Fotos atuais (clique para ampliar, × para excluir)</label>
+<div class="current-photos-grid" id="currentPhotosGrid"></div>
+</div>
+<div class="field">
+<label>Fotos (pode selecionar várias)</label>
+<input type="file" id="fieldImages" accept="image/*" multiple>
+</div>
+<div class="field" id="uploadProgressWrap" style="display:none;">
+<div class="progress-bar"><div class="progress-bar-fill" id="uploadProgressFill"></div></div>
+<div class="progress-text" id="uploadProgressText"></div>
+</div>
+<button class="primary" id="saveProductBtn">Salvar produto</button>
+<button class="secondary" id="cancelEditBtn" style="display:none;">Cancelar edição</button>
+<div class="upload-success-msg" id="uploadSuccessMsg"></div>
+<div class="error-msg" id="formError"></div>
+</div>
+
+</div>
+
+<!-- ---------- CATEGORIAS (incluir, editar e excluir) ---------- -->
+<div class="admin-view" id="viewCategorias">
+
+<div class="panel">
+<h2>Categorias</h2>
+<div class="inline-cat-add">
+<input type="text" id="newCategoryName" placeholder="Nome da nova categoria">
+<button class="secondary" id="addCategoryBtn">Adicionar</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Nome</th><th>Quantidade</th><th>Ações</th></tr>
+</thead>
+<tbody id="categoriesTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- BANNERS (carrossel de destaque) ---------- -->
+<div class="admin-view" id="viewBanners">
+
+<div class="panel">
+<h2 id="bannerFormTitle">Novo banner</h2>
+<input type="hidden" id="bannerId">
+<div class="row">
+<div class="field">
+<label>Link do banner</label>
+<select id="bannerFilterType">
+<option value="category">Categoria</option>
+<option value="promo">Promoções</option>
+<option value="all">Todos os produtos</option>
+</select>
+</div>
+<div class="field" id="bannerCategoryWrap">
+<label>Categoria</label>
+<select id="bannerCategorySelect"></select>
+</div>
+<div class="field field-narrow">
+<label>Posição (ordem)</label>
+<input type="number" id="bannerPosition" value="0" min="0">
+</div>
+</div>
+<div class="checkbox-field">
+<label class="checkbox-label">
+<input type="checkbox" id="bannerActive" checked>
+<span>Banner ativo (visível no catálogo)</span>
+</label>
+</div>
+<div class="field" id="currentBannerImageField" style="display:none;">
+<label>Imagem atual</label>
+<div class="current-photos-grid" id="currentBannerImage"></div>
+</div>
+<div class="field">
+<label>Imagem do banner</label>
+<input type="file" id="bannerImageFile" accept="image/*">
+</div>
+<button class="primary" id="saveBannerBtn">Salvar banner</button>
+<button class="secondary" id="cancelBannerEditBtn" style="display:none;">Cancelar edição</button>
+<div class="error-msg" id="bannerFormError"></div>
+</div>
+
+<div class="panel">
+<h2>Banners cadastrados</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Imagem</th><th>Link</th><th>Posição</th><th>Ativo</th><th>Ações</th></tr>
+</thead>
+<tbody id="bannersTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- EDITAR (produtos já publicados) ---------- -->
+<div class="admin-view" id="viewEditar">
+
+<div class="panel">
+<h2>Produtos publicados</h2>
+<div class="search-filter-row">
+<div class="field">
+<label>Buscar por Ref. Fábrica ou Ref. Loja</label>
+<input type="text" id="editSearchInput" placeholder="Digite a referência...">
+</div>
+<div class="field">
+<label>Categoria</label>
+<select id="editCategoryFilter">
+<option value="">Todas as categorias</option>
+</select>
+</div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Oculto</th><th>Ações</th></tr>
+</thead>
+<tbody id="productsTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- ORDEM DA VITRINE ---------- -->
+<div class="admin-view" id="viewVitrine">
+
+<div class="panel">
+<h2>Ordem da Vitrine</h2>
+<p class="hint-text">Controle a posição dos produtos na vitrine sem alterar cadastro, estoque ou preço. Por padrão, produtos novos entram primeiro (ordem automática).</p>
+
+<div class="vitrine-bulk-actions">
+<button type="button" class="secondary" id="btnPromoFront">Mover promoções para o início</button>
+<button type="button" class="secondary" id="btnPromoBack">Mover promoções para o final</button>
+</div>
+
+<div class="search-filter-row">
+<div class="field">
+<label>Buscar por nome, Ref. Fábrica ou Ref. Loja</label>
+<input type="text" id="vitrineSearchInput" placeholder="Digite o nome ou referência...">
+</div>
+<div class="field">
+<label>Categoria</label>
+<select id="vitrineCategoryFilter"><option value="">Todas as categorias</option></select>
+</div>
+</div>
+
+<div class="vitrine-selection-bar" id="vitrineSelectionBar" style="display:none;">
+<span id="vitrineSelectionCount">0 selecionados</span>
+<button type="button" class="secondary" id="btnBulkFront">Mover selecionados para o início</button>
+<button type="button" class="secondary" id="btnBulkBack">Mover selecionados para o final</button>
+<button type="button" class="secondary" id="btnBulkClear">Limpar seleção</button>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th><input type="checkbox" id="vitrineSelectAll"></th><th>Foto</th><th>Produto</th><th>Categoria</th><th>Promoção</th><th>Status na vitrine</th><th>Ações</th></tr>
+</thead>
+<tbody id="vitrineTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- ACESSOS (visitas ao catálogo, mês a mês) ---------- -->
+<div class="admin-view" id="viewAcessos">
+
+<div class="panel">
+<h2>Acessos ao catálogo</h2>
+<p class="hint-text">Quantidade de visitantes distintos (por IP) em cada mês. Acessos repetidos do mesmo IP não são contados mais de uma vez.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Mês</th><th>Acessos (IPs distintos)</th></tr>
+</thead>
+<tbody id="visitsTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- RELATÓRIO (PDF de produtos ocultos) ---------- -->
+<div class="admin-view" id="viewRelatorio">
+
+<div class="panel">
+<h2>Relatório de produtos ocultos</h2>
+<p class="hint-text">Gera um catálogo em PDF (fotos + valores) apenas com os produtos marcados como "Ocultar produto". Você pode baixar o arquivo ou enviar direto pelo WhatsApp.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th><input type="checkbox" id="selectAllHidden" checked></th><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Tamanho</th><th>Preço</th></tr>
+</thead>
+<tbody id="hiddenProductsTableBody"></tbody>
+</table>
+</div>
+<div class="report-actions">
+<button class="primary" id="btnDownloadPdf">Baixar PDF</button>
+<button class="whatsapp" id="btnShareWhatsapp">Enviar por WhatsApp</button>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</main>
+
+<!-- Lightbox para ampliar fotos -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+<img id="lightboxImg" src="" alt="Foto ampliada">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="js/config.js?v=20260724a"></script>
+<script src="js/supabaseClient.js?v=20260724a"></script>
+<script src="js/admin-teste.js?v=20260927a"></script>
+</body>
+  </html>
