@@ -6,6 +6,7 @@ let allProducts = [];
 let currentGallery = [];
 let currentGalleryIndex = 0;
 let currentProduct = null;
+const IS_TEST_PAGE = /teste\.html/.test(location.pathname);
 
 document.getElementById("storeName").textContent = STORE_NAME;
 document.getElementById("footerStoreName").textContent = STORE_NAME;
@@ -65,6 +66,26 @@ async function loadCategories() {
 // padrão. Com mais de 1000 produtos cadastrados, uma única consulta deixava
 // os produtos mais antigos de fora do catálogo (invisíveis para os
 // clientes). Por isso paginamos com .range() até trazer todas as linhas.
+// Comparador da Ordem da Vitrine (ver colunas featured / vitrine_order em produtos).
+function vitrineCompare(a, b) {
+  if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
+
+  const aOrder = a.vitrine_order;
+  const bOrder = b.vitrine_order;
+  const aHas = aOrder !== null && aOrder !== undefined;
+  const bHas = bOrder !== null && bOrder !== undefined;
+
+  const bandOf = (v, has) => {
+    if (!has) return 1; // automatico
+    return v < 0 ? 0 : 2; // 0 = fixado inicio, 2 = fixado final
+  };
+  const aBand = bandOf(aOrder, aHas);
+  const bBand = bandOf(bOrder, bHas);
+  if (aBand !== bBand) return aBand - bBand;
+  if (aBand === 1) return 0; // automatico: mantem ordem original (created_at desc)
+  return aOrder - bOrder;
+}
+
 async function loadProducts() {
   const pageSize = 1000;
   let data = [];
@@ -74,7 +95,7 @@ async function loadProducts() {
     const { data: page, error } = await supabaseClient
       .from("produtos")
       .select(`
-        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id, combine_com_id,
+        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id, combine_com_id, featured, vitrine_order,
         product_images ( id, path, position )
       `)
       .eq("active", true)
@@ -101,6 +122,14 @@ async function loadProducts() {
       // as fotos ficam no GitHub Pages; o Supabase só guarda o caminho relativo
       .map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path })),
   }));
+
+  // Ordem da Vitrine: destaque primeiro, depois fixados no inicio (mais
+  // negativo = mais para frente), depois ordem automatica (mais novos
+  // primeiro, ja vem assim da consulta acima), depois fixados no final
+  // (mais positivo = mais para tras). Sort estavel preserva a ordem da
+  // consulta (created_at desc) dentro da faixa automatica.
+  // Ordem da Vitrine ainda em teste: so aplica em teste.html ate ser aprovada.
+  if (IS_TEST_PAGE) allProducts.sort(vitrineCompare);
 
   populateSizeFilter(allProducts);
   renderGrid(allProducts);
