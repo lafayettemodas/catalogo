@@ -44,6 +44,7 @@
 <button type="button" class="sidebar-link" data-view="categorias">Categorias</button>
 <button type="button" class="sidebar-link" data-view="banners">Banners</button>
 <button type="button" class="sidebar-link" data-view="editar">Editar</button>
+<button type="button" class="sidebar-link" data-view="vitrine">Ordem da Vitrine</button>
 <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
 <button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
 </nav>
@@ -244,6 +245,48 @@
 <tr><th>Foto</th><th>Ref. Fábrica</th><th>Ref. Loja</th><th>Nome</th><th>Preço</th><th>Categoria</th><th>Promoção</th><th>Oculto</th><th>Ações</th></tr>
 </thead>
 <tbody id="productsTableBody"></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<!-- ---------- ORDEM DA VITRINE ---------- -->
+<div class="admin-view" id="viewVitrine">
+
+<div class="panel">
+<h2>Ordem da Vitrine</h2>
+<p class="hint-text">Controle a posição dos produtos na vitrine sem alterar cadastro, estoque ou preço. Por padrão, produtos novos entram primeiro (ordem automática).</p>
+
+<div class="vitrine-bulk-actions">
+<button type="button" class="secondary" id="btnPromoFront">Mover promoções para o início</button>
+<button type="button" class="secondary" id="btnPromoBack">Mover promoções para o final</button>
+</div>
+
+<div class="search-filter-row">
+<div class="field">
+<label>Buscar por nome, Ref. Fábrica ou Ref. Loja</label>
+<input type="text" id="vitrineSearchInput" placeholder="Digite o nome ou referência...">
+</div>
+<div class="field">
+<label>Categoria</label>
+<select id="vitrineCategoryFilter"><option value="">Todas as categorias</option></select>
+</div>
+</div>
+
+<div class="vitrine-selection-bar" id="vitrineSelectionBar" style="display:none;">
+<span id="vitrineSelectionCount">0 selecionados</span>
+<button type="button" class="secondary" id="btnBulkFront">Mover selecionados para o início</button>
+<button type="button" class="secondary" id="btnBulkBack">Mover selecionados para o final</button>
+<button type="button" class="secondary" id="btnBulkClear">Limpar seleção</button>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th><input type="checkbox" id="vitrineSelectAll"></th><th>Foto</th><th>Produto</th><th>Categoria</th><th>Promoção</th><th>Status na vitrine</th><th>Ações</th></tr>
+</thead>
+<tbody id="vitrineTableBody"></tbody>
 </table>
 </div>
 </div>
