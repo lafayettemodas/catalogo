@@ -467,3 +467,40 @@ button.whatsapp:disabled { opacity: 0.6; cursor: default; transform: none; }
   padding: 4px;
 }
 .combine-remove-btn:hover { color: var(--text); }
+
+
+/* ---------- Ordem da Vitrine ---------- */
+.vitrine-bulk-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.vitrine-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.vitrine-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+button.small { padding: 5px 10px; font-size: 0.76rem; border-radius: 999px; }
+
+.vitrine-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.vitrine-badge-featured { background: #fdf0d5; color: #9a6b00; }
+.vitrine-badge-front { background: #e6f2ff; color: #1a5fb4; }
+.vitrine-badge-back { background: #eee; color: #666; }
+.vitrine-badge-auto { background: #eaf6ec; color: #2f7d42; }
+
+.vitrine-ref { color: var(--muted); font-weight: 400; }
