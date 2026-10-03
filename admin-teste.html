@@ -45,6 +45,7 @@
 <button type="button" class="sidebar-link" data-view="banners">Banners</button>
 <button type="button" class="sidebar-link" data-view="editar">Editar</button>
 <button type="button" class="sidebar-link" data-view="vitrine">Ordem da Vitrine</button>
+<button type="button" class="sidebar-link" data-view="barcode">Ler código de barras</button>
 <button type="button" class="sidebar-link" data-view="acessos">Acessos</button>
 <button type="button" class="sidebar-link" data-view="relatorio">Relatório</button>
 </nav>
@@ -293,6 +294,22 @@
 
 </div>
 
+<!-- ---------- LER CÓDIGO DE BARRAS ---------- -->
+<div class="admin-view" id="viewBarcode">
+
+<div class="panel">
+<h2>Ler código de barras</h2>
+<p class="hint-text">Escaneie a etiqueta com a câmera (ou digite / use leitor USB) para ver qual produto, referência, cor e tamanho estão cadastrados naquele código.</p>
+<div class="row" style="align-items:flex-end;gap:8px;">
+<div class="field"><label>Código</label><input type="text" id="bcReadInput" placeholder="Digite ou escaneie o código" autocomplete="off"></div>
+<button type="button" class="primary" id="bcReadBtn">Escanear com a câmera</button>
+<button type="button" class="secondary" id="bcReadGo">Buscar</button>
+</div>
+<div id="bcResult"></div>
+</div>
+
+</div>
+
 <!-- ---------- ACESSOS (visitas ao catálogo, mês a mês) ---------- -->
 <div class="admin-view" id="viewAcessos">
 
@@ -346,6 +363,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/config.js?v=20260724a"></script>
 <script src="js/supabaseClient.js?v=20260724a"></script>
-<script src="js/admin-teste.js?v=20260927a"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="js/admin-teste.js?v=20261003a"></script>
+<script src="js/barcode-teste.js?v=20261003a"></script>
 </body>
   </html>
