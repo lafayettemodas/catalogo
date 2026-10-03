@@ -50,7 +50,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 
 // ---------- Menu lateral (Incluir / Editar / Acessos / Relatório) ----------
-const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio", banners: "viewBanners", vitrine: "viewVitrine" };
+const VIEW_IDS = { incluir: "viewIncluir", categorias: "viewCategorias", editar: "viewEditar", acessos: "viewAcessos", relatorio: "viewRelatorio", banners: "viewBanners", vitrine: "viewVitrine", barcode: "viewBarcode" };
 
 function showView(view) {
   document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
@@ -64,6 +64,7 @@ function showView(view) {
   if (view === "relatorio") loadHiddenProductsPreview();
   if (view === "banners") loadBanners();
   if (view === "vitrine") openVitrineView();
+  if (view === "barcode" && window.barcodeOpenScanView) window.barcodeOpenScanView();
 }
 
 document.querySelectorAll(".sidebar-link").forEach((btn) => {
@@ -344,6 +345,7 @@ async function editProduct(id) {
   const sortedImages = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
   renderCurrentPhotos(sortedImages);
 
+  if (window.barcodeLoadForProduct) await window.barcodeLoadForProduct(id);
   showView("incluir");
 }
 
@@ -380,6 +382,7 @@ function resetForm() {
   document.getElementById("fieldCombineResults").style.display = "none";
   renderCombineSelected(null);
   document.getElementById("fieldImages").value = "";
+  if (window.barcodeReset) window.barcodeReset();
   document.getElementById("cancelEditBtn").style.display = "none";
   document.getElementById("formError").textContent = "";
   renderCurrentPhotos([]);
@@ -595,6 +598,8 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if (files.length > 0) {
       await uploadImages(productId, files);
     }
+
+    if (window.barcodeSaveHook) await window.barcodeSaveHook(productId);
 
     const wasEditing = !!editingProductId;
     const successMsg = document.getElementById("uploadSuccessMsg").style.display === "block"
