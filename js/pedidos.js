@@ -312,7 +312,11 @@
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${p.numero}</title>
       <style>
         body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:13px}
-        h1{font-size:20px;margin:0 0 2px} .sub{color:#555;margin-bottom:14px}
+        .brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid #ccc;padding-bottom:10px}
+        .brand img{height:56px;width:auto;display:block}
+        .brand .ig{font-size:14px;color:#333;letter-spacing:.02em;text-align:right}
+        .foot{margin-top:22px;text-align:center;font-size:12px;color:#444;border-top:1px solid #ccc;padding-top:8px}
+        .sub{color:#555;margin-bottom:14px}
         table{width:100%;border-collapse:collapse;margin-top:10px}
         th,td{border:1px solid #ccc;padding:5px 7px;text-align:left} th{background:#f0f0f0}
         td.r,th.r{text-align:right}
@@ -320,7 +324,7 @@
         .obs{margin-top:14px}
         .st{display:inline-block;border:1px solid #999;padding:1px 8px;border-radius:10px;font-size:12px}
       </style></head><body>
-      <h1>Lafayette Moda Feminina</h1>
+      <div class="brand"><img src="${esc(new URL("img/logo.png", location.href).href)}" alt="Lafayette Moda Feminina"><div class="ig">Instagram: @lafayettemodas</div></div>
       <div class="sub">Pedido de venda nº <strong>${p.numero}</strong> &nbsp; <span class="st">${esc(STATUS_LABEL[p.status] || p.status)}</span></div>
       <div>Data da venda: <strong>${fmtDate(p.data_venda)}</strong></div>
       <div>Cliente: <strong>${esc(p.cliente_nome || "-")}</strong>${p.cliente_telefone ? " - " + esc(p.cliente_telefone) : ""}</div>
@@ -330,12 +334,17 @@
       </tbody></table>
       <div class="tot">Subtotal: ${money(p.subtotal)}<br>Desconto${p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : ""}: ${money(p.desconto_total)}<br><span class="g">Total: ${money(p.total)}</span></div>
       ${p.observacoes ? `<div class="obs"><strong>Observações:</strong> ${esc(p.observacoes)}</div>` : ""}
+      <div class="foot">Obrigada pela preferência! Siga a gente no Instagram: <strong>@lafayettemodas</strong></div>
       </body></html>`;
     const f = document.createElement("iframe");
     f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
     document.body.appendChild(f);
     f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
-    setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { alert("Não foi possível imprimir: " + e.message); } setTimeout(() => f.remove(), 3000); }, 400);
+    // espera a logo carregar antes de abrir a impressão
+    const img = f.contentDocument.querySelector("img");
+    let fired = false;
+    const go = () => { if (fired) return; fired = true; setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { alert("Não foi possível imprimir: " + e.message); } setTimeout(() => f.remove(), 3000); }, 150); };
+    if (img && !img.complete) { img.onload = go; img.onerror = go; setTimeout(go, 2500); } else go();
   }
 
   // ---------- formulário (novo / editar) ----------
