@@ -362,6 +362,9 @@
   });
   applyRestriction();
 
+  window.bcStartScan = startScan;
+  window.bcFindByCode = findByCode;
+
   function boot() { injectFormBlock(); initScanView(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
