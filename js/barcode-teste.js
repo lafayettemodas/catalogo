@@ -323,6 +323,45 @@
     $("bcReadInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); lookupAndShow($("bcReadInput").value); } });
   }
 
+  // ---------- usuário restrito (somente Pesquisa de produtos) ----------
+  // A segurança real está no banco (RLS + tabela restricted_users); aqui só se
+  // esconde o que o usuário restrito não pode usar.
+  const rstyle = document.createElement("style");
+  rstyle.textContent = `
+  .restricted-user .sidebar-link:not([data-view="barcode"]){display:none !important}
+  .restricted-user .bc-result button[data-edit]{display:none !important}
+  .restricted-user #logoutBtn{display:inline-block !important}
+  `;
+  document.head.appendChild(rstyle);
+
+  const originalShowView = window.showView;
+  if (typeof originalShowView === "function") {
+    window.showView = function (v) {
+      if (document.body.classList.contains("restricted-user")) v = "barcode";
+      return originalShowView(v);
+    };
+  }
+
+  let restrictionChecked = false;
+  async function applyRestriction() {
+    try {
+      const { data: s } = await supabaseClient.auth.getSession();
+      if (!s || !s.session) { document.body.classList.remove("restricted-user"); restrictionChecked = false; return; }
+      if (restrictionChecked) return;
+      const { data } = await supabaseClient.rpc("is_restricted");
+      restrictionChecked = true;
+      if (data === true) {
+        document.body.classList.add("restricted-user");
+        window.showView("barcode");
+      }
+    } catch (e) { /* sem restrição aplicada */ }
+  }
+  supabaseClient.auth.onAuthStateChange((ev, session) => {
+    if (!session) { document.body.classList.remove("restricted-user"); restrictionChecked = false; return; }
+    setTimeout(applyRestriction, 300);
+  });
+  applyRestriction();
+
   function boot() { injectFormBlock(); initScanView(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
