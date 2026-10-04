@@ -328,7 +328,7 @@
   // esconde o que o usuário restrito não pode usar.
   const rstyle = document.createElement("style");
   rstyle.textContent = `
-  .restricted-user .sidebar-link:not([data-view="barcode"]){display:none !important}
+  .restricted-user .sidebar-link:not([data-view="barcode"]):not([data-view="pedidos"]){display:none !important}
   .restricted-user .bc-result button[data-edit]{display:none !important}
   .restricted-user #logoutBtn{display:inline-block !important}
   `;
@@ -337,7 +337,7 @@
   const originalShowView = window.showView;
   if (typeof originalShowView === "function") {
     window.showView = function (v) {
-      if (document.body.classList.contains("restricted-user")) v = "barcode";
+      if (document.body.classList.contains("restricted-user") && v !== "pedidos") v = "barcode";
       return originalShowView(v);
     };
   }
