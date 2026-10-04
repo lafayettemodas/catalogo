@@ -265,36 +265,50 @@
     return v == null ? "-" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
-  async function lookupAndShow(code) {
+  const PROD_FIELDS = "id, name, ref_fabrica, ref_loja, sizes, price, promocao, preco_promocao, category:category_id ( name ), product_images ( path, position )";
+
+  function cardHtml(p, codigo) {
+    const imgs = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
+    const src = imgs.length ? IMAGE_BASE_URL + imgs[0].path : "";
+    const preco = p.promocao && p.preco_promocao ? priceFmt(p.preco_promocao) + " (promoção)" : priceFmt(p.price);
+    return `<div class="bc-result">
+      ${src ? `<img src="${esc(src)}" alt="">` : ""}
+      <dl>
+        <dt>Produto</dt><dd>${esc(p.name)}</dd>
+        <dt>Ref. Fábrica</dt><dd>${esc(p.ref_fabrica || "-")}</dd>
+        <dt>Ref. Loja</dt><dd>${esc(p.ref_loja || "-")}</dd>
+        <dt>Tamanhos disponíveis</dt><dd>${esc((p.sizes && p.sizes.length) ? p.sizes.join(", ") : "-")}</dd>
+        <dt>Categoria</dt><dd>${esc((p.category && p.category.name) || "-")}</dd>
+        <dt>Preço</dt><dd>${esc(preco)}</dd>
+        ${codigo ? `<dt>Código lido</dt><dd>${esc(codigo)}</dd>` : ""}
+      </dl>
+      <div style="width:100%"><button type="button" class="secondary" data-edit="${esc(p.id)}">Abrir cadastro do produto</button></div>
+    </div>`;
+  }
+
+  // Pesquisa por código de barras OU por Ref. Fábrica / Ref. Loja
+  async function lookupAndShow(term) {
     const out = $("bcResult");
-    code = normalize(code);
-    if (!code) return;
+    term = normalize(term);
+    if (!term) return;
     out.innerHTML = '<p class="hint-text">Buscando...</p>';
     try {
-      const rows = await findByCode(code);
-      if (!rows.length) {
-        out.innerHTML = `<div class="bc-notfound"><strong>Código não cadastrado:</strong> <code>${esc(code)}</code><br>Nenhum produto está vinculado a este código.</div>`;
+      const byCode = await findByCode(term);
+      const safe = term.replace(/[,()*%\\]/g, "");
+      const { data: byRef, error } = await supabaseClient
+        .from("produtos").select(PROD_FIELDS)
+        .or("ref_fabrica.ilike.*" + safe + "*,ref_loja.ilike.*" + safe + "*")
+        .limit(30);
+      if (error) throw error;
+      const seen = new Set();
+      const cards = [];
+      byCode.forEach((r) => { if (r.produto && !seen.has(r.produto.id)) { seen.add(r.produto.id); cards.push(cardHtml(r.produto, r.codigo)); } });
+      (byRef || []).forEach((p) => { if (!seen.has(p.id)) { seen.add(p.id); cards.push(cardHtml(p, null)); } });
+      if (!cards.length) {
+        out.innerHTML = `<div class="bc-notfound"><strong>Nada encontrado para:</strong> <code>${esc(term)}</code><br>Nenhum código de barras, Ref. Fábrica ou Ref. Loja corresponde.</div>`;
         return;
       }
-      out.innerHTML = rows.map((r) => {
-        const p = r.produto || {};
-        const imgs = (p.product_images || []).slice().sort((a, b) => a.position - b.position);
-        const src = imgs.length ? IMAGE_BASE_URL + imgs[0].path : "";
-        const preco = p.promocao && p.preco_promocao ? priceFmt(p.preco_promocao) + " (promoção)" : priceFmt(p.price);
-        return `<div class="bc-result">
-          ${src ? `<img src="${esc(src)}" alt="">` : ""}
-          <dl>
-            <dt>Produto</dt><dd>${esc(p.name)}</dd>
-            <dt>Ref. Fábrica</dt><dd>${esc(p.ref_fabrica || "-")}</dd>
-            <dt>Ref. Loja</dt><dd>${esc(p.ref_loja || "-")}</dd>
-            <dt>Tamanhos disponíveis</dt><dd>${esc((p.sizes && p.sizes.length) ? p.sizes.join(", ") : "-")}</dd>
-            <dt>Categoria</dt><dd>${esc((p.category && p.category.name) || "-")}</dd>
-            <dt>Preço</dt><dd>${esc(preco)}</dd>
-            <dt>Código lido</dt><dd>${esc(r.codigo)}</dd>
-          </dl>
-          <div style="width:100%"><button type="button" class="secondary" data-edit="${esc(p.id)}">Abrir cadastro do produto</button></div>
-        </div>`;
-      }).join("");
+      out.innerHTML = (cards.length > 1 ? `<p class="hint-text" style="margin-top:12px">${cards.length} produtos encontrados</p>` : "") + cards.join("");
       out.querySelectorAll("button[data-edit]").forEach((b) => b.addEventListener("click", () => editProduct(b.dataset.edit)));
     } catch (e) {
       out.innerHTML = `<div class="bc-notfound">Erro na consulta: ${esc(e.message)}</div>`;
