@@ -170,6 +170,18 @@
     $("pvSave").addEventListener("click", saveOrder);
   }
 
+  // Marca as tabelas para virarem "cartões" no celular (rótulos vêm do cabeçalho)
+  function cardify(tbody) {
+    const table = tbody.closest("table"); if (!table) return;
+    table.classList.add("pv-cards");
+    const heads = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      const tds = [...tr.children];
+      if (tds.length === 1 && tds[0].hasAttribute("colspan")) return;
+      tds.forEach((td, i) => td.setAttribute("data-label", heads[i] || ""));
+    });
+  }
+
   // ---------- navegação interna ----------
   function showList() {
     $("pvFormPanel").style.display = "none";
@@ -207,6 +219,7 @@
         </div></td>
       </tr>`).join("");
     body.querySelectorAll("button[data-a]").forEach((b) => b.addEventListener("click", () => rowAction(b.dataset.a, b.dataset.id)));
+    cardify(body);
   }
 
   async function rowAction(a, id) {
@@ -287,6 +300,7 @@
     const o = await fetchOrder(id);
     viewing = o;
     $("pvViewBody").innerHTML = orderDetailsHtml(o.pedido, o.itens);
+    { const vt = $("pvViewBody").querySelector("tbody"); if (vt) cardify(vt); }
     $("pvListPanel").style.display = "none";
     $("pvFormPanel").style.display = "none";
     $("pvViewPanel").style.display = "";
@@ -458,6 +472,7 @@
       const n = parseInt(inp.value, 10); items[Number(inp.dataset.q)].quantidade = n && n > 0 ? n : 1; renderItems();
     }));
     body.querySelectorAll("button[data-r]").forEach((b) => b.addEventListener("click", () => { items.splice(Number(b.dataset.r), 1); renderItems(); }));
+    cardify(body);
     const t = totals();
     $("pvSubtotal").textContent = money(t.subtotal);
     $("pvDescTotal").textContent = money(t.desc);
