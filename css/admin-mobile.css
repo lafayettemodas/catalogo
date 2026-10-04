@@ -1,0 +1,155 @@
+/* ==========================================================
+   Painel admin - ajustes para celular (aditivo, nao altera desktop)
+   Carregado depois de admin.css
+   ========================================================== */
+
+/* Tabelas viram "cartoes" (classe aplicada pelo JS em Pedido de Venda) */
+@media (max-width: 760px) {
+
+  html { -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; }
+
+  /* Cabecalho compacto */
+  header { padding: 10px 14px !important; }
+  header h1 { font-size: 1rem !important; }
+  .header-brand { gap: 10px !important; }
+  .header-brand .site-logo { height: 28px !important; }
+
+  /* Conteudo ocupa a tela toda */
+  main { margin: 12px auto !important; padding: 0 10px 40px !important; max-width: 100% !important; }
+  .panel { padding: 14px !important; border-radius: 10px; margin-bottom: 14px !important; }
+  .panel h2 { font-size: 1.05rem !important; }
+  #loginScreen { margin: 40px 14px !important; padding: 24px 18px !important; max-width: none !important; }
+
+  /* Menu lateral vira faixa horizontal rolavel no topo */
+  .admin-layout { display: block !important; }
+  .admin-sidebar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 8px !important;
+    margin-bottom: 12px !important;
+    border-radius: 10px;
+    scrollbar-width: none;
+  }
+  .admin-sidebar::-webkit-scrollbar { display: none; }
+  .sidebar-link {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    white-space: nowrap !important;
+    padding: 10px 14px !important;
+    font-size: 0.88rem !important;
+    min-height: 40px;
+  }
+  .admin-content { width: 100% !important; min-width: 0 !important; }
+
+  /* Campos em coluna, sem zoom do iOS */
+  .row { flex-direction: column !important; gap: 0 !important; }
+  .row .field { min-width: 0 !important; width: 100% !important; flex: none !important; }
+  .field input, .field select, .field textarea,
+  input[type="text"], input[type="number"], input[type="date"], select, textarea { font-size: 16px !important; }
+  .field input, .field select { min-height: 44px; }
+  .search-filter-row, .promo-row { flex-direction: column !important; gap: 0 !important; }
+  .field-narrow { max-width: none !important; width: 100% !important; }
+
+  /* Botoes faceis de tocar */
+  button.primary, button.secondary, button.danger, button.whatsapp { min-height: 44px; }
+  .report-actions { flex-direction: column !important; }
+  .report-actions button { width: 100% !important; }
+  .inline-cat-add { flex-direction: column !important; }
+
+  /* Tabelas comuns: rolagem horizontal */
+  .table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; margin-left: -4px; margin-right: -4px; }
+  .table-wrap table:not(.pv-cards) { min-width: 640px; }
+  td img { width: 40px !important; height: 52px !important; }
+
+  /* Fotos atuais do produto */
+  .current-photos-grid { gap: 8px !important; }
+
+  /* ---- Codigo de barras / pesquisa ---- */
+  .bc-row { flex-direction: column !important; align-items: stretch !important; }
+  .bc-row .field { flex: none !important; width: 100% !important; }
+  .bc-row button { width: 100%; min-height: 44px; }
+  .bc-result { flex-direction: column; }
+  .bc-result img { width: 100%; max-width: 220px; margin: 0 auto; }
+  .bc-result dl { grid-template-columns: 1fr; gap: 0; }
+  .bc-result dt { margin-top: 8px; font-size: 12px; text-transform: uppercase; }
+  .bc-result button[data-edit] { width: 100%; }
+  .bc-item { flex-wrap: wrap; }
+
+  /* ---- Estoque no cadastro ---- */
+  #estGrid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .est-box input { width: 56px; }
+
+  /* ---- Pedido de venda ---- */
+  .pv-toolbar { flex-direction: column; align-items: stretch !important; }
+  .pv-toolbar .field { min-width: 0 !important; width: 100%; }
+  .pv-toolbar button { width: 100%; }
+  .pv-row { flex-direction: column; align-items: stretch !important; gap: 10px !important; }
+  .pv-row .field { flex: none !important; width: 100% !important; }
+  .pv-row button { width: 100%; }
+  .pv-box { padding: 10px; }
+  .pv-qty { width: 72px; min-height: 40px; }
+  .pv-totals { text-align: right; }
+  .pv-totals .pv-total { font-size: 1.25rem; }
+
+  /* Tabelas de pedido como cartoes */
+  table.pv-cards { min-width: 0 !important; width: 100%; border-collapse: separate; border-spacing: 0; }
+  table.pv-cards thead { display: none; }
+  table.pv-cards tbody, table.pv-cards tr { display: block; width: 100%; }
+  table.pv-cards tr {
+    border: 1px solid #e7e2da;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+  table.pv-cards td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px dashed #eee !important;
+    padding: 6px 0 !important;
+    text-align: right;
+    font-size: 0.9rem;
+  }
+  table.pv-cards td:last-child { border-bottom: none !important; }
+  table.pv-cards td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #8a8177;
+    text-align: left;
+  }
+  table.pv-cards td[colspan] { display: block; text-align: center; }
+  table.pv-cards td[data-label="Ações"],
+  table.pv-cards td[data-label=""] { display: block; text-align: left; }
+  table.pv-cards td[data-label="Ações"]::before { display: none; }
+  .pv-actions { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .pv-actions button { min-height: 42px; padding: 8px 6px; width: 100%; }
+  .pv-badge { font-size: 12px; }
+
+  /* Ordem da vitrine */
+  .vitrine-bulk-actions { flex-direction: column !important; }
+  .vitrine-bulk-actions button { width: 100%; }
+  .vitrine-selection-bar { flex-direction: column !important; align-items: stretch !important; }
+  .vitrine-selection-bar button { width: 100%; }
+  .vitrine-actions { flex-wrap: wrap; }
+}
+
+/* Telas muito estreitas */
+@media (max-width: 380px) {
+  .panel { padding: 12px !important; }
+  .sidebar-link { padding: 9px 11px !important; font-size: 0.84rem !important; }
+}
