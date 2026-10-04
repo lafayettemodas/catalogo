@@ -585,7 +585,7 @@
     const prevShow = window.showView;
     window.showView = function (v) {
       const r = prevShow(v);
-      if (v === "pedidos" && !document.body.classList.contains("restricted-user")) showList();
+      if (v === "pedidos") showList();
       return r;
     };
   }
