@@ -126,7 +126,7 @@
   async function findByCode(code) {
     const { data, error } = await supabaseClient
       .from("produto_codigos")
-      .select("id, codigo, cor, tamanho, produto_id, produto:produto_id ( id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, category:category_id ( name ), product_images ( path, position ) )")
+      .select("id, codigo, cor, tamanho, produto_id, produto:produto_id ( id, name, ref_fabrica, ref_loja, sizes, price, promocao, preco_promocao, category:category_id ( name ), product_images ( path, position ) )")
       .in("codigo", candidates(code));
     if (error) throw error;
     return data || [];
@@ -287,6 +287,7 @@
             <dt>Produto</dt><dd>${esc(p.name)}</dd>
             <dt>Ref. Fábrica</dt><dd>${esc(p.ref_fabrica || "-")}</dd>
             <dt>Ref. Loja</dt><dd>${esc(p.ref_loja || "-")}</dd>
+            <dt>Tamanhos disponíveis</dt><dd>${esc((p.sizes && p.sizes.length) ? p.sizes.join(", ") : "-")}</dd>
             <dt>Categoria</dt><dd>${esc((p.category && p.category.name) || "-")}</dd>
             <dt>Preço</dt><dd>${esc(preco)}</dd>
             <dt>Código lido</dt><dd>${esc(r.codigo)}</dd>
