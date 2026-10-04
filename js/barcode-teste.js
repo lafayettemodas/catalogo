@@ -145,22 +145,15 @@
       <div class="bc-row">
         <div class="field" style="flex:2 1 200px"><input type="text" id="bcInput" placeholder="Digite ou escaneie o código" inputmode="text" autocomplete="off"></div>
         <button type="button" class="secondary" id="bcScanBtn">Escanear com a câmera</button>
-      </div>
-      <div class="bc-row" style="margin-top:8px">
-        <div class="field"><label>Cor deste código</label><select id="bcCor"></select></div>
-        <div class="field"><label>Tamanho deste código</label><select id="bcTam"></select></div>
         <button type="button" class="primary" id="bcAddBtn">Adicionar código</button>
       </div>
       <div class="bc-list" id="bcList"></div>
-      <div class="bc-hint">Cada etiqueta (cor + tamanho) tem seu próprio código. Aceita códigos de qualquer fornecedor/marca. Os códigos são salvos ao clicar em "Salvar produto".</div>`;
+      <div class="bc-hint">O código serve para achar este produto. Aceita códigos de qualquer fornecedor/marca; pode cadastrar mais de um por produto. Os códigos são salvos ao clicar em "Salvar produto".</div>`;
     colorsRow.insertAdjacentElement("afterend", box);
 
-    $("bcScanBtn").addEventListener("click", () => startScan((code) => { $("bcInput").value = code; refreshSelects(); $("bcInput").focus(); autoAddIfSingle(); }));
+    $("bcScanBtn").addEventListener("click", () => startScan((code) => { $("bcInput").value = code; $("bcInput").focus(); addCode(); }));
     $("bcAddBtn").addEventListener("click", addCode);
     $("bcInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addCode(); } });
-    $("fieldColors").addEventListener("input", refreshSelects);
-    $("fieldSizes").addEventListener("input", refreshSelects);
-    refreshSelects();
     renderList();
   }
 
@@ -201,7 +194,7 @@
       alert("Erro ao verificar o código: " + e.message);
       return;
     }
-    codes.push({ codigo: code, cor: $("bcCor").value || null, tamanho: $("bcTam").value || null });
+    codes.push({ codigo: code, cor: null, tamanho: null });
     $("bcInput").value = "";
     renderList();
   }
@@ -217,7 +210,7 @@
     el.innerHTML = codes.map((c, i) => `
       <div class="bc-item">
         <code>${esc(c.codigo)}</code>
-        <span class="bc-meta">${esc([c.cor && "Cor: " + c.cor, c.tamanho && "Tam: " + c.tamanho].filter(Boolean).join(" | ") || "sem cor/tamanho")}</span>
+        <span class="bc-meta"></span>
         <button type="button" data-i="${i}" title="Remover">&times;</button>
       </div>`).join("");
     el.querySelectorAll("button[data-i]").forEach((b) => b.addEventListener("click", () => { codes.splice(Number(b.dataset.i), 1); renderList(); }));
@@ -294,8 +287,6 @@
             <dt>Produto</dt><dd>${esc(p.name)}</dd>
             <dt>Ref. Fábrica</dt><dd>${esc(p.ref_fabrica || "-")}</dd>
             <dt>Ref. Loja</dt><dd>${esc(p.ref_loja || "-")}</dd>
-            <dt>Cor</dt><dd>${esc(r.cor || "-")}</dd>
-            <dt>Tamanho</dt><dd>${esc(r.tamanho || "-")}</dd>
             <dt>Categoria</dt><dd>${esc((p.category && p.category.name) || "-")}</dd>
             <dt>Preço</dt><dd>${esc(preco)}</dd>
             <dt>Código lido</dt><dd>${esc(r.codigo)}</dd>
