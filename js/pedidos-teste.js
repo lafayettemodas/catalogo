@@ -312,9 +312,9 @@
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${p.numero}</title>
       <style>
         body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:13px}
-        .brand{text-align:center;margin-bottom:14px;border-bottom:1px solid #ccc;padding-bottom:10px}
-        .brand img{height:56px;width:auto;display:block;margin:0 auto 4px}
-        .brand .ig{font-size:13px;color:#333;letter-spacing:.02em}
+        .brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid #ccc;padding-bottom:10px}
+        .brand img{height:56px;width:auto;display:block}
+        .brand .ig{font-size:14px;color:#333;letter-spacing:.02em;text-align:right}
         .foot{margin-top:22px;text-align:center;font-size:12px;color:#444;border-top:1px solid #ccc;padding-top:8px}
         .sub{color:#555;margin-bottom:14px}
         table{width:100%;border-collapse:collapse;margin-top:10px}
