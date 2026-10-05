@@ -22,6 +22,7 @@
   let editingId = null;    // id do pedido em edição (null = novo)
   let editingNumero = null;
   let picked = null;       // produto selecionado para adicionar
+  let variantHint = null;  // variante (cor/tamanho) vinda do código de barras lido
   let pickedStock = {};    // estoque do produto selecionado: "cor|tam" -> qtd
 
   // ---------- estilos ----------
@@ -387,6 +388,7 @@
       const found = new Map();
       // 1) código de barras
       const byCode = await window.bcFindByCode(term);
+      variantHint = byCode.length ? byCode[0] : null;
       const ids = [...new Set(byCode.map((r) => r.produto_id))];
       if (ids.length) {
         const { data } = await supabaseClient.from("produtos").select(PF).in("id", ids);
@@ -429,6 +431,10 @@
     $("pvStockHint").textContent = "";
     const { data } = await supabaseClient.from("estoque").select("cor, tamanho, quantidade").eq("produto_id", p.id);
     (data || []).forEach((e) => { pickedStock[e.cor + "|" + e.tamanho] = e.quantidade; });
+    if (variantHint && variantHint.produto_id === p.id) {
+      if (variantHint.cor && [...$("pvCor").options].some((o) => o.value === variantHint.cor)) $("pvCor").value = variantHint.cor;
+      if (variantHint.tamanho && [...$("pvTam").options].some((o) => o.value === variantHint.tamanho)) $("pvTam").value = variantHint.tamanho;
+    }
     updateStockHint();
   }
 
@@ -604,8 +610,6 @@
   // ---------- boot ----------
   function boot() {
     injectShell();
-    injectStockBox();
-    chainHooks();
     const prevShow = window.showView;
     window.showView = function (v) {
       const r = prevShow(v);
