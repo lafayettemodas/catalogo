@@ -255,17 +255,21 @@
   }
 
   window.barcodeReset = function () {
+    window.__vgTok = (window.__vgTok||0)+1;
     vars = new Map(); loadedCodes = []; loadedKeys = new Set();
-    injectBlock(); renderGrid();
+    injectBlock(); { const g0 = $("vgGrid"); if (g0) g0.innerHTML = ""; } renderGrid();
   };
 
   window.barcodeLoadForProduct = async function (productId) {
     injectBlock();
+    const tok = window.__vgTok = (window.__vgTok||0)+1;
     vars = new Map(); loadedCodes = []; loadedKeys = new Set();
+    { const g0 = $("vgGrid"); if (g0) g0.innerHTML = ""; }
     const [c, e] = await Promise.all([
       supabaseClient.from("produto_codigos").select("codigo, cor, tamanho").eq("produto_id", productId),
       supabaseClient.from("estoque").select("cor, tamanho, quantidade").eq("produto_id", productId)
     ]);
+    if (tok !== window.__vgTok) return;
     (c.data || []).forEach((d) => {
       const k = keyOf(d.cor, d.tamanho); const v = vars.get(k) || { codigo: "", estoque: "" };
       v.codigo = d.codigo; vars.set(k, v); loadedCodes.push(d.codigo); loadedKeys.add(k);
