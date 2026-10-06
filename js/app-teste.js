@@ -94,7 +94,7 @@ async function loadProducts() {
     const { data: page, error } = await supabaseClient
       .from("produtos")
       .select(`
-        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, category_id, combine_com_id, featured, vitrine_order,
+        id, name, ref_loja, ref_fabrica, promocao, preco_promocao, description, price, sizes, colors, tamanhos_disponiveis, category_id, combine_com_id, featured, vitrine_order,
         product_images ( id, path, position )
       `)
       .eq("active", true)
@@ -117,6 +117,8 @@ async function loadProducts() {
 
   allProducts = data.map((p) => ({
     ...p,
+    // mostra so os tamanhos com estoque (sem dado de estoque = mostra todos)
+    sizes: (p.tamanhos_disponiveis == null || !(p.sizes || []).length) ? p.sizes : [...new Set(p.sizes.map((x) => String(x).trim()))].filter((x) => p.tamanhos_disponiveis.includes(x)),
     product_images: (p.product_images || [])
       .sort((a, b) => a.position - b.position)
       // as fotos ficam no GitHub Pages; o Supabase só guarda o caminho relativo
