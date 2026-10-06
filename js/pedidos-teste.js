@@ -95,7 +95,7 @@
         <h2 id="pvFormTitle">Novo pedido de venda</h2>
         <div class="pv-row">
           <div class="field"><label>Data da venda</label><input type="date" id="pvData"></div>
-          <div class="field" style="flex:2 1 220px"><label>Cliente (opcional)</label><input type="text" id="pvCliente" placeholder="Nome do cliente"></div>
+          <div class="field" style="flex:2 1 220px"><label>Cliente (opcional)</label><input type="text" id="pvCliente" placeholder="Nome do cliente" style="text-transform:uppercase"></div>
           <div class="field"><label>Telefone / WhatsApp (opcional)</label><input type="text" id="pvTelefone" placeholder="(00) 00000-0000"></div>
         </div>
 
@@ -126,9 +126,8 @@
         </table></div>
 
         <div class="pv-row" style="margin-top:12px">
-          <div class="field" style="flex:0 1 170px"><label>Desconto</label>
-            <select id="pvDescTipo"><option value="valor">Valor (R$)</option><option value="percentual">Percentual (%)</option></select></div>
-          <div class="field" style="flex:0 1 130px"><label>Valor do desconto</label><input type="number" id="pvDescValor" step="0.01" min="0" value="0"></div>
+          <select id="pvDescTipo" style="display:none"><option value="percentual">Percentual (%)</option></select>
+          <div class="field" style="flex:0 1 130px"><label>Desconto (%)</label><input type="number" id="pvDescValor" step="0.01" min="0" max="100" value="0"></div>
           <div class="field"><label>Forma de pagamento</label><select id="pvPagto"></select></div>
         </div>
         <div class="field" style="margin-top:10px"><label>Observações</label><textarea id="pvObs"></textarea></div>
@@ -354,7 +353,7 @@
     $("pvError").textContent = "";
     $("pvSearch").value = ""; $("pvPick").innerHTML = ""; $("pvProd").style.display = "none";
     $("pvData").value = todayStr(); $("pvCliente").value = ""; $("pvTelefone").value = "";
-    $("pvDescTipo").value = "valor"; $("pvDescValor").value = "0"; $("pvPagto").value = ""; $("pvObs").value = "";
+    $("pvDescTipo").value = "percentual"; $("pvDescValor").value = "0"; $("pvPagto").value = ""; $("pvObs").value = "";
     $("pvFormTitle").textContent = "Novo pedido de venda";
     if (id) {
       const { pedido, itens } = await fetchOrder(id);
@@ -363,7 +362,7 @@
       $("pvFormTitle").textContent = "Editar pedido de venda nº " + pedido.numero;
       $("pvData").value = String(pedido.data_venda).slice(0, 10);
       $("pvCliente").value = pedido.cliente_nome || ""; $("pvTelefone").value = pedido.cliente_telefone || "";
-      $("pvDescTipo").value = pedido.desconto_tipo; $("pvDescValor").value = pedido.desconto_valor;
+      $("pvDescTipo").value = "percentual"; $("pvDescValor").value = pedido.desconto_tipo === "percentual" ? pedido.desconto_valor : (Number(pedido.subtotal) > 0 ? Math.round(Number(pedido.desconto_valor) / Number(pedido.subtotal) * 10000) / 100 : 0);
       $("pvPagto").value = pedido.forma_pagamento || ""; $("pvObs").value = pedido.observacoes || "";
       items = itens.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit) }));
     }
@@ -503,7 +502,7 @@
     const t = totals();
     const header = {
       data_venda: $("pvData").value,
-      cliente_nome: $("pvCliente").value.trim() || null,
+      cliente_nome: $("pvCliente").value.trim().toUpperCase() || null,
       cliente_telefone: $("pvTelefone").value.trim() || null,
       forma_pagamento: $("pvPagto").value,
       observacoes: $("pvObs").value.trim() || null,
