@@ -1,0 +1,45 @@
+/* Painel admin - tablet (761px a 1100px). Aditivo; celular fica em admin-mobile.css */
+@media (min-width: 761px) and (max-width: 1100px) {
+  main { margin: 18px auto !important; padding: 0 16px 48px !important; max-width: 100% !important; }
+  header { padding: 14px 18px !important; }
+  .admin-layout { gap: 16px !important; }
+  .admin-sidebar { flex: 0 0 150px !important; top: 16px !important; padding: 8px !important; }
+  .sidebar-link { padding: 12px !important; font-size: 0.9rem !important; min-height: 44px; }
+  .admin-content { min-width: 0 !important; }
+  .panel { padding: 18px !important; }
+  .row .field { min-width: 200px !important; }
+  .field input, .field select, .field textarea { font-size: 16px !important; min-height: 44px; }
+  .field textarea { min-height: 80px; }
+  button.primary, button.secondary, button.danger, button.whatsapp { min-height: 44px; }
+  button.small { min-height: 36px; }
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  table { min-width: 600px !important; }
+  td img { width: 42px !important; height: 54px !important; }
+  .search-filter-row .field { max-width: none !important; }
+  .report-actions button { flex: 1 1 200px; }
+  .vitrine-actions { flex-wrap: wrap; }
+  .vg-head, .vg-row { grid-template-columns: minmax(100px, 1fr) minmax(170px, 3fr) 84px !important; }
+  .vg-code input, .vg-est input { font-size: 16px !important; min-height: 44px; }
+  .vg-code button { min-height: 44px; }
+  .bc-row .field { flex: 1 1 220px; }
+  .bc-row button { min-height: 44px; }
+  .bc-var { overflow-x: auto; }
+  .pv-toolbar, .pv-row { flex-wrap: wrap !important; }
+  .pv-row .field { flex: 1 1 200px !important; }
+  .pv-actions { flex-wrap: wrap; }
+  .pv-actions button, .pv-row button, .pv-toolbar button { min-height: 42px; }
+}
+
+/* Tablet em pe: menu vira faixa horizontal no topo */
+@media (min-width: 761px) and (max-width: 900px) {
+  .admin-layout { display: block !important; }
+  .admin-sidebar {
+    display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    width: 100% !important; position: sticky !important; top: 0 !important; z-index: 20;
+    margin-bottom: 14px !important; scrollbar-width: none;
+  }
+  .admin-sidebar::-webkit-scrollbar { display: none; }
+  .sidebar-link { flex: 0 0 auto !important; width: auto !important; white-space: nowrap; text-align: center; padding: 10px 16px !important; }
+  .admin-content { width: 100% !important; }
+}
