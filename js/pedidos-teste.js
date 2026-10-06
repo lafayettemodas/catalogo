@@ -114,6 +114,7 @@
               <div class="field"><label>Tamanho</label><select id="pvTam"></select></div>
               <div class="field" style="flex:0 1 90px"><label>Quantidade</label><input type="number" id="pvQtd" min="1" value="1"></div>
               <div class="field" style="flex:0 1 130px"><label>Preço unit. (R$)</label><input type="number" id="pvPreco" step="0.01" min="0"></div>
+              <div class="field" style="flex:0 1 110px"><label>Desc. (%)</label><input type="number" id="pvDescItem" step="0.01" min="0" max="100" value="0"></div>
               <button type="button" class="primary" id="pvAddItem">Adicionar ao pedido</button>
             </div>
             <div class="pv-stock-hint" id="pvStockHint"></div>
@@ -121,7 +122,7 @@
         </div>
 
         <div class="table-wrap"><table>
-          <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Subtotal</th><th></th></tr></thead>
+          <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Desc. (%)</th><th>Subtotal</th><th></th></tr></thead>
           <tbody id="pvItems"></tbody>
         </table></div>
 
@@ -283,8 +284,8 @@
       <strong>Cliente:</strong> ${esc(p.cliente_nome || "-")} ${p.cliente_telefone ? " - " + esc(p.cliente_telefone) : ""}<br>
       <strong>Forma de pagamento:</strong> ${esc(p.forma_pagamento || "-")}</p>
       <div class="table-wrap"><table>
-        <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Subtotal</th></tr></thead>
-        <tbody>${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td>${i.quantidade}</td><td>${money(i.preco_unit)}</td><td>${money(i.total)}</td></tr>`).join("")}</tbody>
+        <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Desc. (%)</th><th>Subtotal</th></tr></thead>
+        <tbody>${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td>${i.quantidade}</td><td>${money(i.preco_unit)}</td><td>${Number(i.desconto_pct) || 0}%</td><td>${money(i.total)}</td></tr>`).join("")}</tbody>
       </table></div>
       <div class="pv-totals">
         <div>Subtotal: <strong>${money(p.subtotal)}</strong></div>
@@ -329,8 +330,8 @@
       <div>Data da venda: <strong>${fmtDate(p.data_venda)}</strong></div>
       <div>Cliente: <strong>${esc(p.cliente_nome || "-")}</strong>${p.cliente_telefone ? " - " + esc(p.cliente_telefone) : ""}</div>
       <div>Forma de pagamento: <strong>${esc(p.forma_pagamento || "-")}</strong></div>
-      <table><thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tam.</th><th class="r">Qtd</th><th class="r">Preço unit.</th><th class="r">Subtotal</th></tr></thead><tbody>
-      ${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td class="r">${i.quantidade}</td><td class="r">${money(i.preco_unit)}</td><td class="r">${money(i.total)}</td></tr>`).join("")}
+      <table><thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tam.</th><th class="r">Qtd</th><th class="r">Preço unit.</th><th class="r">Desc. (%)</th><th class="r">Subtotal</th></tr></thead><tbody>
+      ${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td class="r">${i.quantidade}</td><td class="r">${money(i.preco_unit)}</td><td class="r">${Number(i.desconto_pct) || 0}%</td><td class="r">${money(i.total)}</td></tr>`).join("")}
       </tbody></table>
       <div class="tot">Subtotal: ${money(p.subtotal)}<br>Desconto${p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : ""}: ${money(p.desconto_total)}<br><span class="g">Total: ${money(p.total)}</span></div>
       ${p.observacoes ? `<div class="obs"><strong>Observações:</strong> ${esc(p.observacoes)}</div>` : ""}
@@ -364,7 +365,7 @@
       $("pvCliente").value = pedido.cliente_nome || ""; $("pvTelefone").value = pedido.cliente_telefone || "";
       $("pvDescTipo").value = "percentual"; $("pvDescValor").value = pedido.desconto_tipo === "percentual" ? pedido.desconto_valor : (Number(pedido.subtotal) > 0 ? Math.round(Number(pedido.desconto_valor) / Number(pedido.subtotal) * 10000) / 100 : 0);
       $("pvPagto").value = pedido.forma_pagamento || ""; $("pvObs").value = pedido.observacoes || "";
-      items = itens.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit) }));
+      items = itens.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit), desconto_pct: Number(i.desconto_pct) || 0 }));
     }
     $("pvListPanel").style.display = "none";
     $("pvViewPanel").style.display = "none";
@@ -456,15 +457,18 @@
     const qtd = parseInt($("pvQtd").value, 10);
     if (!qtd || qtd < 1) { alert("Informe uma quantidade válida."); return; }
     const preco = round2(parseFloat($("pvPreco").value) || 0);
-    const ex = items.find((i) => i.produto_id === picked.id && i.cor === cor && i.tamanho === tam && i.preco_unit === preco);
+    const dItem = Math.min(100, Math.max(0, round2(parseFloat($("pvDescItem").value) || 0)));
+    const ex = items.find((i) => i.produto_id === picked.id && i.cor === cor && i.tamanho === tam && i.preco_unit === preco && (Number(i.desconto_pct) || 0) === dItem);
     if (ex) ex.quantidade += qtd;
-    else items.push({ produto_id: picked.id, nome: picked.name, ref_fabrica: picked.ref_fabrica, ref_loja: picked.ref_loja, cor, tamanho: tam, quantidade: qtd, preco_unit: preco });
-    picked = null; $("pvProd").style.display = "none"; $("pvSearch").value = ""; $("pvSearch").focus();
+    else items.push({ produto_id: picked.id, nome: picked.name, ref_fabrica: picked.ref_fabrica, ref_loja: picked.ref_loja, cor, tamanho: tam, quantidade: qtd, preco_unit: preco, desconto_pct: dItem });
+    $("pvDescItem").value = "0"; picked = null; $("pvProd").style.display = "none"; $("pvSearch").value = ""; $("pvSearch").focus();
     renderItems();
   }
 
+  function lineTotal(i) { return round2(i.quantidade * i.preco_unit * (1 - (Number(i.desconto_pct) || 0) / 100)); }
+
   function totals() {
-    const subtotal = round2(items.reduce((s, i) => s + i.quantidade * i.preco_unit, 0));
+    const subtotal = round2(items.reduce((s, i) => s + lineTotal(i), 0));
     const tipo = $("pvDescTipo").value;
     let dv = Math.max(0, parseFloat($("pvDescValor").value) || 0);
     let desc = tipo === "percentual" ? subtotal * Math.min(dv, 100) / 100 : Math.min(dv, subtotal);
@@ -474,16 +478,19 @@
 
   function renderItems() {
     const body = $("pvItems");
-    if (!items.length) body.innerHTML = '<tr><td colspan="8">Nenhum item adicionado.</td></tr>';
+    if (!items.length) body.innerHTML = '<tr><td colspan="9">Nenhum item adicionado.</td></tr>';
     else body.innerHTML = items.map((i, idx) => `
       <tr>
         <td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td>
         <td><input type="number" class="pv-qty" min="1" value="${i.quantidade}" data-q="${idx}"></td>
-        <td>${money(i.preco_unit)}</td><td>${money(i.quantidade * i.preco_unit)}</td>
+        <td>${money(i.preco_unit)}</td><td><input type="number" class="pv-qty" min="0" max="100" step="0.01" value="${Number(i.desconto_pct) || 0}" data-d="${idx}"></td><td>${money(lineTotal(i))}</td>
         <td><button type="button" class="secondary" data-r="${idx}" title="Remover">&times;</button></td>
       </tr>`).join("");
     body.querySelectorAll("input[data-q]").forEach((inp) => inp.addEventListener("change", () => {
       const n = parseInt(inp.value, 10); items[Number(inp.dataset.q)].quantidade = n && n > 0 ? n : 1; renderItems();
+    }));
+    body.querySelectorAll("input[data-d]").forEach((inp) => inp.addEventListener("change", () => {
+      const n = parseFloat(inp.value); items[Number(inp.dataset.d)].desconto_pct = Math.min(100, Math.max(0, isNaN(n) ? 0 : round2(n))); renderItems();
     }));
     body.querySelectorAll("button[data-r]").forEach((b) => b.addEventListener("click", () => { items.splice(Number(b.dataset.r), 1); renderItems(); }));
     cardify(body);
@@ -513,7 +520,8 @@
     const rows = (pid) => items.map((i) => ({
       pedido_id: pid, produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja,
       cor: i.cor || null, tamanho: i.tamanho || null, quantidade: i.quantidade, preco_unit: i.preco_unit,
-      total: round2(i.quantidade * i.preco_unit)
+      desconto_pct: Number(i.desconto_pct) || 0,
+      total: lineTotal(i)
     }));
     const btn = $("pvSave"); btn.disabled = true; const label = btn.textContent; btn.textContent = "Salvando...";
     try {
