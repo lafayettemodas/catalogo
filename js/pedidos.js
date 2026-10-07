@@ -150,6 +150,7 @@
         <div id="pvViewBody"></div>
         <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
           <button type="button" class="primary" id="pvViewPrint">Imprimir</button>
+          <button type="button" class="whatsapp" id="pvViewWa">Enviar pelo WhatsApp</button>
           <button type="button" class="secondary" id="pvViewBack">Voltar à lista</button>
         </div>
       </div>`;
@@ -217,18 +218,20 @@
           <button type="button" class="primary" data-a="conf" data-id="${p.id}">Confirmar</button>` : ""}
           ${p.status !== "cancelado" ? `<button type="button" class="secondary" data-a="canc" data-id="${p.id}">Cancelar</button>` : ""}
           <button type="button" class="secondary" data-a="print" data-id="${p.id}">Imprimir</button>
+          <button type="button" class="whatsapp" data-a="wa" data-id="${p.id}">Enviar pelo WhatsApp</button>
         </div></td>
       </tr>`).join("");
-    body.querySelectorAll("button[data-a]").forEach((b) => b.addEventListener("click", () => rowAction(b.dataset.a, b.dataset.id)));
+    body.querySelectorAll("button[data-a]").forEach((b) => b.addEventListener("click", () => rowAction(b.dataset.a, b.dataset.id, b)));
     cardify(body);
   }
 
-  async function rowAction(a, id) {
+  async function rowAction(a, id, btn) {
     try {
       if (a === "ver") return await viewOrder(id);
       if (a === "edit") return await openForm(id);
       if (a === "conf") return await confirmOrder(id);
       if (a === "canc") return await cancelOrder(id);
+      if (a === "wa") return await sendWhats(id, btn);
       if (a === "print") { const o = await fetchOrder(id); return printOrder(o.pedido, o.itens); }
     } catch (e) { alert("Erro: " + (e.message || e)); }
   }
@@ -306,6 +309,7 @@
     $("pvFormPanel").style.display = "none";
     $("pvViewPanel").style.display = "";
     $("pvViewPrint").onclick = () => printOrder(o.pedido, o.itens);
+    $("pvViewWa").onclick = () => sendWhats(id, $("pvViewWa"));
     window.scrollTo({ top: 0 });
   }
 
@@ -346,6 +350,101 @@
     let fired = false;
     const go = () => { if (fired) return; fired = true; setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { alert("Não foi possível imprimir: " + e.message); } setTimeout(() => f.remove(), 3000); }, 150); };
     if (img && !img.complete) { img.onload = go; img.onerror = go; setTimeout(go, 2500); } else go();
+  }
+
+  // ---------- enviar pelo WhatsApp (gera PDF, guarda e manda o link) ----------
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const ex = document.querySelector('script[data-lib="' + src + '"]');
+      if (ex && ex.dataset.ok) return res();
+      const el = ex || document.createElement("script");
+      el.addEventListener("load", () => { el.dataset.ok = "1"; res(); });
+      el.addEventListener("error", () => rej(new Error("Não foi possível carregar a biblioteca de PDF. Verifique a internet.")));
+      if (!ex) { el.src = src; el.dataset.lib = src; document.head.appendChild(el); }
+    });
+  }
+  async function ensurePdfLibs() {
+    if (!(window.jspdf && window.jspdf.jsPDF)) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+    if (!(window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable)) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  }
+  function loadLogoData() {
+    return new Promise((res) => {
+      const im = new Image();
+      im.onload = () => { try { const c = document.createElement("canvas"); const k = Math.min(1, 360 / im.naturalWidth); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res({ data: c.toDataURL("image/png"), w: c.width, h: c.height }); } catch (e) { res(null); } };
+      im.onerror = () => res(null);
+      im.src = new URL("img/logo.png", location.href).href;
+    });
+  }
+  async function buildOrderPdf(p, itens) {
+    await ensurePdfLibs();
+    const logo = await loadLogoData();
+    const doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 36;
+    let y = M;
+    if (logo) { const lh = 40, lw = lh * logo.w / logo.h; doc.addImage(logo.data, "PNG", M, y, lw, lh); }
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(60);
+    doc.text("Instagram: @lafayettemodas", W - M, y + 26, { align: "right" });
+    y += 64;
+    doc.setTextColor(17); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+    doc.text("Pedido de venda nº " + p.numero, M, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.text(STATUS_LABEL[p.status] || p.status, W - M, y, { align: "right" });
+    y += 22; doc.setFontSize(10);
+    const line = (k, v) => { doc.setFont("helvetica", "normal"); doc.text(k + " ", M, y); const kw = doc.getTextWidth(k + " "); doc.setFont("helvetica", "bold"); doc.text(String(v), M + kw, y); y += 15; };
+    line("Data da venda:", fmtDate(p.data_venda));
+    line("Cliente:", (p.cliente_nome || "-") + (p.cliente_telefone ? " - " + p.cliente_telefone : ""));
+    line("Forma de pagamento:", p.forma_pagamento || "-");
+    doc.autoTable({
+      startY: y + 4, margin: { left: M, right: M },
+      head: [["Produto", "Ref.", "Cor", "Tam.", "Qtd", "Preço unit.", "Desc.", "Subtotal"]],
+      body: itens.map((i) => [i.nome, i.ref_fabrica || i.ref_loja || "-", i.cor || "-", i.tamanho || "-", String(i.quantidade), money(i.preco_unit), (Number(i.desconto_pct) || 0) + "%", money(i.total)]),
+      styles: { fontSize: 9, cellPadding: 4 }, headStyles: { fillColor: [240, 240, 240], textColor: 20 },
+      columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } }
+    });
+    y = doc.lastAutoTable.finalY + 20;
+    if (y > H - 150) { doc.addPage(); y = M; }
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+    doc.text("Subtotal: " + money(p.subtotal), W - M, y, { align: "right" }); y += 15;
+    doc.text("Desconto" + (p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : "") + ": " + money(p.desconto_total), W - M, y, { align: "right" }); y += 20;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text("Total: " + money(p.total), W - M, y, { align: "right" }); y += 24;
+    if (p.observacoes) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("Observações:", M, y); y += 14;
+      doc.setFont("helvetica", "normal");
+      doc.splitTextToSize(String(p.observacoes), W - 2 * M).forEach((t) => { if (y > H - 60) { doc.addPage(); y = M; } doc.text(t, M, y); y += 13; });
+    }
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(100);
+    doc.text("Obrigada pela preferência! Siga a gente no Instagram: @lafayettemodas", W / 2, H - 28, { align: "center" });
+    return doc.output("blob");
+  }
+  async function uploadOrderPdf(blob, numero) {
+    const rnd = Array.from(crypto.getRandomValues(new Uint8Array(12))).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const path = "pedido-" + numero + "-" + rnd + ".pdf";
+    const { error } = await supabaseClient.storage.from("pedidos-pdf").upload(path, blob, { contentType: "application/pdf", upsert: false });
+    if (error) throw error;
+    return supabaseClient.storage.from("pedidos-pdf").getPublicUrl(path).data.publicUrl;
+  }
+  function waNumber(raw) {
+    let d = String(raw || "").replace(/\D/g, "").replace(/^0+/, "");
+    if (!d) return "";
+    if (d.length <= 11) d = "55" + d;
+    return d;
+  }
+  async function sendWhats(id, btn) {
+    const o = await fetchOrder(id); const p = o.pedido;
+    let num = waNumber(p.cliente_telefone);
+    if (!num) { num = waNumber(prompt("Este pedido não tem telefone. Informe o WhatsApp do cliente (com DDD):")); if (!num) return; }
+    if (num.length < 12 || num.length > 13) { if (!confirm("O número " + num + " parece incompleto. Abrir o WhatsApp mesmo assim?")) return; }
+    const w = window.open("", "_blank"); // abre já no clique para o navegador não bloquear
+    const old = btn ? btn.textContent : ""; if (btn) { btn.disabled = true; btn.textContent = "Gerando PDF..."; }
+    try {
+      const blob = await buildOrderPdf(p, o.itens);
+      const url = await uploadOrderPdf(blob, p.numero);
+      const msg = "Olá" + (p.cliente_nome ? " " + p.cliente_nome : "") + "! Segue o seu pedido nº " + p.numero + " da Lafayette Modas (total " + money(p.total) + "):\n" + url + "\n\nObrigada pela preferência!";
+      const link = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+      if (w) w.location.href = link; else window.location.href = link;
+    } catch (e) { if (w) w.close(); alert("Não foi possível enviar pelo WhatsApp: " + (e.message || e)); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
   }
 
   // ---------- formulário (novo / editar) ----------
