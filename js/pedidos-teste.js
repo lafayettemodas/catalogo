@@ -370,7 +370,7 @@
   function loadLogoData() {
     return new Promise((res) => {
       const im = new Image();
-      im.onload = () => { try { const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext("2d").drawImage(im, 0, 0); res({ data: c.toDataURL("image/png"), w: im.naturalWidth, h: im.naturalHeight }); } catch (e) { res(null); } };
+      im.onload = () => { try { const c = document.createElement("canvas"); const k = Math.min(1, 360 / im.naturalWidth); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res({ data: c.toDataURL("image/png"), w: c.width, h: c.height }); } catch (e) { res(null); } };
       im.onerror = () => res(null);
       im.src = new URL("img/logo.png", location.href).href;
     });
