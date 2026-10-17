@@ -526,7 +526,7 @@
     optionsFor($("pvCor"), p.colors || [], "(sem cor)");
     optionsFor($("pvTam"), p.sizes || [], "(sem tamanho)");
     $("pvQtd").value = 1;
-    $("pvPreco").value = p.promocao && p.preco_promocao ? p.preco_promocao : (p.price || 0);
+    $("pvPreco").value = p.price || 0;
     $("pvStockHint").textContent = "";
     const { data } = await supabaseClient.from("estoque").select("cor, tamanho, quantidade").eq("produto_id", p.id);
     (data || []).forEach((e) => { pickedStock[e.cor + "|" + e.tamanho] = e.quantidade; });
