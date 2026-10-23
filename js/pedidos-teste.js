@@ -241,7 +241,47 @@
     if (error) throw error;
     const { data: itens, error: e2 } = await supabaseClient.from("pedido_itens").select("*").eq("pedido_id", id).order("nome");
     if (e2) throw e2;
+    if (pedido.troca_id) {
+      try {
+        const { data: t } = await supabaseClient.from("trocas").select("*").eq("id", pedido.troca_id).single();
+        const { data: ti } = await supabaseClient.from("troca_itens").select("*").eq("troca_id", pedido.troca_id).order("nome");
+        if (t) pedido._troca = { t, ti: ti || [] };
+      } catch (e) { /* sem dados da troca: mostra so o pedido */ }
+    }
     return { pedido, itens: itens || [] };
+  }
+
+  // ---------- dados da troca no pedido (pecas devolvidas, credito, diferenca) ----------
+  function trocaInfo(p) {
+    const x = p && p._troca; if (!x) return null;
+    const cred = Number(p.credito_troca) || 0;
+    const dif = Math.max(0, Math.round(((Number(p.total) || 0) - cred) * 100) / 100);
+    return { t: x.t, ti: x.ti, cred, dif, forma: p.forma_pagamento || x.t.forma_pagamento || "" };
+  }
+  function trocaBlockHtml(p) {
+    const k = trocaInfo(p); if (!k) return "";
+    const rows = k.ti.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td>${i.quantidade}</td><td>${money(i.valor_credito)}</td><td>${esc(i.motivo || "-")}</td></tr>`).join("");
+    return `<h3 style="margin:18px 0 6px">Peças devolvidas na troca nº ${k.t.numero}</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Crédito</th><th>Motivo</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="7">-</td></tr>'}</tbody>
+      </table></div>`;
+  }
+  function trocaTotalsHtml(p) {
+    const k = trocaInfo(p); if (!k) return "";
+    return `<div>Crédito da troca: <strong>- ${money(k.cred)}</strong></div>
+        <div class="pv-total">${k.dif > 0 ? "Diferença paga" + (k.forma ? " (" + esc(k.forma) + ")" : "") : "Diferença paga"}: ${money(k.dif)}</div>${k.t.credito_restante > 0 ? `<div>Crédito restante: <strong>${money(k.t.credito_restante)}</strong></div>` : ""}`;
+  }
+  function trocaPrintHtml(p) {
+    const k = trocaInfo(p); if (!k) return "";
+    return `<div style="margin-top:14px"><strong>Peças devolvidas na troca nº ${k.t.numero}</strong></div>
+      <table><thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tam.</th><th class="r">Qtd</th><th class="r">Crédito</th><th>Motivo</th></tr></thead><tbody>
+      ${k.ti.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td class="r">${i.quantidade}</td><td class="r">${money(i.valor_credito)}</td><td>${esc(i.motivo || "-")}</td></tr>`).join("")}
+      </tbody></table>`;
+  }
+  function trocaPrintTotals(p) {
+    const k = trocaInfo(p); if (!k) return "";
+    return `<br>Crédito da troca: - ${money(k.cred)}<br><span class="g">Diferença paga${k.dif > 0 && k.forma ? " (" + esc(k.forma) + ")" : ""}: ${money(k.dif)}</span>`;
   }
 
   // ---------- confirmar / cancelar ----------
@@ -290,10 +330,12 @@
         <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Desc. (%)</th><th>Subtotal</th></tr></thead>
         <tbody>${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td>${i.quantidade}</td><td>${money(i.preco_unit)}</td><td>${Number(i.desconto_pct) || 0}%</td><td>${money(i.total)}</td></tr>`).join("")}</tbody>
       </table></div>
+      ${trocaBlockHtml(p)}
       <div class="pv-totals">
         <div>Subtotal: <strong>${money(p.subtotal)}</strong></div>
         <div>Desconto${p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : ""}: <strong>${money(p.desconto_total)}</strong></div>
         <div class="pv-total">Total: ${money(p.total)}</div>
+        ${trocaTotalsHtml(p)}
       </div>
       ${p.observacoes ? `<p><strong>Observações:</strong> ${esc(p.observacoes)}</p>` : ""}
       <p class="hint-text">${p.estoque_baixado ? "Baixa no estoque realizada." : "Sem baixa no estoque."}</p>`;
@@ -337,7 +379,8 @@
       <table><thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tam.</th><th class="r">Qtd</th><th class="r">Preço unit.</th><th class="r">Desc. (%)</th><th class="r">Subtotal</th></tr></thead><tbody>
       ${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td class="r">${i.quantidade}</td><td class="r">${money(i.preco_unit)}</td><td class="r">${Number(i.desconto_pct) || 0}%</td><td class="r">${money(i.total)}</td></tr>`).join("")}
       </tbody></table>
-      <div class="tot">Subtotal: ${money(p.subtotal)}<br>Desconto${p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : ""}: ${money(p.desconto_total)}<br><span class="g">Total: ${money(p.total)}</span></div>
+      ${trocaPrintHtml(p)}
+      <div class="tot">Subtotal: ${money(p.subtotal)}<br>Desconto${p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : ""}: ${money(p.desconto_total)}<br><span class="g">Total: ${money(p.total)}</span>${trocaPrintTotals(p)}</div>
       ${p.observacoes ? `<div class="obs"><strong>Observações:</strong> ${esc(p.observacoes)}</div>` : ""}
       <div class="foot">Obrigada pela preferência! Siga a gente no Instagram: <strong>@lafayettemodas</strong></div>
       </body></html>`;
@@ -402,12 +445,32 @@
       columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } }
     });
     y = doc.lastAutoTable.finalY + 20;
+    const tk = trocaInfo(p);
+    if (tk) {
+      if (y > H - 200) { doc.addPage(); y = M; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(17);
+      doc.text("Peças devolvidas na troca nº " + tk.t.numero, M, y); y += 6;
+      doc.autoTable({
+        startY: y, margin: { left: M, right: M },
+        head: [["Produto", "Ref.", "Cor", "Tam.", "Qtd", "Crédito", "Motivo"]],
+        body: tk.ti.map((i) => [i.nome, i.ref_fabrica || i.ref_loja || "-", i.cor || "-", i.tamanho || "-", String(i.quantidade), money(i.valor_credito), i.motivo || "-"]),
+        styles: { fontSize: 9, cellPadding: 4 }, headStyles: { fillColor: [240, 240, 240], textColor: 20 },
+        columnStyles: { 4: { halign: "right" }, 5: { halign: "right" } }
+      });
+      y = doc.lastAutoTable.finalY + 20;
+    }
     if (y > H - 150) { doc.addPage(); y = M; }
     doc.setFont("helvetica", "normal"); doc.setFontSize(11);
     doc.text("Subtotal: " + money(p.subtotal), W - M, y, { align: "right" }); y += 15;
     doc.text("Desconto" + (p.desconto_tipo === "percentual" ? " (" + Number(p.desconto_valor) + "%)" : "") + ": " + money(p.desconto_total), W - M, y, { align: "right" }); y += 20;
     doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text("Total: " + money(p.total), W - M, y, { align: "right" }); y += 24;
+    if (tk) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+      doc.text("Crédito da troca: - " + money(tk.cred), W - M, y, { align: "right" }); y += 18;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+      doc.text("Diferença paga" + (tk.dif > 0 && tk.forma ? " (" + tk.forma + ")" : "") + ": " + money(tk.dif), W - M, y, { align: "right" }); y += 24;
+    }
     if (p.observacoes) {
       doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("Observações:", M, y); y += 14;
       doc.setFont("helvetica", "normal");
