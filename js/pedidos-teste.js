@@ -569,7 +569,7 @@
       if (!list.length) { pick.innerHTML = '<span style="color:#b00020">Nenhum produto encontrado para esta referência/código.</span>'; return; }
       if (list.length === 1) { pick.innerHTML = ""; selectProduct(list[0]); return; }
       pick.innerHTML = '<span class="hint-text">Vários produtos encontrados, escolha um:</span>' +
-        list.map((p) => `<button type="button" class="secondary" data-id="${p.id}">${esc(p.name)} - Ref. ${esc(p.ref_fabrica || "-")} / ${esc(p.ref_loja || "-")} - ${money(p.price)}</button>`).join("");
+        list.map((p) => `<button type="button" class="secondary" data-id="${p.id}">${esc(p.name)} - Ref. ${esc(p.ref_fabrica || "-")} / ${esc(p.ref_loja || "-")}${(p.colors || []).length ? " - " + esc((p.colors || []).join(", ")) : ""} - ${money(p.price)}</button>`).join("");
       pick.querySelectorAll("button[data-id]").forEach((b) => b.addEventListener("click", () => { pick.innerHTML = ""; selectProduct(found.get(b.dataset.id)); }));
     } catch (e) {
       pick.innerHTML = `<span style="color:#b00020">Erro na busca: ${esc(e.message)}</span>`;
