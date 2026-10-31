@@ -79,7 +79,7 @@
       <div class="table-wrap rv-scroll"><table id="rvTable">
         <thead><tr><th>Data</th><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Ref. Loja</th><th>Valor de Venda</th><th>Valor de Compra</th><th>Lucro</th><th>Status</th></tr></thead>
         <tbody id="rvBody"></tbody></table></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px"><div><h3 class="rv-h" id="rvCatH">Categoria mais vendida</h3><div class="table-wrap"><table id="rvCatT"><thead><tr><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvCat"></tbody></table></div></div><div><h3 class="rv-h" id="rvFornH">Fornecedor mais vendido</h3><div class="table-wrap"><table id="rvFornT"><thead><tr><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvForn"></tbody></table></div></div></div>
+      <div style="display:grid;grid-template-columns:1fr;gap:16px"><div><h3 class="rv-h" id="rvCatH">Categoria mais vendida</h3><div class="table-wrap"><table id="rvCatT"><thead><tr><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvCat"></tbody></table></div></div><div><h3 class="rv-h" id="rvFornH">Fornecedor mais vendido</h3><div class="table-wrap"><table id="rvFornT"><thead><tr><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvForn"></tbody></table></div></div></div>
       <p class="hint-text" style="margin-top:14px">Considera apenas pedidos <strong>confirmados</strong> (descontos já aplicados) e desconta as peças devolvidas em trocas. O custo é o valor de compra gravado no momento da venda. Peças sem custo cadastrado ficam fora do custo, lucro e margem.</p>
     </div>`;
     content.appendChild(v);
