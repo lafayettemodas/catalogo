@@ -79,7 +79,7 @@
       <div class="table-wrap rv-scroll"><table id="rvTable">
         <thead><tr><th>Data</th><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Ref. Loja</th><th>Valor de Venda</th><th>Valor de Compra</th><th>Lucro</th><th>Status</th></tr></thead>
         <tbody id="rvBody"></tbody></table></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px"><div><h3 class="rv-h" id="rvCatH">Categoria mais vendida</h3><div class="table-wrap"><table id="rvCatT"><thead><tr><th>#</th><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvCat"></tbody></table></div></div><div><h3 class="rv-h" id="rvFornH">Fornecedor mais vendido</h3><div class="table-wrap"><table id="rvFornT"><thead><tr><th>#</th><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvForn"></tbody></table></div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px"><div><h3 class="rv-h" id="rvCatH">Categoria mais vendida</h3><div class="table-wrap"><table id="rvCatT"><thead><tr><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvCat"></tbody></table></div></div><div><h3 class="rv-h" id="rvFornH">Fornecedor mais vendido</h3><div class="table-wrap"><table id="rvFornT"><thead><tr><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvForn"></tbody></table></div></div></div>
       <p class="hint-text" style="margin-top:14px">Considera apenas pedidos <strong>confirmados</strong> (descontos já aplicados) e desconta as peças devolvidas em trocas. O custo é o valor de compra gravado no momento da venda. Peças sem custo cadastrado ficam fora do custo, lucro e margem.</p>
     </div>`;
     content.appendChild(v);
@@ -137,7 +137,7 @@
     return [...m.values()].filter(function (o) { return o.qtd > 0; }).sort(function (a, b) { return (a.nome === sem) - (b.nome === sem) || b.qtd - a.qtd || b.venda - a.venda; });
   }
   function rankHtml(arr) {
-    return arr.length ? arr.slice(0, 10).map(function (o, i) { return '<tr><td data-label="#">' + (i + 1) + '</td><td data-label="Nome">' + esc(o.nome) + '</td><td data-label="Peças">' + o.qtd + '</td><td data-label="Vendido" class="rv-num">' + money(o.venda) + '</td></tr>'; }).join("") : '<tr><td colspan="4">Sem vendas no período.</td></tr>';
+    return arr.length ? arr.slice(0, 10).map(function (o, i) { return '<tr><td data-label="Nome">' + esc(o.nome) + '</td><td data-label="Peças">' + o.qtd + '</td><td data-label="Vendido" class="rv-num">' + money(o.venda) + '</td></tr>'; }).join("") : '<tr><td colspan="4">Sem vendas no período.</td></tr>';
   }
   function rankTitle(t, arr) { return arr.length ? t + ": " + arr[0].nome + " (" + arr[0].qtd + " peças)" : t; }
   function render() {
