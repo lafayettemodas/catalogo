@@ -79,10 +79,7 @@
       <div class="table-wrap rv-scroll"><table id="rvTable">
         <thead><tr><th>Data</th><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Ref. Loja</th><th>Valor de Venda</th><th>Valor de Compra</th><th>Lucro</th><th>Status</th></tr></thead>
         <tbody id="rvBody"></tbody></table></div>
-      <h3 class="rv-h">10 produtos mais vendidos no período</h3>
-      <div class="table-wrap"><table id="rvTopT">
-        <thead><tr><th>#</th><th>Produto</th><th>Ref. Loja</th><th>Peças</th><th>Vendido</th><th>Lucro</th></tr></thead>
-        <tbody id="rvTop"></tbody></table></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px"><div><h3 class="rv-h" id="rvCatH">Categoria mais vendida</h3><div class="table-wrap"><table id="rvCatT"><thead><tr><th>#</th><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvCat"></tbody></table></div></div><div><h3 class="rv-h" id="rvFornH">Fornecedor mais vendido</h3><div class="table-wrap"><table id="rvFornT"><thead><tr><th>#</th><th>Nome</th><th>Peças</th><th>Vendido</th></tr></thead><tbody id="rvForn"></tbody></table></div></div></div>
       <p class="hint-text" style="margin-top:14px">Considera apenas pedidos <strong>confirmados</strong> (descontos já aplicados) e desconta as peças devolvidas em trocas. O custo é o valor de compra gravado no momento da venda. Peças sem custo cadastrado ficam fora do custo, lucro e margem.</p>
     </div>`;
     content.appendChild(v);
@@ -128,18 +125,21 @@
     return { venda: r2(venda), custo: r2(custo), lucro: r2(lucro), margem: baseVenda > 0 ? r2(lucro / baseVenda * 100) : null, pedidos: peds.size, pecas, ticket: peds.size ? r2(venda / peds.size) : 0, semCusto };
   }
 
-  function topProducts(list) {
+  function rank(list, key) {
+    const sem = key === "categoria" ? "Sem categoria" : "Sem fornecedor";
     const m = new Map();
-    list.forEach((l) => {
-      const k = (l.produto_id || "") + "|" + l.produto + "|" + (l.ref_loja || "");
-      const o = m.get(k) || { produto: l.produto, ref: l.ref_loja || l.ref_fabrica || "", qtd: 0, venda: 0, lucro: 0, temLucro: false };
+    list.forEach(function (l) {
+      const k = l[key] || sem;
+      const o = m.get(k) || { nome: k, qtd: 0, venda: 0 };
       o.qtd += l.quantidade; o.venda += Number(l.venda);
-      if (hasCost(l)) { o.lucro += Number(l.venda) - l.quantidade * Number(l.custo_unit); o.temLucro = true; }
       m.set(k, o);
     });
-    return [...m.values()].filter((o) => o.qtd > 0).sort((a, b) => b.qtd - a.qtd || b.venda - a.venda).slice(0, 10);
+    return [...m.values()].filter(function (o) { return o.qtd > 0; }).sort(function (a, b) { return (a.nome === sem) - (b.nome === sem) || b.qtd - a.qtd || b.venda - a.venda; });
   }
-
+  function rankHtml(arr) {
+    return arr.length ? arr.slice(0, 10).map(function (o, i) { return '<tr><td data-label="#">' + (i + 1) + '</td><td data-label="Nome">' + esc(o.nome) + '</td><td data-label="Peças">' + o.qtd + '</td><td data-label="Vendido" class="rv-num">' + money(o.venda) + '</td></tr>'; }).join("") : '<tr><td colspan="4">Sem vendas no período.</td></tr>';
+  }
+  function rankTitle(t, arr) { return arr.length ? t + ": " + arr[0].nome + " (" + arr[0].qtd + " peças)" : t; }
   function render() {
     const s = stats(rows); lastStat = s;
     const card = (k, v, cls) => `<div class="rv-card"><div class="k">${k}</div><div class="v ${cls || ""}">${v}</div></div>`;
@@ -164,10 +164,10 @@
     }).join("") + (rows.length > MAX ? `<tr><td colspan="9">Mostrando ${MAX} de ${rows.length} linhas. Use Exportar para Excel para ver tudo.</td></tr>` : "")
       : '<tr><td colspan="9">Nenhuma venda no período.</td></tr>';
 
-    const top = topProducts(rows);
-    $("rvTop").innerHTML = top.length ? top.map((o, i) => `<tr><td data-label="#">${i + 1}</td><td data-label="Produto">${esc(o.produto)}</td><td data-label="Ref. Loja">${esc(o.ref || "-")}</td><td data-label="Peças">${o.qtd}</td><td data-label="Vendido" class="rv-num">${money(o.venda)}</td><td data-label="Lucro" class="rv-num">${o.temLucro ? money(o.lucro) : "-"}</td></tr>`).join("")
-      : '<tr><td colspan="6">Sem vendas no período.</td></tr>';
-    ["rvTable", "rvTopT"].forEach((id) => $(id) && $(id).classList.add("pv-cards"));
+    const cats = rank(rows, "categoria"), forns = rank(rows, "fornecedor");
+    $("rvCat").innerHTML = rankHtml(cats); $("rvForn").innerHTML = rankHtml(forns);
+    $("rvCatH").textContent = rankTitle("Categoria mais vendida", cats); $("rvFornH").textContent = rankTitle("Fornecedor mais vendido", forns);
+    ["rvTable", "rvCatT", "rvFornT"].forEach((id) => $(id) && $(id).classList.add("pv-cards"));
   }
 
   async function load() {
@@ -203,8 +203,9 @@
       const head = ["Data", "Pedido", "Cliente", "Produto", "Cor", "Tamanho", "Qtd", "Ref. Loja", "Ref. Fábrica", "Valor de Venda", "Valor de Compra", "Lucro", "Status"];
       const body = rows.map((l) => { const c = lineCost(l), p = lineProfit(l); return [fmtDate(l.data), l.pedido, l.cliente_nome || "", l.produto, l.cor || "", l.tamanho || "", l.quantidade, l.ref_loja || "", l.ref_fabrica || "", Number(l.venda), c == null ? "Sem custo" : c, p == null ? "" : p, l.status]; });
       const w2 = XLSX.utils.aoa_to_sheet([head].concat(body)); w2["!cols"] = [{ wch: 11 }, { wch: 8 }, { wch: 26 }, { wch: 28 }, { wch: 12 }, { wch: 9 }, { wch: 6 }, { wch: 11 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 24 }]; XLSX.utils.book_append_sheet(wb, w2, "Vendas");
-      const top = topProducts(rows).map((o, i) => [i + 1, o.produto, o.ref, o.qtd, r2(o.venda), o.temLucro ? r2(o.lucro) : ""]);
-      const w3 = XLSX.utils.aoa_to_sheet([["#", "Produto", "Ref. Loja", "Peças", "Vendido (R$)", "Lucro (R$)"]].concat(top)); w3["!cols"] = [{ wch: 4 }, { wch: 30 }, { wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 14 }]; XLSX.utils.book_append_sheet(wb, w3, "Mais vendidos");
+      const mk = function (arr, tit) { const w = XLSX.utils.aoa_to_sheet([["#", tit, "Peças", "Vendido (R$)"]].concat(arr.map(function (o, i) { return [i + 1, o.nome, o.qtd, r2(o.venda)]; }))); w["!cols"] = [{ wch: 4 }, { wch: 30 }, { wch: 8 }, { wch: 14 }]; return w; };
+      XLSX.utils.book_append_sheet(wb, mk(rank(rows, "categoria"), "Categoria"), "Categorias");
+      XLSX.utils.book_append_sheet(wb, mk(rank(rows, "fornecedor"), "Fornecedor"), "Fornecedores");
       XLSX.writeFile(wb, "Relatorio_Vendas_" + a + "_a_" + b + ".xlsx");
     } catch (e) { alert("Erro ao exportar: " + (e.message || e)); }
     finally { btn.disabled = false; btn.textContent = old; }
