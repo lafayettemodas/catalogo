@@ -555,7 +555,8 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
 
   const name = document.getElementById("fieldName").value.trim();
   const refFabrica = document.getElementById("fieldRefFabrica").value.trim() || null;
-  const refLoja = document.getElementById("fieldRefLoja").value.trim() || null;
+  let refLoja = document.getElementById("fieldRefLoja").value.trim() || null;
+  if (window.refLojaAutoHook) refLoja = window.refLojaAutoHook(refLoja, !!editingProductId);
   const price = parseFloat(document.getElementById("fieldPrice").value) || null;
   const categoryId = document.getElementById("fieldCategory").value || null;
   const sizes = splitCsv(document.getElementById("fieldSizes").value);
