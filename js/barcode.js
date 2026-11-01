@@ -348,8 +348,37 @@
       </dl>
       ${banner}
       <div class="bc-var"><div class="bc-hint" style="margin:0 0 6px">Estoque por cor e tamanho (abaixo de cada número, o código de barras da variante)</div>${table}</div>
-      <div style="width:100%"><button type="button" class="secondary" data-edit="${esc(p.id)}">Abrir cadastro do produto</button></div>
+      <div style="width:100%"><button type="button" class="secondary" data-edit="${esc(p.id)}">Abrir cadastro do produto</button> <button type="button" class="secondary" data-sales="${esc(p.id)}" style="display:none">Pesquisar Vendas</button><div class="bc-sales" data-sales-box="${esc(p.id)}" style="display:none;margin-top:12px"></div>
     </div>`;
+  }
+
+  // ===== Pesquisar Vendas (aparece só se a referência já foi vendida) =====
+  const fmtD = (s) => { const [y, m, d] = String(s || "").slice(0, 10).split("-"); return d ? d + "/" + m + "/" + y : "-"; };
+  const ST_LABEL = { aberto: "Em aberto", confirmado: "Confirmado", cancelado: "Cancelado" };
+  function salesHtml(rows) {
+    const pecas = rows.reduce((a, r) => a + (Number(r.quantidade) || 0), 0);
+    return '<p class="hint-text" style="margin:0 0 6px">' + rows.length + " venda(s) · " + pecas + " peça(s)</p>" +
+      '<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Tamanho</th><th>Qtd</th><th>Valor vendido</th><th>Status</th><th></th></tr></thead><tbody>' +
+      rows.map((r) => { const p = r.pedido; const f = Number(p.subtotal) > 0 ? Number(p.total) / Number(p.subtotal) : 1; const v = Math.round(Number(r.total) * f * 100) / 100;
+        return "<tr><td>#" + p.numero + "</td><td>" + fmtD(p.data_venda) + "</td><td>" + esc(p.cliente_nome || "-") + "</td><td>" + esc(r.tamanho || "-") + "</td><td>" + r.quantidade + "</td><td>" + money(v) + "</td><td>" + esc(ST_LABEL[p.status] || p.status) + '</td><td><button type="button" class="secondary" data-ver="' + esc(p.id) + '">Ver Venda</button></td></tr>'; }).join("") + "</tbody></table></div>";
+  }
+  function initSales(out, plist) {
+    plist.forEach((p) => {
+      const btn = out.querySelector('button[data-sales="' + p.id + '"]'), box = out.querySelector('[data-sales-box="' + p.id + '"]');
+      if (!btn || !box) return;
+      const clean = (v) => String(v || "").replace(/[,()*%\\"]/g, "");
+      const f = ["produto_id.eq." + p.id]; const rf = clean(p.ref_fabrica), rl = clean(p.ref_loja);
+      if (rf) f.push('ref_fabrica.eq."' + rf + '"'); if (rl) f.push('ref_loja.eq."' + rl + '"');
+      supabaseClient.from("pedido_itens").select("tamanho, cor, quantidade, total, pedido:pedido_id ( id, numero, data_venda, cliente_nome, status, total, subtotal )").or(f.join(",")).limit(1000).then((r) => {
+        const rows = (r.data || []).filter((x) => x.pedido).sort((a, b) => b.pedido.numero - a.pedido.numero);
+        if (r.error || !rows.length) return;
+        btn.style.display = "";
+        btn.addEventListener("click", () => {
+          if (box.style.display === "none") { box.innerHTML = salesHtml(rows); box.querySelectorAll("button[data-ver]").forEach((b) => b.addEventListener("click", () => { if (window.pvOpenOrder) window.pvOpenOrder(b.dataset.ver); })); box.style.display = ""; }
+          else box.style.display = "none";
+        });
+      });
+    });
   }
 
   async function lookupAndShow(term) {
@@ -387,6 +416,7 @@
           (es.data || []).filter((s) => s.produto_id === id), (co.data || []).filter((s) => s.produto_id === id)
         )).join("");
       out.querySelectorAll("button[data-edit]").forEach((b) => b.addEventListener("click", () => editProduct(b.dataset.edit)));
+      initSales(out, order.filter((id) => prods.has(id)).map((id) => prods.get(id)));
       const first = out.querySelector(".bc-hit"); if (first && first.scrollIntoView) first.scrollIntoView({ block: "nearest" });
     } catch (e) {
       out.innerHTML = `<div class="bc-notfound">Erro na consulta: ${esc(e.message)}</div>`;
