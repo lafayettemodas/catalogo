@@ -355,6 +355,8 @@
     window.scrollTo({ top: 0 });
   }
 
+  window.pvOpenOrder = async function (id) { try { window.showView("pedidos"); await viewOrder(id); } catch (e) { alert("Erro: " + (e.message || e)); } };
+
   function printOrder(p, itens) {
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${p.numero}</title>
       <style>
