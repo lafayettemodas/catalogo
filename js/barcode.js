@@ -348,7 +348,7 @@
       </dl>
       ${banner}
       <div class="bc-var"><div class="bc-hint" style="margin:0 0 6px">Estoque por cor e tamanho (abaixo de cada número, o código de barras da variante)</div>${table}</div>
-      <div style="width:100%"><button type="button" class="secondary" data-edit="${esc(p.id)}">Abrir cadastro do produto</button> <button type="button" class="secondary" data-sales="${esc(p.id)}" style="display:none">Pesquisar Vendas</button><div class="bc-sales" data-sales-box="${esc(p.id)}" style="display:none;margin-top:12px"></div>
+      <div style="width:100%"><button type="button" class="secondary" data-edit="${esc(p.id)}">Abrir cadastro do produto</button> <button type="button" class="secondary" data-sales="${esc(p.id)}" style="display:none">Pesquisar Vendas</button><div class="bc-sales" data-sales-box="${esc(p.id)}" style="display:none;margin-top:12px"></div></div>
     </div>`;
   }
 
