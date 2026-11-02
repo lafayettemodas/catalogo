@@ -73,7 +73,7 @@
     panel.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h2 style="margin:0">Clientes</h2><button type="button" class="secondary" id="clBack">Voltar à lista</button></div>' +
       '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Edite o nome ou o telefone e clique em Salvar. Pedidos já feitos não são alterados.</p>' +
       '<div class="field"><label>Buscar cliente</label><input type="text" id="clSearch" placeholder="Nome ou telefone"></div>' +
-      '<div id="clList"></div>';
+      '<div id="clList"></div><div id="clFicha" style="display:none"></div>';
     lp.parentNode.appendChild(panel);
     btn.addEventListener("click", openPanel);
     $("clBack").addEventListener("click", closePanel);
@@ -82,7 +82,7 @@
   }
   function openPanel() {
     ["pvListPanel", "pvFormPanel", "pvViewPanel"].forEach((id) => { if ($(id)) $(id).style.display = "none"; });
-    panel.style.display = ""; $("clSearch").value = ""; loadList(); window.scrollTo({ top: 0 });
+    leaveFicha(); panel.style.display = ""; $("clSearch").value = ""; loadList(); window.scrollTo({ top: 0 });
   }
   function closePanel() {
     if (!panel) return;
@@ -99,8 +99,9 @@
     const { data, error } = await q;
     if (error) { box.innerHTML = '<p class="cl-err">Erro: ' + esc(error.message) + "</p>"; return; }
     if (!data.length) { box.innerHTML = '<p class="hint-text">Nenhuma cliente encontrada.</p>'; return; }
-    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><p class="cl-msg"></p></div>').join("");
+    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
+    box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
   }
   async function saveRow(row) {
     const msg = row.querySelector(".cl-msg"), nome = row.querySelector(".cl-nome").value.trim().toUpperCase(), tel = row.querySelector(".cl-tel").value.trim();
@@ -111,6 +112,58 @@
       msg.className = "cl-msg cl-err";
       msg.textContent = /duplicate|unique/i.test(error.message) ? "Já existe outra cliente com esse telefone (ou esse nome sem telefone)." : "Erro: " + error.message;
     } else { msg.className = "cl-msg cl-ok"; msg.textContent = "Salvo."; }
+  }
+
+  // ---------- ficha individual da cliente ----------
+  const dig = (s) => String(s == null ? "" : s).replace(/\D/g, "");
+  const cpfFmt = (c) => dig(c).slice(0, 11).replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  const cpfOk = (c) => { c = dig(c); if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false; let s = 0; for (let i = 0; i < 9; i++) s += Number(c[i]) * (10 - i); let d = (s * 10) % 11 % 10; if (d !== Number(c[9])) return false; s = 0; for (let i = 0; i < 10; i++) s += Number(c[i]) * (11 - i); d = (s * 10) % 11 % 10; return d === Number(c[10]); };
+  const moneyF = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const dateF = (d) => { if (!d) return "-"; const [y, m, dd] = String(d).slice(0, 10).split("-"); return dd + "/" + m + "/" + y; };
+  const STL = { aberto: "Em aberto", confirmado: "Confirmado", cancelado: "Cancelado" };
+  function toggleListUi(showFicha) {
+    const hint = panel.querySelector("p.hint-text"), srch = $("clSearch").closest(".field");
+    $("clList").style.display = showFicha ? "none" : ""; if (hint) hint.style.display = showFicha ? "none" : ""; if (srch) srch.style.display = showFicha ? "none" : "";
+    $("clFicha").style.display = showFicha ? "" : "none";
+  }
+  function leaveFicha() { if (panel && $("clFicha")) { toggleListUi(false); $("clFicha").innerHTML = ""; } }
+  async function openFicha(id) {
+    const { data: c, error } = await supabaseClient.from("clientes").select("*").eq("id", id).single();
+    if (error) { alert("Erro: " + error.message); return; }
+    toggleListUi(true);
+    $("clFicha").innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h3 style="margin:0">Ficha da cliente</h3><button type="button" class="secondary" id="fcBack">Voltar à lista de clientes</button></div>' +
+      '<div class="cs-card" style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Dados cadastrais</h4><div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:2 1 220px;margin:0"><label>Nome</label><input type="text" id="fcNome" style="text-transform:uppercase"></div><div class="field" style="flex:1 1 160px;margin:0"><label>Telefone</label><input type="text" id="fcTel"></div><div class="field" style="flex:1 1 150px;margin:0"><label>Aniversário</label><input type="date" id="fcAniv"></div><div class="field" style="flex:1 1 160px;margin:0"><label>CPF</label><input type="text" id="fcCpf" placeholder="000.000.000-00" maxlength="14"></div></div><div style="margin-top:12px"><button type="button" class="primary" id="fcSave">Salvar dados</button> <span id="fcMsg" class="cl-msg"></span></div></div>' +
+      '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Consignado aberto</h4><div id="fcCons"><span class="hint-text">Carregando...</span></div></div>' +
+      '<div style="border:1px dashed #d9d1c4;border-radius:14px;padding:16px;margin:14px 0;background:#faf8f4"><h4 style="margin:0 0 6px">Crediário</h4><p class="hint-text" style="margin:0">Seção preparada para integração futura (parcelas, saldo e pagamentos). Nenhuma informação de crediário é controlada aqui ainda.</p></div>' +
+      '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Histórico de compras</h4><div id="fcHist"><span class="hint-text">Carregando...</span></div></div>';
+    $("fcNome").value = c.nome || ""; $("fcTel").value = c.telefone || ""; $("fcAniv").value = c.aniversario || ""; $("fcCpf").value = cpfFmt(c.cpf);
+    $("fcCpf").addEventListener("input", () => { $("fcCpf").value = cpfFmt($("fcCpf").value); });
+    $("fcBack").addEventListener("click", () => { leaveFicha(); loadList(); });
+    $("fcSave").addEventListener("click", async () => {
+      const msg = $("fcMsg"), nome = $("fcNome").value.trim().toUpperCase(), tel = $("fcTel").value.trim(), cpf = $("fcCpf").value.trim();
+      msg.className = "cl-msg cl-err";
+      if (!nome) { msg.textContent = "Informe o nome."; return; }
+      if (cpf && !cpfOk(cpf)) { msg.textContent = "CPF inválido."; return; }
+      const { error: e2 } = await supabaseClient.from("clientes").update({ nome, telefone: tel || null, aniversario: $("fcAniv").value || null, cpf: cpf || null, updated_at: new Date().toISOString() }).eq("id", id);
+      if (e2) { msg.textContent = /clientes_cpf_uq/.test(e2.message) ? "Este CPF já está cadastrado em outra cliente." : (/duplicate|unique/i.test(e2.message) ? "Já existe outra cliente com esse telefone (ou esse nome sem telefone)." : "Erro: " + e2.message); return; }
+      msg.className = "cl-msg cl-ok"; msg.textContent = "Salvo.";
+    });
+    supabaseClient.rpc("consignados_abertos_cliente", { p_id: id }).then(({ data, error: e3 }) => {
+      const box = $("fcCons"); if (!box) return;
+      if (e3) { box.innerHTML = '<span class="cl-err">Erro: ' + esc(e3.message) + "</span>"; return; }
+      if (!data.length) { box.innerHTML = '<span class="hint-text">Nenhum consignado em aberto.</span>'; return; }
+      box.innerHTML = '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Nº</th><th>Saída</th><th>Peças com a cliente</th><th>Valor</th><th></th></tr></thead><tbody>' + data.map((k) => "<tr><td>#" + k.numero + "</td><td>" + dateF(k.data_saida) + "</td><td>" + k.pecas + "</td><td>" + moneyF(k.valor) + '</td><td><button type="button" class="secondary" data-cs="' + esc(k.id) + '">Abrir</button></td></tr>').join("") + "</tbody></table></div>";
+      box.querySelectorAll("button[data-cs]").forEach((b) => b.addEventListener("click", () => { if (window.csOpenDetail) window.csOpenDetail(b.dataset.cs); }));
+    });
+    supabaseClient.rpc("historico_compras_cliente", { p_id: id }).then(({ data, error: e4 }) => {
+      const box = $("fcHist"); if (!box) return;
+      if (e4) { box.innerHTML = '<span class="cl-err">Erro: ' + esc(e4.message) + "</span>"; return; }
+      if (!data.length) { box.innerHTML = '<span class="hint-text">Nenhuma compra encontrada para esta cliente.</span>'; return; }
+      const ok = data.filter((p) => p.status === "confirmado"), tot = ok.reduce((s, p) => s + Number(p.total), 0), pcs = ok.reduce((s, p) => s + p.pecas, 0);
+      box.innerHTML = '<p style="margin:0 0 8px"><strong>' + ok.length + "</strong> compra(s) confirmada(s) · <strong>" + pcs + "</strong> peça(s) · total <strong>" + moneyF(tot) + '</strong></p><div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Peças</th><th>Total</th><th>Pagamento</th><th>Status</th><th></th></tr></thead><tbody>' + data.map((p) => "<tr><td>#" + p.numero + "</td><td>" + dateF(p.data_venda) + "</td><td>" + p.pecas + "</td><td>" + moneyF(p.total) + "</td><td>" + esc(p.forma_pagamento || "-") + "</td><td>" + esc(STL[p.status] || p.status) + '</td><td><button type="button" class="secondary" data-pv="' + esc(p.id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>";
+      box.querySelectorAll("button[data-pv]").forEach((b) => b.addEventListener("click", () => { if (window.pvOpenOrder) window.pvOpenOrder(b.dataset.pv); }));
+    });
+    window.scrollTo({ top: 0 });
   }
 
   function boot() {
