@@ -311,6 +311,8 @@
     $("csCliente").parentNode.appendChild(drop);
   }
 
+  window.csOpenDetail = async function (id) { const p = $("pvConsPanel"); if (!p) return; hideOthers(); p.style.display = ""; await openDetail(id); };
+
   // ---------- boot ----------
   function boot() {
     const tr = $("trNew") || $("pvNew");
