@@ -102,6 +102,7 @@
     box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
     box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
+    if (window.crBadges) window.crBadges(box);
   }
   async function saveRow(row) {
     const msg = row.querySelector(".cl-msg"), nome = row.querySelector(".cl-nome").value.trim().toUpperCase(), tel = row.querySelector(".cl-tel").value.trim();
@@ -134,9 +135,10 @@
     $("clFicha").innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h3 style="margin:0">Ficha da cliente</h3><button type="button" class="secondary" id="fcBack">Voltar à lista de clientes</button></div>' +
       '<div class="cs-card" style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Dados cadastrais</h4><div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:2 1 220px;margin:0"><label>Nome</label><input type="text" id="fcNome" style="text-transform:uppercase"></div><div class="field" style="flex:1 1 160px;margin:0"><label>Telefone</label><input type="text" id="fcTel"></div><div class="field" style="flex:1 1 150px;margin:0"><label>Aniversário</label><input type="date" id="fcAniv"></div><div class="field" style="flex:1 1 160px;margin:0"><label>CPF</label><input type="text" id="fcCpf" placeholder="000.000.000-00" maxlength="14"></div></div><div style="margin-top:12px"><button type="button" class="primary" id="fcSave">Salvar dados</button> <span id="fcMsg" class="cl-msg"></span></div></div>' +
       '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Consignado aberto</h4><div id="fcCons"><span class="hint-text">Carregando...</span></div></div>' +
-      '<div style="border:1px dashed #d9d1c4;border-radius:14px;padding:16px;margin:14px 0;background:#faf8f4"><h4 style="margin:0 0 6px">Crediário</h4><p class="hint-text" style="margin:0">Seção preparada para integração futura (parcelas, saldo e pagamentos). Nenhuma informação de crediário é controlada aqui ainda.</p></div>' +
+      '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Crediário</h4><div id="fcCred"></div></div>' +
       '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Histórico de compras</h4><div id="fcHist"><span class="hint-text">Carregando...</span></div></div>';
     $("fcNome").value = c.nome || ""; $("fcTel").value = c.telefone || ""; $("fcAniv").value = c.aniversario || ""; $("fcCpf").value = cpfFmt(c.cpf);
+    if (window.crRender) window.crRender($("fcCred"), { id: id, nome: c.nome, telefone: c.telefone });
     $("fcCpf").addEventListener("input", () => { $("fcCpf").value = cpfFmt($("fcCpf").value); });
     $("fcBack").addEventListener("click", () => { leaveFicha(); loadList(); });
     $("fcSave").addEventListener("click", async () => {
