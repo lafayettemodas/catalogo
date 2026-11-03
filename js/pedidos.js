@@ -355,6 +355,16 @@
     window.scrollTo({ top: 0 });
   }
 
+  let consignadoId = null;
+  window.pvNewFromConsignado = async function (d) {
+    window.showView("pedidos");
+    await openForm(null);
+    $("pvCliente").value = d.nome || ""; $("pvTelefone").value = d.tel || "";
+    consignadoId = d.consignado_id;
+    items = d.items.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit), desconto_pct: 0, consignado_item_id: i.consignado_item_id }));
+    $("pvObs").value = "Origem: consignado nº " + d.numero;
+    renderItems();
+  };
   window.pvOpenOrder = async function (id) { try { window.showView("pedidos"); await viewOrder(id); } catch (e) { alert("Erro: " + (e.message || e)); } };
 
   function printOrder(p, itens) {
@@ -514,7 +524,7 @@
 
   // ---------- formulário (novo / editar) ----------
   async function openForm(id) {
-    items = []; editingId = null; editingNumero = null; picked = null;
+    items = []; editingId = null; editingNumero = null; picked = null; consignadoId = null;
     $("pvError").textContent = "";
     $("pvSearch").value = ""; $("pvPick").innerHTML = ""; $("pvProd").style.display = "none";
     $("pvData").value = todayStr(); $("pvCliente").value = ""; $("pvTelefone").value = "";
@@ -523,13 +533,13 @@
     if (id) {
       const { pedido, itens } = await fetchOrder(id);
       if (pedido.status !== "aberto") { alert("Só pedidos em aberto podem ser editados."); return; }
-      editingId = id; editingNumero = pedido.numero;
+      editingId = id; editingNumero = pedido.numero; consignadoId = pedido.consignado_id || null;
       $("pvFormTitle").textContent = "Editar pedido de venda nº " + pedido.numero;
       $("pvData").value = String(pedido.data_venda).slice(0, 10);
       $("pvCliente").value = pedido.cliente_nome || ""; $("pvTelefone").value = pedido.cliente_telefone || "";
       $("pvDescTipo").value = "percentual"; $("pvDescValor").value = pedido.desconto_tipo === "percentual" ? pedido.desconto_valor : (Number(pedido.subtotal) > 0 ? Math.round(Number(pedido.desconto_valor) / Number(pedido.subtotal) * 10000) / 100 : 0);
       $("pvPagto").value = pedido.forma_pagamento || ""; $("pvObs").value = pedido.observacoes || "";
-      items = itens.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit), desconto_pct: Number(i.desconto_pct) || 0 }));
+      items = itens.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit), desconto_pct: Number(i.desconto_pct) || 0, consignado_item_id: i.consignado_item_id || null }));
     }
     $("pvListPanel").style.display = "none";
     $("pvViewPanel").style.display = "none";
@@ -622,7 +632,7 @@
     if (!qtd || qtd < 1) { alert("Informe uma quantidade válida."); return; }
     const preco = round2(parseFloat($("pvPreco").value) || 0);
     const dItem = Math.min(100, Math.max(0, round2(parseFloat($("pvDescItem").value) || 0)));
-    const ex = items.find((i) => i.produto_id === picked.id && i.cor === cor && i.tamanho === tam && i.preco_unit === preco && (Number(i.desconto_pct) || 0) === dItem);
+    const ex = items.find((i) => i.produto_id === picked.id && i.cor === cor && i.tamanho === tam && i.preco_unit === preco && (Number(i.desconto_pct) || 0) === dItem && !i.consignado_item_id);
     if (ex) ex.quantidade += qtd;
     else items.push({ produto_id: picked.id, nome: picked.name, ref_fabrica: picked.ref_fabrica, ref_loja: picked.ref_loja, cor, tamanho: tam, quantidade: qtd, preco_unit: preco, desconto_pct: dItem });
     $("pvDescItem").value = "0"; picked = null; $("pvProd").style.display = "none"; $("pvSearch").value = ""; $("pvSearch").focus();
@@ -646,9 +656,9 @@
     else body.innerHTML = items.map((i, idx) => `
       <tr>
         <td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td>
-        <td><input type="number" class="pv-qty" min="1" value="${i.quantidade}" data-q="${idx}"></td>
+        <td><input type="number" class="pv-qty" min="1" value="${i.quantidade}" data-q="${idx}"${i.consignado_item_id ? " disabled" : ""}></td>
         <td>${money(i.preco_unit)}</td><td><input type="number" class="pv-qty" min="0" max="100" step="0.01" value="${Number(i.desconto_pct) || 0}" data-d="${idx}"></td><td>${money(lineTotal(i))}</td>
-        <td><button type="button" class="secondary" data-r="${idx}" title="Remover">&times;</button></td>
+        <td>${i.consignado_item_id ? "" : `<button type="button" class="secondary" data-r="${idx}" title="Remover">&times;</button>`}</td>
       </tr>`).join("");
     body.querySelectorAll("input[data-q]").forEach((inp) => inp.addEventListener("change", () => {
       const n = parseInt(inp.value, 10); items[Number(inp.dataset.q)].quantidade = n && n > 0 ? n : 1; renderItems();
@@ -685,6 +695,7 @@
       pedido_id: pid, produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja,
       cor: i.cor || null, tamanho: i.tamanho || null, quantidade: i.quantidade, preco_unit: i.preco_unit,
       desconto_pct: Number(i.desconto_pct) || 0,
+      consignado_item_id: i.consignado_item_id || null,
       total: lineTotal(i)
     }));
     const btn = $("pvSave"); btn.disabled = true; const label = btn.textContent; btn.textContent = "Salvando...";
@@ -699,7 +710,7 @@
         const ins = await supabaseClient.from("pedido_itens").insert(rows(editingId));
         if (ins.error) throw ins.error;
       } else {
-        const { data, error } = await supabaseClient.from("pedidos").insert(header).select("id, numero").single();
+        const { data, error } = await supabaseClient.from("pedidos").insert(consignadoId ? Object.assign({ consignado_id: consignadoId }, header) : header).select("id, numero").single();
         if (error) throw error;
         const ins = await supabaseClient.from("pedido_itens").insert(rows(data.id));
         if (ins.error) { await supabaseClient.from("pedidos").delete().eq("id", data.id); throw ins.error; }
