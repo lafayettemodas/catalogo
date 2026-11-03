@@ -12,6 +12,10 @@
   const badge = (t) => { const c = COLORS[t] || COLORS["Sem crediário"]; return '<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:700;background:' + c[0] + ";color:" + c[1] + '">' + esc(t) + "</span>"; };
 
   async function render(box, cli, paidId) {
+    const card = box.parentNode;
+    const tem = await supabaseClient.rpc("crediario_tem", { p_cliente: cli.id });
+    if (!tem.error && tem.data === false) { box.innerHTML = ""; if (card) card.style.display = "none"; return; }
+    if (card) card.style.display = "";
     box.innerHTML = '<span class="hint-text">Carregando...</span>';
     const [rs, pe] = await Promise.all([
       supabaseClient.rpc("crediario_resumo", { p_cliente: cli.id }),
