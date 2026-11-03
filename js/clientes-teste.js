@@ -66,7 +66,7 @@
     const lp = $("pvListPanel"), nb = $("pvNew");
     if (!lp || !nb || panel) return !!panel;
     const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "secondary"; btn.id = "clBtn"; btn.textContent = "Clientes";
+    btn.type = "button"; btn.className = "secondary"; btn.id = "clBtn"; btn.textContent = "👥 Clientes";
     nb.parentNode.insertBefore(btn, nb);
     panel = document.createElement("div");
     panel.className = "panel"; panel.id = "pvClientesPanel"; panel.style.display = "none";
