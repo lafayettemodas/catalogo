@@ -1,4 +1,4 @@
-// Realizar Troca: localizar venda, credito de troca, nova venda, estoque e comprovante
+// Realizar Troca (TESTE): localizar venda, credito de troca, nova venda, estoque e comprovante
 (function trocasModule() {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -594,7 +594,7 @@
     const nb = $("pvNew");
     if (!nb || $("trNew")) return !!$("trNew");
     const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "secondary"; btn.id = "trNew"; btn.textContent = "Realizar Troca";
+    btn.type = "button"; btn.className = "secondary"; btn.id = "trNew"; btn.textContent = "🔄 Realizar Troca";
     nb.insertAdjacentElement("afterend", btn);
     const host = $("pvListPanel").parentElement;
     host.appendChild(build());
