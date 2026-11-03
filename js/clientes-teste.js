@@ -71,7 +71,7 @@
     panel = document.createElement("div");
     panel.className = "panel"; panel.id = "pvClientesPanel"; panel.style.display = "none";
     panel.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h2 style="margin:0">Clientes</h2><button type="button" class="secondary" id="clBack">Voltar à lista</button></div>' +
-      '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Edite o nome ou o telefone e clique em Salvar. Pedidos já feitos não são alterados.</p>' +
+      '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Para ver ou editar nome, telefone e demais dados, abra o Cadastro / Crediário da cliente. Pedidos já feitos não são alterados.</p>' +
       '<div class="field"><label>Buscar cliente</label><input type="text" id="clSearch" placeholder="Nome ou telefone"></div>' +
       '<div id="clList"></div><div id="clFicha" style="display:none"></div>';
     lp.parentNode.appendChild(panel);
@@ -99,7 +99,7 @@
     const { data, error } = await q;
     if (error) { box.innerHTML = '<p class="cl-err">Erro: ' + esc(error.message) + "</p>"; return; }
     if (!data.length) { box.innerHTML = '<p class="hint-text">Nenhuma cliente encontrada.</p>'; return; }
-    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
+    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><span class="cl-nome" style="flex:1 1 240px;font-weight:600">' + esc(c.nome) + '</span><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
     box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
     if (window.crBadges) window.crBadges(box);
