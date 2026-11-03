@@ -594,7 +594,7 @@
     const nb = $("pvNew");
     if (!nb || $("trNew")) return !!$("trNew");
     const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "secondary"; btn.id = "trNew"; btn.textContent = "Realizar Troca";
+    btn.type = "button"; btn.className = "secondary"; btn.id = "trNew"; btn.textContent = "🔄 Realizar Troca";
     nb.insertAdjacentElement("afterend", btn);
     const host = $("pvListPanel").parentElement;
     host.appendChild(build());
