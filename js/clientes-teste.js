@@ -169,6 +169,13 @@
     window.scrollTo({ top: 0 });
   }
 
+  window.clOpenFicha = function (id) {
+    if (!build()) return;
+    window.showView("pedidos");
+    openPanel();
+    openFicha(id);
+  };
+
   function boot() {
     let n = 0;
     const iv = setInterval(() => { if (build() || ++n > 40) clearInterval(iv); }, 250);
