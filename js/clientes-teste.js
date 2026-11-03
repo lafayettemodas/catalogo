@@ -71,7 +71,7 @@
     panel = document.createElement("div");
     panel.className = "panel"; panel.id = "pvClientesPanel"; panel.style.display = "none";
     panel.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h2 style="margin:0">Clientes</h2><button type="button" class="secondary" id="clBack">Voltar à lista</button></div>' +
-      '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Para ver ou editar nome, telefone e demais dados, abra o Cadastro / Crediário da cliente. Pedidos já feitos não são alterados.</p>' +
+      '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Digite o nome ou o telefone para buscar. Edite e clique em Salvar, ou abra o Cadastro / Crediário. Pedidos já feitos não são alterados.</p>' +
       '<div class="field"><label>Buscar cliente</label><input type="text" id="clSearch" placeholder="Nome ou telefone"></div>' +
       '<div id="clList"></div><div id="clFicha" style="display:none"></div>';
     lp.parentNode.appendChild(panel);
@@ -91,18 +91,31 @@
   async function loadList() {
     const box = $("clList"); box.innerHTML = '<p class="hint-text">Carregando...</p>';
     const t = $("clSearch").value.replace(/[%_\\,()]/g, " ").trim();
+    if (t.length < 2) { box.innerHTML = ""; return; }
     let q = supabaseClient.from("clientes").select("id, nome, telefone").order("nome").limit(200);
     if (t) {
       const dig = t.replace(/\D/g, "");
-      q = dig.length >= 3 ? q.or("nome.ilike.%" + t + "%,tel_digits.ilike.%" + dig + "%") : q.ilike("nome", "%" + t + "%");
+      q = dig.length >= 2 ? q.or("nome.ilike.%" + t + "%,tel_digits.ilike.%" + dig + "%") : q.ilike("nome", "%" + t + "%");
     }
     const { data, error } = await q;
     if (error) { box.innerHTML = '<p class="cl-err">Erro: ' + esc(error.message) + "</p>"; return; }
-    if (!data.length) { box.innerHTML = '<p class="hint-text">Nenhuma cliente encontrada.</p>'; return; }
-    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><span class="cl-nome" style="flex:1 1 240px;font-weight:600">' + esc(c.nome) + '</span><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
+    if (!data.length) { box.innerHTML = '<p style="margin:8px 0"><strong>Cliente não encontrada</strong></p><button type="button" class="primary" id="clNewBtn">Cadastrar nova cliente</button><div id="clNewBox"></div>'; $("clNewBtn").addEventListener("click", () => newClient(t)); return; }
+    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
     box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
     if (window.crBadges) window.crBadges(box);
+  }
+  function newClient(term) {
+    const isNum = /^[\d\s()+-]+$/.test(term), box = $("clNewBox");
+    box.innerHTML = '<div class="cl-row"><input type="text" id="ncNome" placeholder="Nome" style="text-transform:uppercase" value="' + esc(isNum ? "" : term.toUpperCase()) + '"><input type="text" id="ncTel" placeholder="Telefone" value="' + esc(isNum ? term : "") + '"><button type="button" class="primary" id="ncSave">Salvar nova cliente</button><p class="cl-msg" id="ncMsg"></p></div>';
+    $("ncSave").addEventListener("click", async () => {
+      const nome = $("ncNome").value.trim().toUpperCase(), tel = $("ncTel").value.trim(), msg = $("ncMsg");
+      msg.className = "cl-msg cl-err";
+      if (!nome) { msg.textContent = "Informe o nome."; return; }
+      const { error } = await supabaseClient.rpc("upsert_cliente", { p_nome: nome, p_tel: tel || null });
+      if (error) { msg.textContent = "Erro: " + error.message; return; }
+      $("clSearch").value = nome; loadList();
+    });
   }
   async function saveRow(row) {
     const msg = row.querySelector(".cl-msg"), nome = row.querySelector(".cl-nome").value.trim().toUpperCase(), tel = row.querySelector(".cl-tel").value.trim();
