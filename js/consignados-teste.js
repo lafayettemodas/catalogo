@@ -318,7 +318,7 @@
     const tr = $("trNew") || $("pvNew");
     if (!tr || $("csBtn") || !$("pvListPanel")) return !!$("csBtn");
     const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "secondary"; btn.id = "csBtn"; btn.textContent = "Consignados";
+    btn.type = "button"; btn.className = "secondary"; btn.id = "csBtn"; btn.textContent = "🧳 Consignados";
     tr.insertAdjacentElement("afterend", btn);
     $("pvListPanel").parentElement.appendChild(build());
     btn.addEventListener("click", openPanel);
