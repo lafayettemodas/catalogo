@@ -155,6 +155,7 @@
       if (e3) { box.innerHTML = '<span class="cl-err">Erro: ' + esc(e3.message) + "</span>"; return; }
       if (!data.length) { box.innerHTML = '<span class="hint-text">Nenhum consignado em aberto.</span>'; return; }
       box.innerHTML = '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Nº</th><th>Saída</th><th>Peças com a cliente</th><th>Valor</th><th></th></tr></thead><tbody>' + data.map((k) => "<tr><td>#" + k.numero + "</td><td>" + dateF(k.data_saida) + "</td><td>" + k.pecas + "</td><td>" + moneyF(k.valor) + '</td><td><button type="button" class="secondary" data-cs="' + esc(k.id) + '">Abrir</button></td></tr>').join("") + "</tbody></table></div>";
+      if (box.parentNode) { box.parentNode.style.background = "#fff8d6"; box.parentNode.style.borderColor = "#ecd98a"; }
       box.querySelectorAll("button[data-cs]").forEach((b) => b.addEventListener("click", () => { if (window.csOpenDetail) window.csOpenDetail(b.dataset.cs); }));
     });
     supabaseClient.rpc("historico_compras_cliente", { p_id: id }).then(({ data, error: e4 }) => {
