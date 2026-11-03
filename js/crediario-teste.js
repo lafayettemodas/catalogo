@@ -11,7 +11,7 @@
   const dist = (p) => (p.distribuicao || []).map((d) => "#" + d.numero + " " + money(d.valor)).join(" · ") || "-";
   const badge = (t) => { const c = COLORS[t] || COLORS["Sem crediário"]; return '<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:700;background:' + c[0] + ";color:" + c[1] + '">' + esc(t) + "</span>"; };
 
-  async function render(box, cli) {
+  async function render(box, cli, paidId) {
     box.innerHTML = '<span class="hint-text">Carregando...</span>';
     const [rs, pe] = await Promise.all([
       supabaseClient.rpc("crediario_resumo", { p_cliente: cli.id }),
@@ -26,6 +26,10 @@
       '<div><div class="hint-text" style="margin:0">Total em compras</div><strong>' + money(r.total_compras) + '</strong></div><div><div class="hint-text" style="margin:0">Total pago</div><strong>' + money(r.total_pago) + "</strong></div>" +
       '<div style="margin-left:auto"><button type="button" class="secondary" id="crPrint">Imprimir Extrato</button></div></div>';
     if (Number(r.credito) > 0) h += '<p class="hint-text" style="color:#8a5a00">Atenção: há ' + money(r.credito) + " pago a mais (compra cancelada depois do pagamento).</p>";
+    const paid = paidId ? r.pagamentos.find((p) => p.id === paidId) : null;
+    if (paid) {
+      h += '<div style="background:#e9f7ec;border:1px solid #b8e0c0;border-radius:12px;padding:12px 14px;margin:8px 0"><strong style="color:#1c6b2c">Pagamento registrado — comprovante nº ' + paid.numero + "</strong><div style=\"margin:4px 0 10px\">" + money(paid.valor) + " em " + esc(paid.forma) + " · saldo restante " + money(paid.saldo_restante) + '</div><button type="button" data-wa="' + esc(paid.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Enviar comprovante WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(paid.id) + '">Gerar PDF / Imprimir</button></div>';
+    }
     if (pend.length) {
       h += '<div style="background:#fff8e6;border:1px solid #f0dca8;border-radius:10px;padding:10px 12px;margin:8px 0"><strong>Pedidos antigos em Crediário ainda não lançados na conta</strong><div class="hint-text" style="margin:2px 0 6px">Lance somente os que ainda estão em aberto.</div>' +
         pend.map((p) => '<div style="display:flex;gap:10px;align-items:center;padding:3px 0"><span>#' + p.numero + " · " + dateF(p.data_venda) + " · " + money(p.total) + '</span><button type="button" class="secondary" data-lanc="' + esc(p.id) + '">Lançar</button></div>').join("") + "</div>";
@@ -45,8 +49,8 @@
       r.compras.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="secondary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
       '<p class="hint-text">Nenhuma compra no crediário.</p>';
     h += "<h5 style=\"margin:14px 0 6px\">Pagamentos recebidos</h5>";
-    h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th></tr></thead><tbody>' +
-      r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td></tr>").join("") + "</tbody></table></div>" :
+    h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th></tr></thead><tbody>' +
+      r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td><td style=\"white-space:nowrap\">nº " + p.numero + ' <button type="button" data-wa="' + esc(p.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer">WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(p.id) + '">PDF</button></td></tr>").join("") + "</tbody></table></div>" :
       '<p class="hint-text">Nenhum pagamento registrado.</p>';
     box.innerHTML = h;
     box.querySelectorAll("button[data-pv]").forEach((b) => b.addEventListener("click", () => { if (window.pvOpenOrder) window.pvOpenOrder(b.dataset.pv); }));
@@ -56,6 +60,8 @@
       if (error) { alert("Erro: " + error.message); b.disabled = false; return; }
       render(box, cli);
     }));
+    box.querySelectorAll("button[data-wa]").forEach((b) => b.addEventListener("click", () => sendWa(cli, r.pagamentos.find((p) => p.id === b.dataset.wa))));
+    box.querySelectorAll("button[data-pdf]").forEach((b) => b.addEventListener("click", () => printComprovante(cli, r.pagamentos.find((p) => p.id === b.dataset.pdf))));
     const printBtn = box.querySelector("#crPrint"); if (printBtn) printBtn.addEventListener("click", () => printExtrato(cli, r));
     if (saldo > 0) {
       const val = box.querySelector("#crVal"), msg = box.querySelector("#crMsg"); box.querySelector("#crData").value = today();
@@ -71,11 +77,44 @@
         const k = cur(); if (Math.round(v * 100) > Math.round(k.saldo * 100)) { msg.textContent = "Valor maior que o saldo " + (k.c ? "do pedido #" + k.c.numero : "devedor") + " (" + money(k.saldo) + ")."; return; }
         if (!confirm("Receber " + money(v) + " em " + box.querySelector("#crForma").value + " de " + cli.nome + (k.c ? ", abatendo do pedido #" + k.c.numero : ", abatendo das compras mais antigas") + "?")) return;
         ev.target.disabled = true;
-        const { error } = await supabaseClient.rpc("crediario_pagar", { p_cliente: cli.id, p_valor: v, p_forma: box.querySelector("#crForma").value, p_data: box.querySelector("#crData").value || null, p_obs: box.querySelector("#crObs").value, p_pedido: k.c ? k.c.pedido_id : null, p_token: token });
+        const { data: nid, error } = await supabaseClient.rpc("crediario_pagar", { p_cliente: cli.id, p_valor: v, p_forma: box.querySelector("#crForma").value, p_data: box.querySelector("#crData").value || null, p_obs: box.querySelector("#crObs").value, p_pedido: k.c ? k.c.pedido_id : null, p_token: token });
         if (error) { msg.textContent = "Erro: " + error.message; ev.target.disabled = false; return; }
-        render(box, cli);
+        render(box, cli, nid);
       });
     }
+  }
+
+  const phoneOf = (cli) => { const f = document.getElementById("fcTel"); return String((f && f.value) || cli.telefone || "").replace(/\D/g, ""); };
+  const nowF = (p) => dateF(p.data);
+  function comprovanteText(cli, p) {
+    const L = ["*Lafayette Modas*", "Comprovante de pagamento nº " + p.numero, "Data: " + dateF(p.data), "Cliente: " + cli.nome, ""];
+    const d = p.distribuicao || [];
+    L.push(d.length > 1 ? "Pedidos abatidos:" : "Pedido abatido:");
+    d.forEach((x) => L.push("• Pedido #" + x.numero + ": " + money(x.valor)));
+    L.push("", "Valor recebido: " + money(p.valor), "Forma de pagamento: " + p.forma);
+    if (p.saldo_anterior != null) L.push("Saldo anterior: " + money(p.saldo_anterior), "Saldo restante: " + money(p.saldo_restante));
+    L.push("", "Obrigada pela preferência!");
+    return L.join("\n");
+  }
+  function sendWa(cli, p) {
+    if (!p) return;
+    let ph = phoneOf(cli);
+    if (ph.length < 10) { alert("Esta cliente não tem telefone cadastrado válido. Preencha o telefone em Dados cadastrais e salve."); return; }
+    if (!/^55/.test(ph) || ph.length < 12) ph = "55" + ph;
+    window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(comprovanteText(cli, p)), "_blank");
+  }
+  function printComprovante(cli, p) {
+    if (!p) return;
+    const w = window.open("", "_blank"); if (!w) { alert("Permita pop-ups para gerar o PDF."); return; }
+    const d = p.distribuicao || [];
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Comprovante ' + p.numero + '</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#222;max-width:560px}h1{font-size:22px;margin:0}h2{font-size:15px;margin:16px 0 6px}table{width:100%;border-collapse:collapse;margin:6px 0}td,th{border-bottom:1px solid #ccc;padding:6px;text-align:left}.r{text-align:right}.big{font-size:20px;font-weight:700}.box{border:1px solid #bbb;border-radius:8px;padding:12px;margin-top:14px}@media print{button{display:none}}</style></head><body>' +
+      "<h1>Lafayette Modas</h1><div>Comprovante de pagamento nº <strong>" + p.numero + "</strong></div><div>Data: " + dateF(p.data) + "</div>" +
+      "<p><strong>Cliente:</strong> " + esc(cli.nome) + "</p>" +
+      "<h2>Pedido(s) abatido(s)</h2><table><tr><th>Pedido</th><th class=\"r\">Valor abatido</th></tr>" + d.map((x) => "<tr><td>#" + x.numero + '</td><td class="r">' + money(x.valor) + "</td></tr>").join("") + "</table>" +
+      '<div class="box"><div>Valor recebido: <span class="big">' + money(p.valor) + "</span></div><div>Forma de pagamento: " + esc(p.forma) + "</div>" +
+      (p.saldo_anterior != null ? "<div>Saldo anterior: " + money(p.saldo_anterior) + "</div><div>Saldo restante: <strong>" + money(p.saldo_restante) + "</strong></div>" : "") + "</div>" +
+      '<p style="margin-top:18px">Obrigada pela preferência!</p><p><button onclick="window.print()">Imprimir / Salvar PDF</button></p></body></html>');
+    w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) { /* noop */ } }, 400);
   }
 
   function printExtrato(cli, r) {
