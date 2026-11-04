@@ -85,7 +85,8 @@
   function sub(which) { ["csList", "csForm", "csDetail"].forEach((id) => { $(id).style.display = id === which ? "" : "none"; }); window.scrollTo({ top: 0 }); }
   function openPanel() { hideOthers(); $("pvConsPanel").style.display = ""; showList(); }
   function closePanel() { $("pvConsPanel").style.display = "none"; if ($("pvListPanel")) $("pvListPanel").style.display = ""; const f = $("pvFilterStatus"); if (f) f.dispatchEvent(new Event("change")); }
-  function showList() { sub("csList"); loadList(); }
+  let prevCtx = null;
+  function showList() { prevCtx = null; sub("csList"); loadList(); }
 
   // ---------- lista ----------
   const label = (c) => c.status === "aberto" ? ["Em aberto", ""] : ((c.consignado_itens || []).some((i) => i.status === "vendido") ? ["Finalizado", "ok"] : ["Devolvido", "dev"]);
@@ -225,7 +226,7 @@
       const stt = i.status === "consignado" ? "Com a cliente" : (i.status === "vendido" ? "Vendido" : "Devolvido");
       return '<tr class="' + (off ? "cs-off" : "") + '"><td>' + (i.status === "consignado" ? '<input type="checkbox" data-k="' + i.id + '" checked title="Ficou com a peça">' : "") + "</td><td>" + thumb(i.foto_path) + "</td><td>" + esc(i.nome) + '<div class="cs-muted">' + esc(i.ref_fabrica || "-") + " / " + esc(i.ref_loja || "-") + "</div></td><td>" + esc(i.cor || "-") + "</td><td>" + esc(i.tamanho || "-") + "</td><td>" + i.quantidade + "</td><td>" + money(i.preco_unit) + "</td><td>" + money(i.quantidade * Number(i.preco_unit)) + "</td><td>" + stt + "</td></tr>";
     }).join("");
-    $("csDetail").innerHTML = '<div class="cs-head"><h2>Consignado nº ' + c.numero + ' <span class="cs-badge ' + lb[1] + '">' + lb[0] + '</span></h2><button type="button" class="secondary" id="csDBack">Voltar à lista</button></div>' +
+    $("csDetail").innerHTML = '<div class="cs-head"><h2>Consignado nº ' + c.numero + ' <span class="cs-badge ' + lb[1] + '">' + lb[0] + '</span></h2><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><button type="button" class="secondary" id="csDBack">Voltar à lista</button><button type="button" class="secondary" id="csDPrev">↩ Voltar à página anterior</button></div></div>' +
       '<p><strong>Cliente:</strong> ' + esc(c.cliente_nome || "-") + (c.cliente_telefone ? " - " + esc(c.cliente_telefone) : "") + "<br><strong>Data de saída:</strong> " + fmtDate(c.data_saida) + (c.observacoes ? "<br><strong>Obs.:</strong> " + esc(c.observacoes) : "") + "</p>" +
       (held.length ? '<p class="hint-text">Desmarque as peças que a cliente <strong>não</strong> ficou e clique em "Devolver peças desmarcadas". Elas voltam ao estoque disponível.</p>' : "") +
       '<div class="table-wrap"><table class="cs-table"><thead><tr><th>Ficou</th><th>Foto</th><th>Peça</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço</th><th>Subtotal</th><th>Situação</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
@@ -234,6 +235,7 @@
       (held.length ? '<button type="button" class="secondary" id="csRetUn">Devolver peças desmarcadas</button><button type="button" class="primary" id="csGen">Gerar Pedido de Venda</button><button type="button" class="secondary" id="csRetAll">Devolver todas</button>' : "") +
       '<button type="button" id="csPrint" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:12px 20px;font-weight:700;cursor:pointer">Enviar no WhatsApp</button></div>';
     $("csDBack").addEventListener("click", showList);
+    $("csDPrev").addEventListener("click", goPrev);
     $("csPrint").addEventListener("click", sendWaCurrent);
     if (held.length) {
       const upd = () => { let n = 0, v = 0; $("csDetail").querySelectorAll("input[data-k]:checked").forEach((cb) => { const it = its.find((x) => x.id === cb.dataset.k); n += it.quantidade; v += it.quantidade * Number(it.preco_unit); }); $("csSelInfo").textContent = n + " peça(s) - " + money(v); };
@@ -276,6 +278,12 @@
   }
 
   // ---------- comprovante ----------
+  function goPrev() {
+    const ctx = prevCtx; prevCtx = null;
+    if (ctx && ctx.type === "ficha" && typeof window.clOpenFicha === "function") { $("pvConsPanel").style.display = "none"; window.clOpenFicha(ctx.id); return; }
+    if (ctx && ctx.type === "pedidos") { $("pvConsPanel").style.display = "none"; window.showView("pedidos"); return; }
+    showList();
+  }
   function sendWaCurrent() {
     if (!current) return;
     const { c, its } = current;
@@ -326,7 +334,9 @@
     $("csCliente").parentNode.appendChild(drop);
   }
 
-  window.csOpenDetail = async function (id) { const p = $("pvConsPanel"); if (!p) return; hideOthers(); p.style.display = ""; await openDetail(id); };
+  window.csOpenDetail = async function (id) { const p = $("pvConsPanel"); if (!p) return;
+    const fv = $("clFicha") && $("clFicha").style.display !== "none" && $("pvClientesPanel") && $("pvClientesPanel").style.display !== "none" && window.clCurrentFichaId;
+    prevCtx = fv ? { type: "ficha", id: window.clCurrentFichaId } : ($("pvListPanel") && $("pvListPanel").style.display !== "none" ? { type: "pedidos" } : null); hideOthers(); p.style.display = ""; await openDetail(id); };
 
   // ---------- boot ----------
   function boot() {
