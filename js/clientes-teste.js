@@ -100,7 +100,7 @@
     const { data, error } = await q;
     if (error) { box.innerHTML = '<p class="cl-err">Erro: ' + esc(error.message) + "</p>"; return; }
     if (!data.length) { box.innerHTML = '<p style="margin:8px 0"><strong>Cliente não encontrada</strong></p><button type="button" class="primary" id="clNewBtn">Cadastrar nova cliente</button><div id="clNewBox"></div>'; $("clNewBtn").addEventListener("click", () => newClient(t)); return; }
-    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
+    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="secondary cl-save">Salvar</button><button type="button" class="primary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
     box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
     if (window.crBadges) window.crBadges(box);
