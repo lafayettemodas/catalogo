@@ -140,10 +140,11 @@
     $("clList").style.display = showFicha ? "none" : ""; if (hint) hint.style.display = showFicha ? "none" : ""; if (srch) srch.style.display = showFicha ? "none" : "";
     $("clFicha").style.display = showFicha ? "" : "none";
   }
-  function leaveFicha() { if (panel && $("clFicha")) { toggleListUi(false); $("clFicha").innerHTML = ""; } }
+  function leaveFicha() { window.clCurrentFichaId = null; if (panel && $("clFicha")) { toggleListUi(false); $("clFicha").innerHTML = ""; } }
   async function openFicha(id) {
     const { data: c, error } = await supabaseClient.from("clientes").select("*").eq("id", id).single();
     if (error) { alert("Erro: " + error.message); return; }
+    window.clCurrentFichaId = id;
     toggleListUi(true);
     $("clFicha").innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h3 style="margin:0">Ficha da cliente</h3><button type="button" class="secondary" id="fcBack">Voltar à lista de clientes</button></div>' +
       '<div class="cs-card" style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Dados cadastrais</h4><div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:2 1 220px;margin:0"><label>Nome</label><input type="text" id="fcNome" style="text-transform:uppercase"></div><div class="field" style="flex:1 1 160px;margin:0"><label>Telefone</label><input type="text" id="fcTel"></div><div class="field" style="flex:1 1 150px;margin:0"><label>Aniversário</label><input type="date" id="fcAniv"></div><div class="field" style="flex:1 1 160px;margin:0"><label>CPF</label><input type="text" id="fcCpf" placeholder="000.000.000-00" maxlength="14"></div></div><div style="margin-top:12px"><button type="button" class="primary" id="fcSave">Salvar dados</button> <span id="fcMsg" class="cl-msg"></span></div></div>' +
