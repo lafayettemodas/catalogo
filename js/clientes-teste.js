@@ -16,6 +16,8 @@
   .cl-row input{flex:1 1 180px;min-width:0}
   .cl-row .cl-msg{flex:1 1 100%;font-size:.8rem;margin:0}
   .cl-ok{color:#1c6b2c}.cl-err{color:#b3452f}
+  #clBtn,#csBtn,#trNew{background:#e8d6bf !important;border:1px solid #d2b48c !important;color:#5a3d22 !important}
+  #clBtn:hover,#csBtn:hover,#trNew:hover{background:#dcc4a5 !important}
   `;
   document.head.appendChild(st);
 
