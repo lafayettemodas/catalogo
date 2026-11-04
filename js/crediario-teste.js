@@ -39,7 +39,7 @@
         pend.map((p) => '<div style="display:flex;gap:10px;align-items:center;padding:3px 0"><span>#' + p.numero + " · " + dateF(p.data_venda) + " · " + money(p.total) + '</span><button type="button" class="secondary" data-lanc="' + esc(p.id) + '">Lançar</button></div>').join("") + "</div>";
     }
     if (saldo > 0) {
-      h += '<div style="border:1px solid #e7e2da;border-radius:12px;padding:12px;margin:10px 0"><strong>Registrar pagamento</strong><div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">' +
+      h += '<div style="border:1px solid #c9dff2;background:#fff;border-radius:12px;padding:12px;margin:10px 0"><strong>Registrar pagamento</strong><div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">' +
         '<div class="field" style="flex:1 1 230px;margin:0"><label>Abater de</label><select id="crModo"><option value="total">Saldo total (compras mais antigas primeiro)</option><option value="pedido">Uma compra específica</option></select></div>' +
         '<div class="field" id="crPedWrap" style="flex:2 1 300px;margin:0;display:none"><label>Compra</label><select id="crPed">' + abertas.map((c) => '<option value="' + esc(c.pedido_id) + '">#' + c.numero + " · " + dateF(c.data) + " · saldo " + money(c.saldo) + "</option>").join("") + "</select></div>" +
         '<div class="field" style="flex:1 1 130px;margin:0"><label>Valor (R$)</label><input type="text" id="crVal" inputmode="decimal" placeholder="0,00"></div>' +
