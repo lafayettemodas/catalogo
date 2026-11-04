@@ -232,9 +232,9 @@
       (held.length ? '<div class="cs-total"><span>Peças selecionadas:</span><strong id="csSelInfo"></strong></div>' : "") +
       '<div class="cs-err" id="csDErr"></div><div class="cs-actions">' +
       (held.length ? '<button type="button" class="secondary" id="csRetUn">Devolver peças desmarcadas</button><button type="button" class="primary" id="csGen">Gerar Pedido de Venda</button><button type="button" class="secondary" id="csRetAll">Devolver todas</button>' : "") +
-      '<button type="button" class="secondary" id="csPrint">Imprimir Comprovante</button></div>';
+      '<button type="button" id="csPrint" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:12px 20px;font-weight:700;cursor:pointer">Enviar no WhatsApp</button></div>';
     $("csDBack").addEventListener("click", showList);
-    $("csPrint").addEventListener("click", printCurrent);
+    $("csPrint").addEventListener("click", sendWaCurrent);
     if (held.length) {
       const upd = () => { let n = 0, v = 0; $("csDetail").querySelectorAll("input[data-k]:checked").forEach((cb) => { const it = its.find((x) => x.id === cb.dataset.k); n += it.quantidade; v += it.quantidade * Number(it.preco_unit); }); $("csSelInfo").textContent = n + " peça(s) - " + money(v); };
       $("csDetail").querySelectorAll("input[data-k]").forEach((cb) => cb.addEventListener("change", upd)); upd();
@@ -276,6 +276,21 @@
   }
 
   // ---------- comprovante ----------
+  function sendWaCurrent() {
+    if (!current) return;
+    const { c, its } = current;
+    const err = $("csDErr"); if (err) err.textContent = "";
+    let ph = String(c.cliente_telefone || "").replace(/\D/g, "");
+    if (ph.length < 10) { if (err) err.textContent = "Esta cliente não tem telefone cadastrado. Preencha o telefone no cadastro da cliente."; return; }
+    if (!/^55/.test(ph) || ph.length < 12) ph = "55" + ph;
+    const list = its.filter((i) => i.status !== "devolvido");
+    const total = round2(list.reduce((s, i) => s + i.quantidade * Number(i.preco_unit), 0));
+    const L = ["*Lafayette Modas*", "Comprovante de Consignado nº " + c.numero, "Data de saída: " + fmtDate(c.data_saida), "Cliente: " + (c.cliente_nome || "-"), "", "Peças com você:"];
+    list.forEach((i) => L.push("• " + i.nome + " (" + (i.ref_loja || i.ref_fabrica || "-") + ")" + (i.cor ? " - " + i.cor : "") + (i.tamanho ? " - Tam. " + i.tamanho : "") + " - " + i.quantidade + " un. - " + money(i.quantidade * Number(i.preco_unit))));
+    L.push("", "Valor total das peças: " + money(total), "", "As peças ficam em consignação até a devolução ou a compra.");
+    if (c.observacoes) L.push("Obs.: " + c.observacoes);
+    window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(L.join("\n")), "_blank");
+  }
   function printCurrent() {
     if (!current) return;
     const { c, its } = current;
