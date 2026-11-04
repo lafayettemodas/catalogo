@@ -28,7 +28,7 @@
     let h = '<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:10px">' +
       "<div>" + badge(r.status) + '</div><div><div class="hint-text" style="margin:0">Saldo devedor</div><div style="font-size:1.5rem;font-weight:800;color:' + (saldo > 0 ? "#b3452f" : "#1c6b2c") + '">' + money(saldo) + "</div></div>" +
       '<div><div class="hint-text" style="margin:0">Total em compras</div><strong>' + money(r.total_compras) + '</strong></div><div><div class="hint-text" style="margin:0">Total pago</div><strong>' + money(r.total_pago) + "</strong></div>" +
-      '<div style="margin-left:auto"><button type="button" class="secondary" id="crPrint">Imprimir Extrato</button></div></div>';
+      '<div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:stretch"><button type="button" id="crWaExt" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Enviar WhatsApp</button><button type="button" class="secondary" id="crPrint">Imprimir Extrato</button></div></div>';
     if (Number(r.credito) > 0) h += '<p class="hint-text" style="color:#8a5a00">Atenção: há ' + money(r.credito) + " pago a mais (compra cancelada depois do pagamento).</p>";
     const paid = paidId ? r.pagamentos.find((p) => p.id === paidId) : null;
     if (paid) {
@@ -66,6 +66,7 @@
     }));
     box.querySelectorAll("button[data-wa]").forEach((b) => b.addEventListener("click", () => sendWa(cli, r.pagamentos.find((p) => p.id === b.dataset.wa))));
     box.querySelectorAll("button[data-pdf]").forEach((b) => b.addEventListener("click", () => printComprovante(cli, r.pagamentos.find((p) => p.id === b.dataset.pdf))));
+    const waExt = box.querySelector("#crWaExt"); if (waExt) waExt.addEventListener("click", () => sendWaExtrato(cli, r));
     const printBtn = box.querySelector("#crPrint"); if (printBtn) printBtn.addEventListener("click", () => printExtrato(cli, r));
     if (saldo > 0) {
       const val = box.querySelector("#crVal"), msg = box.querySelector("#crMsg"); box.querySelector("#crData").value = today();
@@ -119,6 +120,20 @@
       (p.saldo_anterior != null ? "<div>Saldo anterior: " + money(p.saldo_anterior) + "</div><div>Saldo restante: <strong>" + money(p.saldo_restante) + "</strong></div>" : "") + "</div>" +
       '<p style="margin-top:18px">Obrigada pela preferência!</p><p><button onclick="window.print()">Imprimir / Salvar PDF</button></p></body></html>');
     w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) { /* noop */ } }, 400);
+  }
+
+  function sendWaExtrato(cli, r) {
+    let ph = phoneOf(cli);
+    if (ph.length < 10) { alert("Esta cliente não tem telefone cadastrado válido. Preencha o telefone em Dados cadastrais e salve."); return; }
+    if (!/^55/.test(ph) || ph.length < 12) ph = "55" + ph;
+    const L = ["*Lafayette Modas*", "Extrato de Crediário - " + new Date().toLocaleDateString("pt-BR"), "Cliente: " + cli.nome, "", "*Compras no crediário:*"];
+    if (!r.compras.length) L.push("Nenhuma compra.");
+    r.compras.forEach((c) => L.push("• Pedido #" + c.numero + " (" + dateF(c.data) + "): " + money(c.valor) + " - abatido " + money(c.pago) + " - saldo " + money(c.saldo) + " - " + c.situacao));
+    L.push("", "*Pagamentos recebidos:*");
+    if (!r.pagamentos.length) L.push("Nenhum pagamento.");
+    r.pagamentos.slice().reverse().forEach((p) => L.push("• " + dateF(p.data) + ": " + money(p.valor) + " (" + p.forma + ")"));
+    L.push("", "Total em compras: " + money(r.total_compras), "Total pago: " + money(r.total_pago), "*Saldo atual: " + money(r.saldo) + " - " + r.status + "*");
+    window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(L.join("\n")), "_blank");
   }
 
   function printExtrato(cli, r) {
