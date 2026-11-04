@@ -16,6 +16,8 @@
   .cl-row input{flex:1 1 180px;min-width:0}
   .cl-row .cl-msg{flex:1 1 100%;font-size:.8rem;margin:0}
   .cl-ok{color:#1c6b2c}.cl-err{color:#b3452f}
+  #clBtn,#csBtn,#trNew{background:#e8d6bf !important;border:1px solid #d2b48c !important;color:#5a3d22 !important}
+  #clBtn:hover,#csBtn:hover,#trNew:hover{background:#dcc4a5 !important}
   `;
   document.head.appendChild(st);
 
@@ -100,7 +102,7 @@
     const { data, error } = await q;
     if (error) { box.innerHTML = '<p class="cl-err">Erro: ' + esc(error.message) + "</p>"; return; }
     if (!data.length) { box.innerHTML = '<p style="margin:8px 0"><strong>Cliente não encontrada</strong></p><button type="button" class="primary" id="clNewBtn">Cadastrar nova cliente</button><div id="clNewBox"></div>'; $("clNewBtn").addEventListener("click", () => newClient(t)); return; }
-    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="primary cl-save">Salvar</button><button type="button" class="secondary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
+    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="secondary cl-save">Salvar</button><button type="button" class="primary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
     box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
     if (window.crBadges) window.crBadges(box);
@@ -140,16 +142,17 @@
     $("clList").style.display = showFicha ? "none" : ""; if (hint) hint.style.display = showFicha ? "none" : ""; if (srch) srch.style.display = showFicha ? "none" : "";
     $("clFicha").style.display = showFicha ? "" : "none";
   }
-  function leaveFicha() { if (panel && $("clFicha")) { toggleListUi(false); $("clFicha").innerHTML = ""; } }
+  function leaveFicha() { window.clCurrentFichaId = null; if (panel && $("clFicha")) { toggleListUi(false); $("clFicha").innerHTML = ""; } }
   async function openFicha(id) {
     const { data: c, error } = await supabaseClient.from("clientes").select("*").eq("id", id).single();
     if (error) { alert("Erro: " + error.message); return; }
+    window.clCurrentFichaId = id;
     toggleListUi(true);
     $("clFicha").innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h3 style="margin:0">Ficha da cliente</h3><button type="button" class="secondary" id="fcBack">Voltar à lista de clientes</button></div>' +
       '<div class="cs-card" style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Dados cadastrais</h4><div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:2 1 220px;margin:0"><label>Nome</label><input type="text" id="fcNome" style="text-transform:uppercase"></div><div class="field" style="flex:1 1 160px;margin:0"><label>Telefone</label><input type="text" id="fcTel"></div><div class="field" style="flex:1 1 150px;margin:0"><label>Aniversário</label><input type="date" id="fcAniv"></div><div class="field" style="flex:1 1 160px;margin:0"><label>CPF</label><input type="text" id="fcCpf" placeholder="000.000.000-00" maxlength="14"></div></div><div style="margin-top:12px"><button type="button" class="primary" id="fcSave">Salvar dados</button> <span id="fcMsg" class="cl-msg"></span></div></div>' +
       '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Consignado aberto</h4><div id="fcCons"><span class="hint-text">Carregando...</span></div></div>' +
-      '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Crediário</h4><div id="fcCred"></div></div>' +
-      '<div style="border:1px solid #e7e2da;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Histórico de compras</h4><div id="fcHist"><span class="hint-text">Carregando...</span></div></div>';
+      '<div style="border:1px solid #b9d8f2;background:#e8f3fd;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Crediário</h4><div id="fcCred"></div></div>' +
+      '<div style="border:1px solid #d6d6d6;background:#f2f2f2;border-radius:14px;padding:16px;margin:14px 0"><h4 style="margin:0 0 10px">Histórico de compras</h4><div id="fcHist"><span class="hint-text">Carregando...</span></div></div>';
     $("fcNome").value = c.nome || ""; $("fcTel").value = c.telefone || ""; $("fcAniv").value = c.aniversario || ""; $("fcCpf").value = cpfFmt(c.cpf);
     if (window.crRender) window.crRender($("fcCred"), { id: id, nome: c.nome, telefone: c.telefone });
     $("fcCpf").addEventListener("input", () => { $("fcCpf").value = cpfFmt($("fcCpf").value); });
@@ -170,6 +173,26 @@
       box.innerHTML = '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Nº</th><th>Saída</th><th>Peças com a cliente</th><th>Valor</th><th></th></tr></thead><tbody>' + data.map((k) => "<tr><td>#" + k.numero + "</td><td>" + dateF(k.data_saida) + "</td><td>" + k.pecas + "</td><td>" + moneyF(k.valor) + '</td><td><button type="button" class="secondary" data-cs="' + esc(k.id) + '">Abrir</button></td></tr>').join("") + "</tbody></table></div>";
       if (box.parentNode) { box.parentNode.style.background = "#fff8d6"; box.parentNode.style.borderColor = "#ecd98a"; }
       box.querySelectorAll("button[data-cs]").forEach((b) => b.addEventListener("click", () => { if (window.csOpenDetail) window.csOpenDetail(b.dataset.cs); }));
+      if (data.length > 1) {
+        const hr = box.querySelector("thead tr"); hr.insertBefore(document.createElement("th"), hr.firstChild);
+        box.querySelectorAll("tbody tr").forEach((tr, i) => { const td = document.createElement("td"); td.innerHTML = '<input type="checkbox" class="fc-cj" data-id="' + esc(data[i].id) + '" data-num="' + data[i].numero + '" checked title="Incluir na venda conjunta">'; tr.insertBefore(td, tr.firstChild); });
+        const bar = document.createElement("div"); bar.style.marginTop = "10px";
+        bar.innerHTML = '<button type="button" class="primary" id="fcJoint">Gerar venda conjunta</button><span id="fcJointMsg" class="cl-err" style="margin-left:10px"></span><div class="hint-text" style="margin:6px 0 0">Marque os consignados que entram na mesma venda. Só as peças que ainda estão com a cliente são incluídas.</div>';
+        box.appendChild(bar);
+        $("fcJoint").addEventListener("click", async () => {
+          const msg = $("fcJointMsg"); msg.textContent = "";
+          const sel = [...box.querySelectorAll(".fc-cj:checked")];
+          if (sel.length < 2) { msg.textContent = "Marque pelo menos 2 consignados."; return; }
+          const nums = sel.map((x) => Number(x.dataset.num)).sort((a, b) => a - b);
+          const ids = sel.map((x) => x.dataset.id);
+          const { data: its, error: e5 } = await supabaseClient.from("consignado_itens").select("*").in("consignado_id", ids).eq("status", "consignado");
+          if (e5) { msg.textContent = "Erro: " + e5.message; return; }
+          if (!its.length) { msg.textContent = "Nenhuma peça com a cliente nesses consignados."; return; }
+          if (typeof window.pvNewFromConsignado !== "function") { msg.textContent = "Pedido de Venda indisponível."; return; }
+          panel.style.display = "none";
+          await window.pvNewFromConsignado({ consignado_id: its[0].consignado_id, numero: nums.join(", "), nome: $("fcNome") ? $("fcNome").value : "", tel: $("fcTel") ? $("fcTel").value : "", items: its.map((i) => ({ consignado_item_id: i.id, produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit) })) });
+        });
+      }
     });
     supabaseClient.rpc("historico_compras_cliente", { p_id: id }).then(({ data, error: e4 }) => {
       const box = $("fcHist"); if (!box) return;
