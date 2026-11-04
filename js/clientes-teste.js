@@ -171,6 +171,26 @@
       box.innerHTML = '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Nº</th><th>Saída</th><th>Peças com a cliente</th><th>Valor</th><th></th></tr></thead><tbody>' + data.map((k) => "<tr><td>#" + k.numero + "</td><td>" + dateF(k.data_saida) + "</td><td>" + k.pecas + "</td><td>" + moneyF(k.valor) + '</td><td><button type="button" class="secondary" data-cs="' + esc(k.id) + '">Abrir</button></td></tr>').join("") + "</tbody></table></div>";
       if (box.parentNode) { box.parentNode.style.background = "#fff8d6"; box.parentNode.style.borderColor = "#ecd98a"; }
       box.querySelectorAll("button[data-cs]").forEach((b) => b.addEventListener("click", () => { if (window.csOpenDetail) window.csOpenDetail(b.dataset.cs); }));
+      if (data.length > 1) {
+        const hr = box.querySelector("thead tr"); hr.insertBefore(document.createElement("th"), hr.firstChild);
+        box.querySelectorAll("tbody tr").forEach((tr, i) => { const td = document.createElement("td"); td.innerHTML = '<input type="checkbox" class="fc-cj" data-id="' + esc(data[i].id) + '" data-num="' + data[i].numero + '" checked title="Incluir na venda conjunta">'; tr.insertBefore(td, tr.firstChild); });
+        const bar = document.createElement("div"); bar.style.marginTop = "10px";
+        bar.innerHTML = '<button type="button" class="primary" id="fcJoint">Gerar venda conjunta</button><span id="fcJointMsg" class="cl-err" style="margin-left:10px"></span><div class="hint-text" style="margin:6px 0 0">Marque os consignados que entram na mesma venda. Só as peças que ainda estão com a cliente são incluídas.</div>';
+        box.appendChild(bar);
+        $("fcJoint").addEventListener("click", async () => {
+          const msg = $("fcJointMsg"); msg.textContent = "";
+          const sel = [...box.querySelectorAll(".fc-cj:checked")];
+          if (sel.length < 2) { msg.textContent = "Marque pelo menos 2 consignados."; return; }
+          const nums = sel.map((x) => Number(x.dataset.num)).sort((a, b) => a - b);
+          const ids = sel.map((x) => x.dataset.id);
+          const { data: its, error: e5 } = await supabaseClient.from("consignado_itens").select("*").in("consignado_id", ids).eq("status", "consignado");
+          if (e5) { msg.textContent = "Erro: " + e5.message; return; }
+          if (!its.length) { msg.textContent = "Nenhuma peça com a cliente nesses consignados."; return; }
+          if (typeof window.pvNewFromConsignado !== "function") { msg.textContent = "Pedido de Venda indisponível."; return; }
+          panel.style.display = "none";
+          await window.pvNewFromConsignado({ consignado_id: its[0].consignado_id, numero: nums.join(", "), nome: $("fcNome") ? $("fcNome").value : "", tel: $("fcTel") ? $("fcTel").value : "", items: its.map((i) => ({ consignado_item_id: i.id, produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit) })) });
+        });
+      }
     });
     supabaseClient.rpc("historico_compras_cliente", { p_id: id }).then(({ data, error: e4 }) => {
       const box = $("fcHist"); if (!box) return;
