@@ -362,7 +362,7 @@
     $("pvCliente").value = d.nome || ""; $("pvTelefone").value = d.tel || "";
     consignadoId = d.consignado_id;
     items = d.items.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit), desconto_pct: 0, consignado_item_id: i.consignado_item_id }));
-    $("pvObs").value = "Origem: consignado nº " + d.numero;
+    $("pvObs").value = (String(d.numero).indexOf(",") >= 0 ? "Origem: consignados nº " : "Origem: consignado nº ") + d.numero;
     renderItems();
   };
   window.pvOpenOrder = async function (id) { try { window.showView("pedidos"); await viewOrder(id); } catch (e) { alert("Erro: " + (e.message || e)); } };
