@@ -223,22 +223,22 @@
     const rows = its.map((i) => {
       const off = i.status === "devolvido";
       const stt = i.status === "consignado" ? "Com a cliente" : (i.status === "vendido" ? "Vendido" : "Devolvido");
-      return '<tr class="' + (off ? "cs-off" : "") + '"><td>' + (i.status === "consignado" ? '<input type="checkbox" data-k="' + i.id + '" title="Selecionar para devolver">' : "") + "</td><td>" + thumb(i.foto_path) + "</td><td>" + esc(i.nome) + '<div class="cs-muted">' + esc(i.ref_fabrica || "-") + " / " + esc(i.ref_loja || "-") + "</div></td><td>" + esc(i.cor || "-") + "</td><td>" + esc(i.tamanho || "-") + "</td><td>" + i.quantidade + "</td><td>" + money(i.preco_unit) + "</td><td>" + money(i.quantidade * Number(i.preco_unit)) + "</td><td>" + stt + "</td></tr>";
+      return '<tr class="' + (off ? "cs-off" : "") + '"><td>' + (i.status === "consignado" ? '<input type="checkbox" data-k="' + i.id + '" checked title="Ficou com a peça">' : "") + "</td><td>" + thumb(i.foto_path) + "</td><td>" + esc(i.nome) + '<div class="cs-muted">' + esc(i.ref_fabrica || "-") + " / " + esc(i.ref_loja || "-") + "</div></td><td>" + esc(i.cor || "-") + "</td><td>" + esc(i.tamanho || "-") + "</td><td>" + i.quantidade + "</td><td>" + money(i.preco_unit) + "</td><td>" + money(i.quantidade * Number(i.preco_unit)) + "</td><td>" + stt + "</td></tr>";
     }).join("");
     $("csDetail").innerHTML = '<div class="cs-head"><h2>Consignado nº ' + c.numero + ' <span class="cs-badge ' + lb[1] + '">' + lb[0] + '</span></h2><button type="button" class="secondary" id="csDBack">Voltar à lista</button></div>' +
       '<p><strong>Cliente:</strong> ' + esc(c.cliente_nome || "-") + (c.cliente_telefone ? " - " + esc(c.cliente_telefone) : "") + "<br><strong>Data de saída:</strong> " + fmtDate(c.data_saida) + (c.observacoes ? "<br><strong>Obs.:</strong> " + esc(c.observacoes) : "") + "</p>" +
-      (held.length ? '<p class="hint-text">Marque as peças que a cliente <strong>não</strong> ficou e clique em "Devolver peças selecionadas". Elas voltam ao estoque disponível. As peças que ficarem sem marcar seguem para o pedido em "Gerar Pedido de Venda".</p>' : "") +
-      '<div class="table-wrap"><table class="cs-table"><thead><tr><th>Devolver</th><th>Foto</th><th>Peça</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço</th><th>Subtotal</th><th>Situação</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+      (held.length ? '<p class="hint-text">Desmarque as peças que a cliente <strong>não</strong> ficou e clique em "Devolver peças desmarcadas". Elas voltam ao estoque disponível.</p>' : "") +
+      '<div class="table-wrap"><table class="cs-table"><thead><tr><th>Ficou</th><th>Foto</th><th>Peça</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço</th><th>Subtotal</th><th>Situação</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
       (held.length ? '<div class="cs-total"><span>Peças selecionadas:</span><strong id="csSelInfo"></strong></div>' : "") +
       '<div class="cs-err" id="csDErr"></div><div class="cs-actions">' +
-      (held.length ? '<button type="button" class="secondary" id="csRetUn">Devolver peças selecionadas</button><button type="button" class="primary" id="csGen">Gerar Pedido de Venda</button><button type="button" class="secondary" id="csRetAll">Devolver todas</button>' : "") +
+      (held.length ? '<button type="button" class="secondary" id="csRetUn">Devolver peças desmarcadas</button><button type="button" class="primary" id="csGen">Gerar Pedido de Venda</button><button type="button" class="secondary" id="csRetAll">Devolver todas</button>' : "") +
       '<button type="button" class="secondary" id="csPrint">Imprimir Comprovante</button></div>';
     $("csDBack").addEventListener("click", showList);
     $("csPrint").addEventListener("click", printCurrent);
     if (held.length) {
       const upd = () => { let n = 0, v = 0; $("csDetail").querySelectorAll("input[data-k]:checked").forEach((cb) => { const it = its.find((x) => x.id === cb.dataset.k); n += it.quantidade; v += it.quantidade * Number(it.preco_unit); }); $("csSelInfo").textContent = n + " peça(s) - " + money(v); };
       $("csDetail").querySelectorAll("input[data-k]").forEach((cb) => cb.addEventListener("change", upd)); upd();
-      $("csRetUn").addEventListener("click", () => returnItems(checkedIds(), false));
+      $("csRetUn").addEventListener("click", () => returnItems(uncheckedIds(), false));
       $("csRetAll").addEventListener("click", () => { if (confirm("Devolver TODAS as peças ao estoque e encerrar este consignado?")) returnItems(held.map((i) => i.id), true); });
       $("csGen").addEventListener("click", generateOrder);
     }
@@ -248,7 +248,7 @@
 
   async function returnItems(ids, silent) {
     const err = $("csDErr"); err.textContent = "";
-    if (!ids.length) { err.textContent = "Selecione ao menos uma peça para devolver."; return false; }
+    if (!ids.length) { err.textContent = "Nenhuma peça desmarcada."; return false; }
     if (!silent && !confirm(ids.length + " item(ns) voltarão ao estoque disponível. Confirmar?")) return false;
     const { error } = await sb().rpc("devolver_consignado_itens", { p_item_ids: ids });
     if (error) { err.textContent = "Erro: " + error.message; return false; }
@@ -257,10 +257,15 @@
 
   async function generateOrder() {
     const err = $("csDErr"); err.textContent = "";
-    const marked = checkedIds();
-    if (marked.length) { err.textContent = 'Há peças selecionadas para devolução. Clique em "Devolver peças selecionadas" ou desmarque-as antes de gerar o pedido.'; return; }
+    const keep = checkedIds(); if (!keep.length) { err.textContent = "Marque ao menos uma peça que a cliente ficou."; return; }
+    const un = uncheckedIds();
+    if (un.length) {
+      if (!confirm(un.length + " peça(s) desmarcada(s) serão devolvidas ao estoque. Continuar e gerar o pedido?")) return;
+      const { error } = await sb().rpc("devolver_consignado_itens", { p_item_ids: un });
+      if (error) { err.textContent = "Erro: " + error.message; return; }
+    }
     let data; try { data = await fetchCons(current.c.id); } catch (e) { err.textContent = "Erro: " + (e.message || e); return; }
-    const sel = data.its.filter((i) => i.status === "consignado");
+    const sel = data.its.filter((i) => i.status === "consignado" && keep.includes(i.id));
     if (!sel.length) { err.textContent = "Nenhuma peça disponível para o pedido."; return; }
     if (typeof window.pvNewFromConsignado !== "function") { err.textContent = "Pedido de Venda indisponível."; return; }
     $("pvConsPanel").style.display = "none";
