@@ -55,6 +55,13 @@
   document.head.appendChild(st);
 
   // ---------- injeta aba e painel ----------
+  function pvGoPrev() {
+    const ctx = pvPrevCtx; pvPrevCtx = null;
+    if (ctx && ctx.type === "ficha" && typeof window.clOpenFicha === "function") { $("pvViewPanel").style.display = "none"; window.clOpenFicha(ctx.id); return; }
+    if (ctx && ctx.type === "view") { window.showView(ctx.view); return; }
+    showList();
+  }
+
   function injectShell() {
     if ($("viewPedidos")) return;
     const nav = document.querySelector(".admin-sidebar");
@@ -152,6 +159,7 @@
           <button type="button" class="primary" id="pvViewPrint">Imprimir</button>
           <button type="button" class="whatsapp" id="pvViewWa">Enviar pelo WhatsApp</button>
           <button type="button" class="secondary" id="pvViewBack">Voltar à lista</button>
+          <button type="button" class="secondary" id="pvViewPrev">↩ Voltar à página anterior</button>
         </div>
       </div>`;
     content.appendChild(view);
@@ -162,6 +170,7 @@
     $("pvFilterStatus").addEventListener("change", loadList);
     $("pvBack").addEventListener("click", showList);
     $("pvViewBack").addEventListener("click", showList);
+    $("pvViewPrev").addEventListener("click", pvGoPrev);
     $("pvFind").addEventListener("click", () => findProduct($("pvSearch").value));
     $("pvSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); findProduct($("pvSearch").value); } });
     $("pvScan").addEventListener("click", () => window.bcStartScan((code) => { $("pvSearch").value = code; findProduct(code); }));
@@ -185,7 +194,7 @@
   }
 
   // ---------- navegação interna ----------
-  function showList() {
+  function showList() { pvPrevCtx = null;
     $("pvFormPanel").style.display = "none";
     $("pvViewPanel").style.display = "none";
     $("pvListPanel").style.display = "";
@@ -356,6 +365,7 @@
   }
 
   let consignadoId = null;
+  let pvPrevCtx = null;
   window.pvNewFromConsignado = async function (d) {
     window.showView("pedidos");
     await openForm(null);
@@ -365,7 +375,11 @@
     $("pvObs").value = (String(d.numero).indexOf(",") >= 0 ? "Origem: consignados nº " : "Origem: consignado nº ") + d.numero;
     renderItems();
   };
-  window.pvOpenOrder = async function (id) { try { window.showView("pedidos"); await viewOrder(id); } catch (e) { alert("Erro: " + (e.message || e)); } };
+  window.pvOpenOrder = async function (id) { try {
+    const act = document.querySelector(".sidebar-link.active"), av = act && act.dataset.view;
+    const fv = $("clFicha") && $("clFicha").style.display !== "none" && $("pvClientesPanel") && $("pvClientesPanel").style.display !== "none" && window.clCurrentFichaId;
+    const ctx = fv ? { type: "ficha", id: window.clCurrentFichaId } : (av && av !== "pedidos" ? { type: "view", view: av } : null);
+    window.showView("pedidos"); pvPrevCtx = ctx; await viewOrder(id); } catch (e) { alert("Erro: " + (e.message || e)); } };
 
   function printOrder(p, itens) {
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${p.numero}</title>
