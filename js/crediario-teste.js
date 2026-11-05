@@ -50,7 +50,7 @@
     }
     h += "<h5 style=\"margin:14px 0 6px\">Compras no crediário</h5>";
     h += r.compras.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Abatido</th><th>Saldo</th><th>Observação</th><th>Situação</th><th></th></tr></thead><tbody>' +
-      r.compras.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + esc(c.observacoes || "") + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="secondary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
+      r.compras.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + esc(c.observacoes || "") + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="primary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
       '<p class="hint-text">Nenhuma compra no crediário.</p>';
     h += "<h5 style=\"margin:14px 0 6px\">Pagamentos recebidos</h5>";
     h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th></tr></thead><tbody>' +
