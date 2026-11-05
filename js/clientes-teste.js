@@ -73,7 +73,7 @@
     panel = document.createElement("div");
     panel.className = "panel"; panel.id = "pvClientesPanel"; panel.style.display = "none";
     panel.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><h2 style="margin:0">Clientes</h2><button type="button" class="secondary" id="clBack">Voltar à lista</button></div>' +
-      '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Digite o nome ou o telefone para buscar. Edite e clique em Salvar, ou abra o Cadastro / Crediário. Pedidos já feitos não são alterados.</p>' +
+      '<p class="hint-text">As clientes são cadastradas automaticamente ao salvar um pedido. Digite o nome ou o telefone para buscar. Para editar os dados, abra o Cadastro / Crediário. Pedidos já feitos não são alterados.</p>' +
       '<div class="field"><label>Buscar cliente</label><input type="text" id="clSearch" placeholder="Nome ou telefone"></div>' +
       '<div id="clList"></div><div id="clFicha" style="display:none"></div>';
     lp.parentNode.appendChild(panel);
@@ -102,7 +102,7 @@
     const { data, error } = await q;
     if (error) { box.innerHTML = '<p class="cl-err">Erro: ' + esc(error.message) + "</p>"; return; }
     if (!data.length) { box.innerHTML = '<p style="margin:8px 0"><strong>Cliente não encontrada</strong></p><button type="button" class="primary" id="clNewBtn">Cadastrar nova cliente</button><div id="clNewBox"></div>'; $("clNewBtn").addEventListener("click", () => newClient(t)); return; }
-    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><input type="text" class="cl-nome" value="' + esc(c.nome) + '" style="text-transform:uppercase"><input type="text" class="cl-tel" value="' + esc(c.telefone || "") + '" placeholder="Telefone"><button type="button" class="secondary cl-save">Salvar</button><button type="button" class="primary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
+    box.innerHTML = data.map((c) => '<div class="cl-row" data-id="' + esc(c.id) + '"><span class="cl-nome" style="flex:1 1 240px;font-weight:600">' + esc(c.nome) + '</span><span class="cl-tel" style="flex:1 1 150px;color:#6b6258">' + esc(c.telefone || "Sem telefone") + '</span><button type="button" class="primary cl-ficha">Cadastro / Crediário</button><p class="cl-msg"></p></div>').join("");
     box.querySelectorAll(".cl-save").forEach((b) => b.addEventListener("click", () => saveRow(b.closest(".cl-row"))));
     box.querySelectorAll(".cl-ficha").forEach((b) => b.addEventListener("click", () => openFicha(b.closest(".cl-row").dataset.id)));
     if (window.crBadges) window.crBadges(box);
@@ -164,7 +164,7 @@
       if (cpf && !cpfOk(cpf)) { msg.textContent = "CPF inválido."; return; }
       const { error: e2 } = await supabaseClient.from("clientes").update({ nome, telefone: tel || null, aniversario: $("fcAniv").value || null, cpf: cpf || null, updated_at: new Date().toISOString() }).eq("id", id);
       if (e2) { msg.textContent = /clientes_cpf_uq/.test(e2.message) ? "Este CPF já está cadastrado em outra cliente." : (/duplicate|unique/i.test(e2.message) ? "Já existe outra cliente com esse telefone (ou esse nome sem telefone)." : "Erro: " + e2.message); return; }
-      msg.className = "cl-msg cl-ok"; msg.textContent = "Salvo.";
+      msg.className = "cl-msg cl-ok"; msg.textContent = "Salvo."; loadList();
     });
     supabaseClient.rpc("consignados_abertos_cliente", { p_id: id }).then(({ data, error: e3 }) => {
       const box = $("fcCons"); if (!box) return;
