@@ -14,7 +14,7 @@
   async function render(box, cli, paidId) {
     const card = box.parentNode;
     const tem = await supabaseClient.rpc("crediario_tem", { p_cliente: cli.id });
-    if (!tem.error && tem.data === false) { box.innerHTML = ""; if (card) card.style.display = "none"; return; }
+    if (!tem.error && tem.data === false) { box.innerHTML = ""; if (card) card.style.display = "none"; const pc0 = document.getElementById("fcPagCard"); if (pc0) pc0.style.display = "none"; return; }
     if (card) card.style.display = "";
     box.innerHTML = '<span class="hint-text">Carregando...</span>';
     const [rs, pe] = await Promise.all([
@@ -56,7 +56,12 @@
     h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th></tr></thead><tbody>' +
       r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td><td style=\"white-space:nowrap\">nº " + p.numero + ' <button type="button" data-wa="' + esc(p.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer">WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(p.id) + '">PDF</button></td></tr>').join("") + "</tbody></table></div>" :
       '<p class="hint-text">Nenhum pagamento registrado.</p>';
+    const PAG_MARK = '<h5 style="margin:14px 0 6px">Pagamentos recebidos</h5>';
+    const pi = h.indexOf(PAG_MARK); const pagHtml = pi >= 0 ? h.slice(pi + PAG_MARK.length) : ""; if (pi >= 0) h = h.slice(0, pi);
     box.innerHTML = h;
+    let pc = document.getElementById("fcPagCard");
+    if (!pc && card && card.parentNode) { pc = document.createElement("div"); pc.id = "fcPagCard"; pc.style.cssText = "border:1px solid #e7e2da;background:#fff;border-radius:14px;padding:16px;margin:14px 0"; card.parentNode.insertBefore(pc, card.nextSibling); }
+    if (pc) { pc.style.display = ""; pc.innerHTML = '<h4 style="margin:0 0 10px">Pagamentos recebidos</h4>' + pagHtml; }
     box.querySelectorAll("button[data-pv]").forEach((b) => b.addEventListener("click", () => { if (window.pvOpenOrder) window.pvOpenOrder(b.dataset.pv); }));
     box.querySelectorAll("button[data-lanc]").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;
@@ -66,6 +71,10 @@
     }));
     box.querySelectorAll("button[data-wa]").forEach((b) => b.addEventListener("click", () => sendWa(cli, r.pagamentos.find((p) => p.id === b.dataset.wa))));
     box.querySelectorAll("button[data-pdf]").forEach((b) => b.addEventListener("click", () => printComprovante(cli, r.pagamentos.find((p) => p.id === b.dataset.pdf))));
+    if (pc) {
+      pc.querySelectorAll("button[data-wa]").forEach((b) => b.addEventListener("click", () => sendWa(cli, r.pagamentos.find((p) => p.id === b.dataset.wa))));
+      pc.querySelectorAll("button[data-pdf]").forEach((b) => b.addEventListener("click", () => printComprovante(cli, r.pagamentos.find((p) => p.id === b.dataset.pdf))));
+    }
     const waExt = box.querySelector("#crWaExt"); if (waExt) waExt.addEventListener("click", () => sendWaExtrato(cli, r));
     const printBtn = box.querySelector("#crPrint"); if (printBtn) printBtn.addEventListener("click", () => printExtrato(cli, r));
     if (saldo > 0) {
