@@ -60,7 +60,7 @@
         '<div class="field" id="crPedWrap" style="flex:2 1 300px;margin:0;display:none"><label>Compra</label><select id="crPed">' + abertas.map((c) => '<option value="' + esc(c.pedido_id) + '">#' + c.numero + " · " + dateF(c.data) + " · saldo " + money(c.saldo) + "</option>").join("") + "</select></div>" +
         '<div class="field" style="flex:1 1 130px;margin:0"><label>Valor (R$)</label><input type="text" id="crVal" inputmode="decimal" placeholder="0,00"></div>' +
         '<div class="field" style="flex:1 1 130px;margin:0"><label>Forma</label><select id="crForma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option></select></div>' +
-        '<div class="field" style="flex:1 1 140px;margin:0"><label>Data</label><input type="date" id="crData"></div>' +
+        '<div class="field" style="flex:1 1 140px;margin:0"><label>Data</label><input type="date" id="crData" readonly tabindex="-1" style="pointer-events:none;background:#f3efe9"></div>' +
         '<div class="field" style="flex:2 1 180px;margin:0"><label>Observação</label><input type="text" id="crObs"></div></div>' +
         '<div id="crInfo" class="hint-text" style="margin:8px 0 0"></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button type="button" class="primary" id="crPay">Receber pagamento</button><button type="button" class="secondary" id="crAll">Quitar</button><span id="crMsg" class="cl-msg"></span></div></div>';
     }
@@ -119,7 +119,7 @@
         const k = cur(); if (Math.round(v * 100) > Math.round(k.saldo * 100)) { msg.textContent = "Valor maior que o saldo " + (k.c ? "do pedido #" + k.c.numero : "devedor") + " (" + money(k.saldo) + ")."; return; }
         if (!confirm("Receber " + money(v) + " em " + box.querySelector("#crForma").value + " de " + cli.nome + (k.c ? ", abatendo do pedido #" + k.c.numero : ", abatendo das compras mais antigas") + "?")) return;
         ev.target.disabled = true;
-        const { data: nid, error } = await supabaseClient.rpc("crediario_pagar", { p_cliente: cli.id, p_valor: v, p_forma: box.querySelector("#crForma").value, p_data: box.querySelector("#crData").value || null, p_obs: box.querySelector("#crObs").value, p_pedido: k.c ? k.c.pedido_id : null, p_token: token });
+        const { data: nid, error } = await supabaseClient.rpc("crediario_pagar", { p_cliente: cli.id, p_valor: v, p_forma: box.querySelector("#crForma").value, p_data: today(), p_obs: box.querySelector("#crObs").value, p_pedido: k.c ? k.c.pedido_id : null, p_token: token });
         if (error) { msg.textContent = "Erro: " + error.message; ev.target.disabled = false; return; }
         render(box, cli, nid);
       });
