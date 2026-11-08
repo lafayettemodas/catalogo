@@ -323,6 +323,9 @@
     const { pedido } = await fetchOrder(id);
     const extra = pedido.status === "confirmado" ? " O estoque será devolvido." : "";
     if (!confirm(`Cancelar o pedido #${pedido.numero}?${extra}`)) return;
+    const senha = prompt("Digite a senha para cancelar a venda:");
+    if (senha === null) return;
+    if (senha.trim() !== "242931") { alert("Senha incorreta. O pedido não foi cancelado."); return; }
     const { error } = await supabaseClient.rpc("cancelar_pedido", { p_id: id });
     if (error) throw error;
     loadList();
