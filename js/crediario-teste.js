@@ -29,7 +29,23 @@
       "<div>" + badge(r.status) + '</div><div><div class="hint-text" style="margin:0">Saldo devedor</div><div style="font-size:1.5rem;font-weight:800;color:' + (saldo > 0 ? "#b3452f" : "#1c6b2c") + '">' + money(saldo) + "</div></div>" +
       '<div><div class="hint-text" style="margin:0">Total em compras</div><strong>' + money(r.total_compras) + '</strong></div><div><div class="hint-text" style="margin:0">Total pago</div><strong>' + money(r.total_pago) + "</strong></div>" +
       '<div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:stretch"><button type="button" id="crWaExt" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Enviar WhatsApp</button><button type="button" class="secondary" id="crPrint">Imprimir Extrato</button></div></div>';
-    if (Number(r.credito) > 0) h += '<p class="hint-text" style="color:#8a5a00">Atenção: há ' + money(r.credito) + " pago a mais (compra cancelada depois do pagamento).</p>";
+    const cred = Number(r.credito) || 0;
+    const credAb = (r.compras || []).filter((c) => Number(c.saldo) > 0 && !/cancel/i.test(c.situacao));
+    if (cred > 0) {
+      h += '<div style="background:#fff4dc;border:1px solid #f0dca8;border-radius:10px;padding:12px;margin:10px 0"><strong>Lembrete: há ' + money(cred) + " pago de pedido cancelado. Escolha onde abater esse valor.</strong>";
+      if (credAb.length && saldo > 0) {
+        h += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;align-items:flex-end">' +
+          '<div class="field" style="flex:2 1 240px;margin:0"><label>Abater em</label><select id="crCredDest"><option value="">Saldo total (compras mais antigas primeiro)</option>' +
+          credAb.map((c) => '<option value="' + esc(c.pedido_id) + '">Pedido #' + c.numero + " · " + dateF(c.data) + " · saldo " + money(c.saldo) + "</option>").join("") + "</select></div>" +
+          '<div class="field" style="flex:1 1 130px;margin:0"><label>Valor (R$)</label><input type="text" id="crCredVal" inputmode="decimal" placeholder="' + Math.min(cred, saldo).toFixed(2).replace(".", ",") + '"></div>' +
+          '<button type="button" class="primary" id="crCredBtn">Abater crédito</button><span id="crCredMsg" class="cl-msg"></span></div>' +
+          '<div class="hint-text" style="margin:4px 0 0">Deixe o valor em branco para usar o máximo possível.</div>';
+      } else h += '<div class="hint-text" style="margin:4px 0 0">Não há saldo devedor no momento; o valor fica como crédito do cliente.</div>';
+      h += "</div>";
+    }
+    if ((r.creditos_usados || []).length) {
+      h += '<div class="hint-text" style="margin:6px 0">Crédito de pagamento anterior já abatido: ' + r.creditos_usados.map((u) => money(u.valor) + " em " + dateF(u.data)).join("; ") + ".</div>";
+    }
     const paid = paidId ? r.pagamentos.find((p) => p.id === paidId) : null;
     if (paid) {
       h += '<div style="background:#e9f7ec;border:1px solid #b8e0c0;border-radius:12px;padding:12px 14px;margin:8px 0"><strong style="color:#1c6b2c">Pagamento registrado — comprovante nº ' + paid.numero + "</strong><div style=\"margin:4px 0 10px\">" + money(paid.valor) + " em " + esc(paid.forma) + " · saldo restante " + money(paid.saldo_restante) + '</div><button type="button" data-wa="' + esc(paid.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Enviar comprovante WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(paid.id) + '">Gerar PDF / Imprimir</button></div>';
@@ -76,6 +92,18 @@
       pc.querySelectorAll("button[data-pdf]").forEach((b) => b.addEventListener("click", () => printComprovante(cli, r.pagamentos.find((p) => p.id === b.dataset.pdf))));
     }
     const waExt = box.querySelector("#crWaExt"); if (waExt) waExt.addEventListener("click", () => sendWaExtrato(cli, r));
+    const cb = box.querySelector("#crCredBtn");
+    if (cb) cb.addEventListener("click", async () => {
+      const m = box.querySelector("#crCredMsg"), dest = box.querySelector("#crCredDest").value, raw = box.querySelector("#crCredVal").value.trim();
+      const v = raw ? parseBR(raw) : null; m.className = "cl-msg cl-err";
+      if (raw && !(v > 0)) { m.textContent = "Valor inválido."; return; }
+      if (!confirm("Abater " + (v ? money(v) : "o crédito disponível") + (dest ? " no pedido selecionado" : " no saldo total") + " de " + cli.nome + "?")) return;
+      cb.disabled = true;
+      const tok = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
+      const { error } = await supabaseClient.rpc("crediario_usar_credito", { p_cliente: cli.id, p_valor: v, p_token: tok, p_pedido: dest || null });
+      if (error) { m.textContent = "Erro: " + error.message; cb.disabled = false; return; }
+      render(box, cli);
+    });
     const printBtn = box.querySelector("#crPrint"); if (printBtn) printBtn.addEventListener("click", () => printExtrato(cli, r));
     if (saldo > 0) {
       const val = box.querySelector("#crVal"), msg = box.querySelector("#crMsg"); box.querySelector("#crData").value = today();
