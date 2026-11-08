@@ -326,6 +326,18 @@
     const { error } = await supabaseClient.rpc("cancelar_pedido", { p_id: id });
     if (error) throw error;
     loadList();
+    // lembrete: pedido cancelado tinha valor pago no crediário -> escolher onde abater
+    try {
+      const { data: cc } = await supabaseClient.from("crediario_compras").select("cliente_id").eq("pedido_id", id).maybeSingle();
+      if (cc && cc.cliente_id) {
+        const { data: rs } = await supabaseClient.rpc("crediario_resumo", { p_cliente: cc.cliente_id });
+        const cred = rs && Number(rs.credito);
+        if (cred > 0) {
+          const ok = confirm(`Atenção: o pedido #${pedido.numero} tinha valor pago no crediário.\n${money(cred)} está disponível como crédito e precisa ser abatido em outra compra (ou no saldo total).\n\nAbrir a ficha da cliente agora para escolher onde abater?`);
+          if (ok && window.clOpenFicha) window.clOpenFicha(cc.cliente_id);
+        }
+      }
+    } catch (e) { /* lembrete opcional */ }
   }
 
   // ---------- visualizar / imprimir ----------
