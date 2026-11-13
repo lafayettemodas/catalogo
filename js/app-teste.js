@@ -6,6 +6,7 @@ let allProducts = [];
 let currentGallery = [];
 let currentGalleryIndex = 0;
 let currentProduct = null;
+let OPT_MAP = {}; // caminho original -> caminho da foto otimizada (js/fotos-otimizadas.json)
 
 document.getElementById("storeName").textContent = STORE_NAME;
 document.getElementById("footerStoreName").textContent = STORE_NAME;
@@ -86,6 +87,10 @@ function vitrineCompare(a, b) {
 }
 
 async function loadProducts() {
+  try {
+    const rm = await fetch("js/fotos-otimizadas.json?v=" + Math.floor(Date.now() / 600000));
+    if (rm.ok) OPT_MAP = await rm.json();
+  } catch (e) { /* sem mapa: usa fotos originais */ }
   const pageSize = 1000;
   let data = [];
   let from = 0;
@@ -122,7 +127,7 @@ async function loadProducts() {
     product_images: (p.product_images || [])
       .sort((a, b) => a.position - b.position)
       // as fotos ficam no GitHub Pages; o Supabase só guarda o caminho relativo
-      .map((img) => ({ ...img, url: IMAGE_BASE_URL + img.path })),
+      .map((img) => ({ ...img, url: IMAGE_BASE_URL + (OPT_MAP[img.path] || img.path) })),
   }));
 
   // Ordem da Vitrine: destaque primeiro, depois fixados no inicio (mais
@@ -193,7 +198,7 @@ function renderGrid(products) {
     const photoCount = p.product_images.length;
     const useCardCarousel = photoCount > 1;
     const thumbHtml = useCardCarousel
-      ? `<div class="thumb-track">${p.product_images.map((img) => `<img class="thumb" src="${img.url}" alt="${p.name}" loading="lazy">`).join("")}</div>`
+      ? `<div class="thumb-track">${p.product_images.map((img, i) => i === 0 ? `<img class="thumb" src="${img.url}" alt="${p.name}" loading="lazy">` : `<img class="thumb" data-src="${img.url}" alt="${p.name}">`).join("")}</div>`
       : `<img class="thumb" src="${firstImg}" alt="${p.name}" loading="lazy">`;
     card.innerHTML = `
       <div class="thumb-wrap">
@@ -241,6 +246,7 @@ const cardCarouselObserver = new IntersectionObserver((entries) => {
     const controls = entry.target.__carouselControls;
     if (!controls) return;
     controls.isVisible = entry.isIntersecting;
+    if (entry.isIntersecting) entry.target.querySelectorAll("img[data-src]").forEach((im) => { im.src = im.dataset.src; im.removeAttribute("data-src"); });
     if (entry.isIntersecting && !document.hidden) controls.start();
     else controls.stop();
   });
