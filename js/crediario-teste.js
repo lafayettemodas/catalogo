@@ -11,6 +11,9 @@
   const dist = (p) => (p.distribuicao || []).map((d) => "#" + d.numero + " " + money(d.valor)).join(" · ") || "-";
   const badge = (t) => { const c = COLORS[t] || COLORS["Sem crediário"]; return '<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:700;background:' + c[0] + ";color:" + c[1] + '">' + esc(t) + "</span>"; };
 
+  const EYE_ON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  const eyeVal = (v) => '<span style="display:inline-flex;align-items:center;gap:6px"><strong class="cr-ev" data-v="' + esc(money(v)) + '">••••••</strong><button type="button" class="cr-eye" title="Mostrar ou ocultar o valor" aria-label="Mostrar ou ocultar o valor" style="border:0;background:none;cursor:pointer;padding:2px;color:#7a5c3e;line-height:0">' + EYE_OFF + "</button></span>";
   async function render(box, cli, paidId) {
     const card = box.parentNode;
     const tem = await supabaseClient.rpc("crediario_tem", { p_cliente: cli.id });
@@ -27,7 +30,7 @@
     const token = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
     let h = '<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:10px">' +
       "<div>" + badge(r.status) + '</div><div><div class="hint-text" style="margin:0">Saldo devedor</div><div style="font-size:1.5rem;font-weight:800;color:' + (saldo > 0 ? "#b3452f" : "#1c6b2c") + '">' + money(saldo) + "</div></div>" +
-      '<div><div class="hint-text" style="margin:0">Total em compras</div><strong>' + money(r.total_compras) + '</strong></div><div><div class="hint-text" style="margin:0">Total pago</div><strong>' + money(r.total_pago) + "</strong></div>" +
+      '<div><div class="hint-text" style="margin:0">Total em compras</div>' + eyeVal(r.total_compras) + '</div><div><div class="hint-text" style="margin:0">Total pago</div>' + eyeVal(r.total_pago) + "</div>" +
       '<div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:stretch"><button type="button" id="crWaExt" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Enviar WhatsApp</button><button type="button" class="secondary" id="crPrint">Imprimir Extrato</button></div></div>';
     const cred = Number(r.credito) || 0;
     const credAb = (r.compras || []).filter((c) => Number(c.saldo) > 0 && !/cancel/i.test(c.situacao));
@@ -104,6 +107,10 @@
       if (error) { m.textContent = "Erro: " + error.message; cb.disabled = false; return; }
       render(box, cli);
     });
+    box.querySelectorAll(".cr-eye").forEach((b) => b.addEventListener("click", () => {
+      const s = b.parentNode.querySelector(".cr-ev"), shown = s.dataset.on === "1";
+      s.textContent = shown ? "••••••" : s.dataset.v; s.dataset.on = shown ? "0" : "1"; b.innerHTML = shown ? EYE_OFF : EYE_ON;
+    }));
     const printBtn = box.querySelector("#crPrint"); if (printBtn) printBtn.addEventListener("click", () => printExtrato(cli, r));
     if (saldo > 0) {
       const val = box.querySelector("#crVal"), msg = box.querySelector("#crMsg"); box.querySelector("#crData").value = today();
