@@ -14,6 +14,23 @@
   const EYE_ON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   const eyeVal = (v) => '<span style="display:inline-flex;align-items:center;gap:6px"><strong class="cr-ev" data-v="' + esc(money(v)) + '">••••••</strong><button type="button" class="cr-eye" title="Mostrar ou ocultar o valor" aria-label="Mostrar ou ocultar o valor" style="border:0;background:none;cursor:pointer;padding:2px;color:#7a5c3e;line-height:0">' + EYE_OFF + "</button></span>";
+  const TRASH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+  const trashBtn = (id) => '<button type="button" data-delpg="' + esc(id) + '" title="Excluir pagamento" aria-label="Excluir pagamento" style="border:0;background:none;cursor:pointer;color:#c0392b;padding:4px;line-height:0">' + TRASH + "</button>";
+  // janela de senha para excluir pagamento (a senha e validada no banco de dados)
+  function askPassword(texto) {
+    return new Promise((resolve) => {
+      const ov = document.createElement("div");
+      ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999";
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;padding:20px;max-width:400px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)"><h4 style="margin:0 0 8px">Excluir pagamento</h4><p class="hint-text" style="margin:0 0 10px" id="pwTxt"></p><input type="password" id="pwIn" placeholder="Senha do administrador" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px"><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" class="secondary" id="pwNo">Cancelar</button><button type="button" id="pwOk" style="background:#b3452f;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer">Excluir</button></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector("#pwTxt").textContent = texto;
+      const inp = ov.querySelector("#pwIn"); inp.focus();
+      const close = (v) => { ov.remove(); resolve(v); };
+      ov.querySelector("#pwNo").addEventListener("click", () => close(null));
+      ov.querySelector("#pwOk").addEventListener("click", () => { if (!inp.value) { inp.focus(); return; } close(inp.value); });
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") ov.querySelector("#pwOk").click(); if (e.key === "Escape") close(null); });
+    });
+  }
   async function render(box, cli, paidId) {
     const card = box.parentNode;
     const tem = await supabaseClient.rpc("crediario_tem", { p_cliente: cli.id });
@@ -72,8 +89,8 @@
       r.compras.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + esc(c.observacoes || "") + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="primary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
       '<p class="hint-text">Nenhuma compra no crediário.</p>';
     h += "<h5 style=\"margin:14px 0 6px\">Pagamentos recebidos</h5>";
-    h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th></tr></thead><tbody>' +
-      r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td><td style=\"white-space:nowrap\">nº " + p.numero + ' <button type="button" data-wa="' + esc(p.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer">WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(p.id) + '">PDF</button></td></tr>').join("") + "</tbody></table></div>" :
+    h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th><th></th></tr></thead><tbody>' +
+      r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td><td style=\"white-space:nowrap\">nº " + p.numero + ' <button type="button" data-wa="' + esc(p.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer">WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(p.id) + '">PDF</button></td><td style="width:1%">' + trashBtn(p.id) + '</td></tr>').join("") + "</tbody></table></div>" :
       '<p class="hint-text">Nenhum pagamento registrado.</p>';
     const PAG_MARK = '<h5 style="margin:14px 0 6px">Pagamentos recebidos</h5>';
     const pi = h.indexOf(PAG_MARK); const pagHtml = pi >= 0 ? h.slice(pi + PAG_MARK.length) : ""; if (pi >= 0) h = h.slice(0, pi);
@@ -107,6 +124,15 @@
       if (error) { m.textContent = "Erro: " + error.message; cb.disabled = false; return; }
       render(box, cli);
     });
+    box.querySelectorAll("button[data-delpg]").forEach((b) => b.addEventListener("click", async () => {
+      const p = r.pagamentos.find((x) => x.id === b.dataset.delpg); if (!p) return;
+      const senha = await askPassword("Pagamento nº " + p.numero + " de " + money(p.valor) + " (" + dateF(p.data) + " · " + p.forma + "). O valor volta para o saldo devedor das compras abatidas.");
+      if (senha === null) return;
+      b.disabled = true;
+      const { error } = await supabaseClient.rpc("crediario_excluir_pagamento", { p_pagamento: p.id, p_senha: senha });
+      if (error) { alert("Não foi possível excluir: " + error.message); b.disabled = false; return; }
+      render(box, cli);
+    }));
     box.querySelectorAll(".cr-eye").forEach((b) => b.addEventListener("click", () => {
       const s = b.parentNode.querySelector(".cr-ev"), shown = s.dataset.on === "1";
       s.textContent = shown ? "••••••" : s.dataset.v; s.dataset.on = shown ? "0" : "1"; b.innerHTML = shown ? EYE_OFF : EYE_ON;
