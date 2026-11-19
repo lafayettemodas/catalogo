@@ -15,7 +15,12 @@
   const EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   const eyeVal = (v) => '<span style="display:inline-flex;align-items:center;gap:6px"><strong class="cr-ev" data-v="' + esc(money(v)) + '">••••••</strong><button type="button" class="cr-eye" title="Mostrar ou ocultar o valor" aria-label="Mostrar ou ocultar o valor" style="border:0;background:none;cursor:pointer;padding:2px;color:#7a5c3e;line-height:0">' + EYE_OFF + "</button></span>";
   const TRASH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
-  const trashBtn = (id) => '<button type="button" data-delpg="' + esc(id) + '" title="Excluir pagamento" aria-label="Excluir pagamento" style="border:0;background:none;cursor:pointer;color:#c0392b;padding:4px;line-height:0">' + TRASH + "</button>";
+  let MAIN_ADMIN = false; // somente o administrador principal ve a lixeira
+  const MAIN_ADMIN_EMAIL = "lafayettemodas@gmail.com";
+  async function loadMainAdmin() {
+    try { const { data } = await supabaseClient.auth.getSession(); MAIN_ADMIN = String((data && data.session && data.session.user && data.session.user.email) || "").toLowerCase() === MAIN_ADMIN_EMAIL; } catch (e) { MAIN_ADMIN = false; }
+  }
+  const trashBtn = (id) => !MAIN_ADMIN ? "" : '<button type="button" data-delpg="' + esc(id) + '" title="Excluir pagamento" aria-label="Excluir pagamento" style="border:0;background:none;cursor:pointer;color:#c0392b;padding:4px;line-height:0">' + TRASH + "</button>";
   // janela de senha para excluir pagamento (a senha e validada no banco de dados)
   function askPassword(texto) {
     return new Promise((resolve) => {
@@ -32,6 +37,7 @@
     });
   }
   async function render(box, cli, paidId) {
+    await loadMainAdmin();
     const card = box.parentNode;
     const tem = await supabaseClient.rpc("crediario_tem", { p_cliente: cli.id });
     if (!tem.error && tem.data === false) { box.innerHTML = ""; if (card) card.style.display = "none"; const pc0 = document.getElementById("fcPagCard"); if (pc0) pc0.style.display = "none"; return; }
