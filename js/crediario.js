@@ -124,7 +124,7 @@
       if (error) { m.textContent = "Erro: " + error.message; cb.disabled = false; return; }
       render(box, cli);
     });
-    box.querySelectorAll("button[data-delpg]").forEach((b) => b.addEventListener("click", async () => {
+    (pc || box).querySelectorAll("button[data-delpg]").forEach((b) => b.addEventListener("click", async () => {
       const p = r.pagamentos.find((x) => x.id === b.dataset.delpg); if (!p) return;
       const senha = await askPassword("Pagamento nº " + p.numero + " de " + money(p.valor) + " (" + dateF(p.data) + " · " + p.forma + "). O valor volta para o saldo devedor das compras abatidas.");
       if (senha === null) return;
