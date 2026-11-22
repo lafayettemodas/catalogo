@@ -1,0 +1,47 @@
+/* Responsivo - aditivo: so ajusta layout, nao altera funcoes. Celular <=760px, tablet 761-1100px */
+html{-webkit-text-size-adjust:100%}
+img,video{max-width:100%}
+.admin-content,.admin-view,.panel{min-width:0}
+.vg-label,.vg-est,.vg-est-in{min-width:0;max-width:100%;box-sizing:border-box}
+
+/* Aba Clientes - Relacionamento: celular */
+@media (max-width:760px){
+  #viewRelac .rl-panel{padding:10px}
+  #viewRelac .rl-bar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #viewRelac .rl-bar .f{min-width:0}
+  #viewRelac .rl-bar .f:first-child{grid-column:1/-1}
+  #viewRelac .rl-bar input,#viewRelac .rl-bar select{width:100%;min-width:0!important;box-sizing:border-box;font-size:16px}
+  #viewRelac .rl-bar .rl-btn{width:100%;padding:10px 8px}
+  #viewRelac #rlClear{grid-column:1/-1}
+  #viewRelac .rl-wrap{max-height:68vh;-webkit-overflow-scrolling:touch}
+  table.rl td.c-nome{min-width:140px;max-width:160px;white-space:normal;font-size:.78rem}
+  table.rl input[type=text],table.rl input[type=date]{font-size:16px}
+  .rl-ov{padding:0;align-items:flex-end}
+  .rl-md{max-width:100%;max-height:94vh;border-radius:14px 14px 0 0}
+  .rl-md .bd{padding:12px}
+  .rl-md input[type=text],.rl-md textarea,.rl-md select{font-size:16px}
+  .rl-md select{flex:1 1 45%;min-width:0}
+  #pdGrid{grid-template-columns:repeat(2,1fr)!important;max-height:48vh!important}
+  .rl-md table{font-size:.8rem}
+  .rl-md .rl-wa,.rl-md .rl-btn{min-height:40px}
+}
+/* Aba Clientes - Relacionamento: tablet */
+@media (min-width:761px) and (max-width:1100px){
+  #viewRelac .rl-bar input,#viewRelac .rl-bar select{min-width:100px}
+  .rl-md{max-width:92vw}
+  #pdGrid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important}
+}
+/* Telas de toque: alvos maiores */
+@media (pointer:coarse){
+  .rl-btn,.rl-wa,.rl-enc{min-height:38px}
+  table.rl input[type=checkbox],.rl-md input[type=checkbox]{width:20px;height:20px}
+}
+
+@media (max-width:760px){
+  .vg-row{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:6px!important}
+  .vg-row>*{min-width:0;max-width:100%}
+  .vg-code{display:flex;gap:6px}
+  .vg-code .vg-in{flex:1;min-width:0}
+  .vg-label{flex:1 1 100%;min-width:0}
+  .vg-est{flex:0 0 auto}
+}
