@@ -96,6 +96,7 @@
       
       '<button type="button" class="rl-btn" id="rlClear">Limpar filtros</button></div>' +
       '<div class="rl-bar" style="margin-top:0">' +
+      '<button type="button" class="rl-btn" id="rlProd">Adicionar produtos</button>' +
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
       '<button type="button" class="rl-btn" id="rlSelClear">Limpar seleção</button>' +
       '<button type="button" class="rl-btn" id="rlHist">Histórico de envios</button></div>' +
@@ -111,6 +112,7 @@
     $("rlSelClear").addEventListener("click", () => { sel.clear(); draw(); });
     $("rlAll").addEventListener("change", (e) => { filtered().forEach((r) => { if (e.target.checked) sel.add(r.id); else sel.delete(r.id); }); draw(); });
     $("rlSend").addEventListener("click", openSend);
+    $("rlProd").addEventListener("click", () => openProd());
     $("rlHist").addEventListener("click", openHist);
     const body = $("rlBody");
     body.addEventListener("input", (e) => { const t = e.target; if (t.dataset && t.dataset.f && t.type === "text") { const tr = t.closest("tr"), k = tr.dataset.id + t.dataset.f; clearTimeout(timers[k]); timers[k] = setTimeout(() => commit(t), 900); } });
@@ -279,6 +281,60 @@
     m.q("#encNew").addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
   }
 
+  // ---------- produtos do catalogo ----------
+  const SITE = "https://lafayettemodas.github.io/catalogo/";
+  let prods = [], catalog = null;
+  const money = (v) => "R$ " + Number(v || 0).toFixed(2).replace(".", ",");
+  const pPrice = (p) => (p.promocao && Number(p.preco_promocao) > 0) ? Number(p.preco_promocao) : Number(p.price);
+  const pRef = (p) => p.ref_loja || p.ref_fabrica || "";
+  const pLink = (p) => SITE + "?produto=" + p.id;
+  const pPhoto = (p) => { const im = (p.product_images || []).slice().sort((a, b) => a.position - b.position)[0]; return im ? SITE + im.path : ""; };
+  function prodBlock() {
+    if (!prods.length) return "";
+    return "\n\nPeças selecionadas:\n" + prods.map((p) => "• " + p.name + (pRef(p) ? " (ref. " + pRef(p) + ")" : "") + " - " + money(pPrice(p)) + "\n" + pLink(p)).join("\n\n");
+  }
+  function updateProdBtn() { const b = $("rlProd"); if (b) b.textContent = prods.length ? "Produtos (" + prods.length + ")" : "Adicionar produtos"; }
+  async function loadCatalog() {
+    if (catalog) return catalog;
+    const { data, error } = await supabaseClient.from("produtos").select("id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, active, ocultar, esgotado, product_images ( path, position )").order("created_at", { ascending: false }).limit(1000);
+    if (error) throw error;
+    catalog = (data || []).filter((p) => p.active !== false && !p.ocultar);
+    return catalog;
+  }
+  async function openProd(onDone) {
+    const m = modal("Adicionar produtos", '<input type="text" id="pdQ" placeholder="Buscar por nome ou referência"><div id="pdInfo" class="hint-text" style="margin:6px 0"></div>' +
+      '<div id="pdGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:52vh;overflow:auto"></div>' +
+      '<div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px"><span id="pdSel" style="font-weight:700"></span><span><button type="button" class="rl-btn" id="pdClear">Limpar</button> <button type="button" class="rl-btn main" id="pdOk">Concluir</button></span></div>');
+    const grid = m.q("#pdGrid"), info = m.q("#pdInfo"), chosen = new Map(prods.map((p) => [p.id, p]));
+    const upd = () => { m.q("#pdSel").textContent = chosen.size + " peça" + (chosen.size === 1 ? "" : "s") + " selecionada" + (chosen.size === 1 ? "" : "s"); };
+    let list = [];
+    const draw2 = () => {
+      const q = norm(m.q("#pdQ").value.trim());
+      const f = list.filter((p) => !q || norm(p.name + " " + p.ref_loja + " " + p.ref_fabrica).includes(q));
+      info.textContent = f.length + " produto(s)" + (f.length > 120 ? " - mostrando 120, use a busca" : "");
+      grid.innerHTML = f.slice(0, 120).map((p) => {
+        const ph = pPhoto(p), on = chosen.has(p.id);
+        return '<div class="pd" data-id="' + esc(p.id) + '" style="border:2px solid ' + (on ? "#7a5a3a" : "#e8dcc8") + ';border-radius:10px;overflow:hidden;cursor:pointer;background:#fff;position:relative">' +
+          (ph ? '<img loading="lazy" src="' + esc(ph) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block">' : '<div style="aspect-ratio:3/4;background:#f5ecdb"></div>') +
+          '<div style="position:absolute;top:6px;left:6px;background:' + (on ? "#7a5a3a" : "rgba(255,255,255,.9)") + ';color:#fff;border-radius:4px;width:20px;height:20px;text-align:center;line-height:20px;font-weight:800">' + (on ? "✓" : "") + "</div>" +
+          '<div style="padding:5px 6px;font-size:.74rem"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.name) + "</div><div>ref. " + esc(pRef(p)) + "</div><div style=\"font-weight:700\">" + money(pPrice(p)) + (p.esgotado ? ' <span style="color:#a33">esgotado</span>' : "") + "</div></div></div>";
+      }).join("");
+      upd();
+    };
+    grid.addEventListener("click", (e) => {
+      const c = e.target.closest(".pd"); if (!c) return;
+      const p = list.find((x) => x.id === c.dataset.id); if (!p) return;
+      if (chosen.has(p.id)) chosen.delete(p.id); else chosen.set(p.id, p);
+      draw2();
+    });
+    m.q("#pdQ").addEventListener("input", draw2);
+    m.q("#pdClear").addEventListener("click", () => { chosen.clear(); draw2(); });
+    m.q("#pdOk").addEventListener("click", () => { prods = Array.from(chosen.values()); updateProdBtn(); m.close(); if (onDone) onDone(); });
+    info.textContent = "Carregando produtos...";
+    try { list = await loadCatalog(); } catch (e) { info.textContent = "Erro ao carregar: " + (e.message || e); return; }
+    draw2();
+  }
+
   function openSend() {
     if (!sel.size) { alert("Selecione ao menos uma cliente."); return; }
     const chosen = rows.filter((r) => sel.has(r.id));
@@ -288,20 +344,24 @@
     const step1 = m.q("#snStep1");
     step1.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label>' +
       '<textarea id="snMsg" placeholder="Ex.: Olá, {nome}! Temos novidades e promoções na Lafayette Modas. Venha conferir!"></textarea>' +
+      '<div style="margin:8px 0"><button type="button" class="rl-btn" id="snProd"></button> <span id="snProdList" class="hint-text"></span></div>' +
       '<div class="rl-note">Prévia para <strong id="snWho"></strong>:<div id="snPrev" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
       '<h4 style="margin:10px 0 4px">Destinatárias (' + okL.length + ")</h4>" +
       (okL.length ? '<div style="max-height:170px;overflow:auto"><table><tbody>' + okL.map((r) => "<tr><td>" + esc(r.nome) + "</td><td>" + esc(r.telefone || "") + "</td></tr>").join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente selecionada pode receber (é preciso ter telefone válido).</p>') +
       (bad.length ? '<h4 style="margin:10px 0 4px">Não serão enviadas (' + bad.length + ')</h4><div style="max-height:110px;overflow:auto"><table><tbody>' + bad.map((b) => "<tr><td>" + esc(b.r.nome) + '</td><td style="color:#8a5a14">' + b.motivo + "</td></tr>").join("") + "</tbody></table></div>" : "") +
       '<div class="rl-note">Envio manual: o sistema abre a conversa de cada cliente com a mensagem pronta, e o envio fica registrado. A ligação com a API oficial do WhatsApp (Meta) fica para quando as credenciais forem configuradas.</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="snCancel">Cancelar</button><button type="button" class="rl-btn main" id="snGo"' + (okL.length ? "" : " disabled") + '>Confirmar e preparar envio (' + okL.length + ")</button></div>";
-    const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? msg.value.replace(/\{nome\}/g, firstName(w.nome)) : ""; };
-    msg.addEventListener("input", prev); prev();
+    const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? (msg.value + prodBlock()).replace(/\{nome\}/g, firstName(w.nome)) : ""; };
+    msg.addEventListener("input", prev);
+    const prodUi = () => { m.q("#snProd").textContent = prods.length ? "Alterar produtos (" + prods.length + ")" : "Adicionar produtos"; m.q("#snProdList").textContent = prods.map((p) => pRef(p) || p.name).join(", "); prev(); };
+    m.q("#snProd").addEventListener("click", () => openProd(prodUi));
+    prodUi();
     m.q("#snCancel").addEventListener("click", m.close);
     m.q("#snGo").addEventListener("click", async (ev) => {
-      if (!msg.value.trim()) { alert("Escreva a mensagem."); msg.focus(); return; }
+      const full = msg.value.trimEnd() + prodBlock(); if (!full.trim()) { alert("Escreva a mensagem ou adicione produtos."); msg.focus(); return; }
       if (!confirm("Preparar o envio para " + okL.length + " cliente(s)?")) return;
       ev.target.disabled = true;
-      const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: msg.value, p_clientes: okL.map((r) => r.id) });
+      const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: full, p_clientes: okL.map((r) => r.id) });
       if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
       queue(m, step1, data);
     });
@@ -309,20 +369,25 @@
 
   function queue(m, host, data) {
     const envs = data.envios || []; let done = 0;
-    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Clique em "Abrir WhatsApp" em cada cliente: a conversa abre com a mensagem pronta. Ao abrir, o envio é registrado e o último contato é atualizado para hoje.</div>' +
+    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Clique em "Abrir WhatsApp": a conversa abre com a mensagem pronta (peças em forma de link). Depois de enviar no WhatsApp, volte e clique em "Confirmar envio": só então o envio é registrado e o último contato recebe a data de hoje.</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>' +
       envs.map((e) => '<tr data-e="' + esc(e.id) + '"><td>' + esc(e.nome) + "</td><td>" + esc(e.telefone || "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-wa" data-open>Abrir WhatsApp</button></td></tr>').join("") + "</tbody></table></div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
     const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
     host.addEventListener("click", async (ev) => {
-      const b = ev.target.closest("[data-open]"); if (!b) return;
-      const tr = b.closest("tr"), e = envs.find((x) => x.id === tr.dataset.e), n = waNum(e.telefone);
-      if (!n) { alert("Telefone inválido."); return; }
-      window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(e.mensagem), "_blank");
+      const b = ev.target.closest("[data-open],[data-confirm]"); if (!b) return;
+      const tr = b.closest("tr"), e = envs.find((x) => x.id === tr.dataset.e);
+      if (b.hasAttribute("data-open")) {
+        const n = waNum(e.telefone); if (!n) { alert("Telefone inválido."); return; }
+        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(e.mensagem), "_blank");
+        b.removeAttribute("data-open"); b.setAttribute("data-confirm", ""); b.textContent = "Confirmar envio";
+        b.style.background = "#fff"; b.style.color = "#6b5a3e"; b.style.border = "1px solid #7a5a3a";
+        return;
+      }
       b.disabled = true; b.textContent = "Registrando...";
       const { error } = await supabaseClient.rpc("whatsapp_registrar_envio", { p_envio: e.id, p_status: "enviado" });
-      if (error) { b.disabled = false; b.textContent = "Abrir WhatsApp"; alert("Erro ao registrar: " + error.message); return; }
-      b.textContent = "Enviado"; done++; prog();
+      if (error) { b.disabled = false; b.textContent = "Confirmar envio"; alert("Erro ao registrar: " + error.message); return; }
+      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog();
       const r = find(e.cliente_id); if (r) { r.ultimo_contato = todayStr(); refreshRow(r.id); }
     });
   }
