@@ -283,14 +283,14 @@
 
   // ---------- produtos do catalogo ----------
   const SITE = "https://lafayettemodas.github.io/catalogo/";
-  let prods = [], catalog = null;
+  let prods = [], catalog = null, withPhotos = true;
   const money = (v) => "R$ " + Number(v || 0).toFixed(2).replace(".", ",");
   const pPrice = (p) => (p.promocao && Number(p.preco_promocao) > 0) ? Number(p.preco_promocao) : Number(p.price);
   const pRef = (p) => p.ref_loja || p.ref_fabrica || "";
   const pLink = (p) => SITE + "?produto=" + p.id;
   const pPhoto = (p) => { const im = (p.product_images || []).slice().sort((a, b) => a.position - b.position)[0]; return im ? SITE + im.path : ""; };
   function prodBlock() {
-    if (!prods.length) return "";
+    if (!prods.length || withPhotos) return "";
     return "\n\nPeças selecionadas:\n" + prods.map((p) => "• " + p.name + (pRef(p) ? " (ref. " + pRef(p) + ")" : "") + " - " + money(pPrice(p)) + "\n" + pLink(p)).join("\n\n");
   }
   function updateProdBtn() { const b = $("rlProd"); if (b) b.textContent = prods.length ? "Produtos (" + prods.length + ")" : "Adicionar produtos"; }
@@ -367,36 +367,63 @@
     step1.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label>' +
       '<textarea id="snMsg" placeholder="Ex.: Olá, {nome}! Temos novidades e promoções na Lafayette Modas. Venha conferir!"></textarea>' +
       '<div style="margin:8px 0"><button type="button" class="rl-btn" id="snProd"></button> <span id="snProdList" class="hint-text"></span></div>' +
+      '<label id="snPhotoRow" style="display:none;font-size:.82rem;margin:4px 0"><input type="checkbox" id="snPhotos" checked> Enviar também a foto de cada peça (foto + legenda com nome, preço e link)</label>' +
       '<div class="rl-note">Prévia para <strong id="snWho"></strong>:<div id="snPrev" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
       '<h4 style="margin:10px 0 4px">Destinatárias (' + okL.length + ")</h4>" +
       (okL.length ? '<div style="max-height:170px;overflow:auto"><table><tbody>' + okL.map((r) => "<tr><td>" + esc(r.nome) + "</td><td>" + esc(r.telefone || "") + "</td></tr>").join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente selecionada pode receber (é preciso ter telefone válido).</p>') +
       (bad.length ? '<h4 style="margin:10px 0 4px">Não serão enviadas (' + bad.length + ')</h4><div style="max-height:110px;overflow:auto"><table><tbody>' + bad.map((b) => "<tr><td>" + esc(b.r.nome) + '</td><td style="color:#8a5a14">' + b.motivo + "</td></tr>").join("") + "</tbody></table></div>" : "") +
       '<div class="rl-note">Envio manual: o sistema abre a conversa de cada cliente com a mensagem pronta, e o envio fica registrado. A ligação com a API oficial do WhatsApp (Meta) fica para quando as credenciais forem configuradas.</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="snCancel">Cancelar</button><button type="button" class="rl-btn main" id="snGo"' + (okL.length ? "" : " disabled") + '>Confirmar e preparar envio (' + okL.length + ")</button></div>";
-    const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? (msg.value + prodBlock()).replace(/\{nome\}/g, firstName(w.nome)) : ""; };
+    const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? (msg.value + prodBlock() + (withPhotos && prods.length ? "\n\n[+ " + prods.length + " foto(s) com legenda: nome — preço — link]" : "")).replace(/\{nome\}/g, firstName(w.nome)) : ""; };
     msg.addEventListener("input", prev);
-    const prodUi = () => { m.q("#snProd").textContent = prods.length ? "Alterar produtos (" + prods.length + ")" : "Adicionar produtos"; m.q("#snProdList").textContent = prods.map((p) => pRef(p) || p.name).join(", "); prev(); };
+    const prodUi = () => { m.q("#snProd").textContent = prods.length ? "Alterar produtos (" + prods.length + ")" : "Adicionar produtos"; m.q("#snProdList").textContent = prods.map((p) => pRef(p) || p.name).join(", "); m.q("#snPhotoRow").style.display = prods.length ? "block" : "none"; prev(); };
     m.q("#snProd").addEventListener("click", () => openProd(prodUi));
+    m.q("#snPhotos").checked = withPhotos; m.q("#snPhotos").addEventListener("change", (e) => { withPhotos = e.target.checked; prev(); });
     prodUi();
     m.q("#snCancel").addEventListener("click", m.close);
     m.q("#snGo").addEventListener("click", async (ev) => {
-      const full = msg.value.trimEnd() + prodBlock(); if (!full.trim()) { alert("Escreva a mensagem ou adicione produtos."); msg.focus(); return; }
+      const full = (msg.value.trimEnd() || (withPhotos && prods.length ? "Olá, {nome}! Separei algumas peças para você:" : "")) + prodBlock(); if (!full.trim()) { alert("Escreva a mensagem ou adicione produtos."); msg.focus(); return; }
       if (!confirm("Preparar o envio para " + okL.length + " cliente(s)?")) return;
       ev.target.disabled = true;
       const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: full, p_clientes: okL.map((r) => r.id) });
       if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
-      queue(m, step1, data);
+      queue(m, step1, data, withPhotos ? prods.slice() : []);
     });
   }
 
-  function queue(m, host, data) {
-    const envs = data.envios || []; let done = 0;
-    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Clique em "Abrir WhatsApp": a conversa abre com a mensagem pronta (peças em forma de link). Depois de enviar no WhatsApp, volte e clique em "Confirmar envio": só então o envio é registrado e o último contato recebe a data de hoje.</div>' +
+  async function sendPhoto(btn, p) {
+    const cap = p.name + " — " + money(pPrice(p)) + " " + pLink(p), orig = btn.dataset.o || btn.textContent;
+    if (btn.dataset.step === "cap") {
+      btn.dataset.step = "";
+      try { await navigator.clipboard.writeText(cap); btn.textContent = "Legenda copiada - cole"; } catch (e) { prompt("Copie a legenda:", cap); }
+      setTimeout(() => { btn.textContent = orig; }, 2500); return;
+    }
+    const url = pPhoto(p); if (!url) { alert("Esta peça não tem foto."); return; }
+    btn.disabled = true; btn.dataset.o = orig; btn.textContent = "Carregando...";
+    try {
+      const blob = await (await fetch(url)).blob();
+      if (window.matchMedia("(pointer:coarse)").matches && navigator.canShare) {
+        const f = new File([blob], (pRef(p) || "peca") + "." + (blob.type.split("/")[1] || "jpg"), { type: blob.type });
+        if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: cap }); btn.disabled = false; btn.textContent = orig; return; }
+      }
+      const bmp = await createImageBitmap(blob), cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height; cv.getContext("2d").drawImage(bmp, 0, 0);
+      const png = await new Promise((r) => cv.toBlob(r, "image/png"));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      btn.textContent = "Foto copiada - cole (Ctrl+V). Clique p/ legenda"; btn.dataset.step = "cap";
+    } catch (e) { if (!e || e.name !== "AbortError") alert("Não foi possível copiar a foto: " + ((e && e.message) || e)); btn.textContent = orig; }
+    btn.disabled = false;
+  }
+
+  function queue(m, host, data, items) {
+    const envs = data.envios || []; let done = 0; items = items || [];
+    const photoBtns = () => items.length ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
+    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Fotos: no celular o botão "Foto" abre o compartilhamento com legenda; no computador ele copia a foto (cole com Ctrl+V na conversa) e, clicando de novo, copia a legenda. Clique em "Abrir WhatsApp": a conversa abre com a mensagem pronta (peças em forma de link). Depois de enviar no WhatsApp, volte e clique em "Confirmar envio": só então o envio é registrado e o último contato recebe a data de hoje.</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>' +
-      envs.map((e) => '<tr data-e="' + esc(e.id) + '"><td>' + esc(e.nome) + "</td><td>" + esc(e.telefone || "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-wa" data-open>Abrir WhatsApp</button></td></tr>').join("") + "</tbody></table></div>" +
+      envs.map((e) => '<tr data-e="' + esc(e.id) + '"><td>' + esc(e.nome) + photoBtns() + "</td><td>" + esc(e.telefone || "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-wa" data-open>Abrir WhatsApp</button></td></tr>').join("") + "</tbody></table></div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
     const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
     host.addEventListener("click", async (ev) => {
+      const pb = ev.target.closest("[data-photo]"); if (pb) { await sendPhoto(pb, items[+pb.dataset.photo]); return; }
       const b = ev.target.closest("[data-open],[data-confirm]"); if (!b) return;
       const tr = b.closest("tr"), e = envs.find((x) => x.id === tr.dataset.e);
       if (b.hasAttribute("data-open")) {
