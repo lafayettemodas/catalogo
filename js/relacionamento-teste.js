@@ -391,6 +391,11 @@
       m.close(); await load();
       $("rlQ").value = nome; draw();
       $("rlMsg").textContent = "Cliente adicionada: " + nome + ".";
+      if (waNum(tel)) {
+        const q = modal("Cliente adicionada", '<p style="margin:0 0 10px"><strong>' + esc(nome) + '</strong> foi cadastrada.</p><p style="margin:0 0 14px">Deseja enviar mensagem de boas-vindas?</p><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="rl-btn" id="wqNo">Agora não</button><button type="button" class="rl-btn main" id="wqYes">Sim, enviar boas-vindas</button></div>');
+        q.q("#wqNo").addEventListener("click", q.close);
+        q.q("#wqYes").addEventListener("click", () => { q.close(); sel.clear(); sel.add(data.id); draw(); openWelcome(); });
+      }
     });
   }
   async function delClient(id) {
