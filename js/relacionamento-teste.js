@@ -26,47 +26,47 @@
 
   const CSS = `
   #viewRelac{background:#fff}
-  #viewRelac .rl-panel{background:#fff;border:1px solid #f3c6d4;border-radius:14px;padding:14px}
+  #viewRelac .rl-panel{background:#fff;border:1px solid #e8dcc8;border-radius:14px;padding:14px}
   #viewRelac h2{margin:0 0 4px}
   .rl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:10px 0}
   .rl-bar .f{display:flex;flex-direction:column;gap:2px}
-  .rl-bar label{font-size:.72rem;color:#9a6a7a;font-weight:700}
-  .rl-bar input,.rl-bar select{border:1px solid #f0c4d2;border-radius:8px;padding:6px 8px;font-size:.85rem;background:#fff;min-width:110px}
-  .rl-btn{border:1px solid #e9a9bd;background:#fff;color:#a23d63;border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:.85rem}
-  .rl-btn.main{background:#e86a92;color:#fff;border-color:#e86a92}
+  .rl-bar label{font-size:.72rem;color:#8a7a5e;font-weight:700}
+  .rl-bar input,.rl-bar select{border:1px solid #e6d9c0;border-radius:8px;padding:6px 8px;font-size:.85rem;background:#fff;min-width:110px}
+  .rl-btn{border:1px solid #d8c08f;background:#fff;color:#8a6d3b;border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:.85rem}
+  .rl-btn.main{background:#c4a164;color:#fff;border-color:#c4a164}
   .rl-btn:disabled{opacity:.5;cursor:default}
-  .rl-info{font-size:.82rem;color:#7b5a66;display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+  .rl-info{font-size:.82rem;color:#7a6a50;display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
   .rl-save{font-weight:700}.rl-save.ok{color:#2a8a4a}.rl-save.err{color:#c0392b}.rl-save.wait{color:#b07a00}
-  .rl-wrap{overflow:auto;max-height:68vh;border:1px solid #f0c4d2;border-radius:8px}
+  .rl-wrap{overflow:auto;max-height:68vh;border:1px solid #e6d9c0;border-radius:8px}
   table.rl{border-collapse:collapse;width:100%;font-size:.82rem;min-width:1500px}
-  table.rl th{position:sticky;top:0;z-index:2;background:#fde4ec;color:#7a2d4a;text-align:left;padding:7px 6px;border:1px solid #f3c6d4;white-space:nowrap}
-  table.rl td{border:1px solid #f6d9e2;padding:2px 3px;vertical-align:middle;background:#fff}
-  table.rl tr:nth-child(even) td{background:#fffafc}
-  table.rl tr.late td{background:#ffe3ea}
-  table.rl td.c-nome{position:sticky;left:0;z-index:1;font-weight:700;white-space:nowrap;padding:4px 8px;min-width:190px;max-width:260px;overflow:hidden;text-overflow:ellipsis;box-shadow:1px 0 0 #f3c6d4}
+  table.rl th{position:sticky;top:0;z-index:2;background:#f5ecdb;color:#6b5a3e;text-align:left;padding:7px 6px;border:1px solid #e8dcc8;white-space:nowrap}
+  table.rl td{border:1px solid #efe6d3;padding:2px 3px;vertical-align:middle;background:#fff}
+  table.rl tr:nth-child(even) td{background:#fdfaf4}
+  table.rl tr.late td{background:#f7ecd6}
+  table.rl td.c-nome{position:sticky;left:0;z-index:1;font-weight:700;white-space:nowrap;padding:4px 8px;min-width:190px;max-width:260px;overflow:hidden;text-overflow:ellipsis;box-shadow:1px 0 0 #e8dcc8}
   table.rl th.c-nome{left:0;z-index:3}
-  table.rl td.c-nome a{color:#5a2740;text-decoration:none;cursor:pointer}table.rl td.c-nome a:hover{text-decoration:underline}
+  table.rl td.c-nome a{color:#4a3d28;text-decoration:none;cursor:pointer}table.rl td.c-nome a:hover{text-decoration:underline}
   table.rl input[type=text],table.rl input[type=date]{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;padding:5px 4px;font:inherit;border-radius:4px}
-  table.rl input[type=text]:focus,table.rl input[type=date]:focus{border-color:#e86a92;background:#fff;outline:none}
+  table.rl input[type=text]:focus,table.rl input[type=date]:focus{border-color:#c4a164;background:#fff;outline:none}
   table.rl input.bad{border-color:#c0392b!important;background:#fdeaea!important}
   .rl-wa{background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer;font-size:.76rem}
   .rl-wa:disabled{background:#cfd8d3;cursor:default}
-  .rl-tel{font-size:.7rem;color:#9a8890;margin-top:1px}
-  .rl-enc{border:1px dashed #e9a9bd;background:#fff;border-radius:6px;padding:4px 6px;cursor:pointer;font-size:.76rem;color:#7a2d4a;text-align:left;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%}
-  .rl-enc.has{background:#fff1f6;border-style:solid;font-weight:700}
+  .rl-tel{font-size:.7rem;color:#9a9078;margin-top:1px}
+  .rl-enc{border:1px dashed #d8c08f;background:#fff;border-radius:6px;padding:4px 6px;cursor:pointer;font-size:.76rem;color:#6b5a3e;text-align:left;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;width:100%}
+  .rl-enc.has{background:#f8f1e3;border-style:solid;font-weight:700}
   .rl-b{display:inline-block;border-radius:999px;padding:2px 9px;font-size:.72rem;font-weight:800;white-space:nowrap}
-  .rl-b.pendente{background:#ffd6e1;color:#b3294f}.rl-b.ok{background:#dff3e5;color:#1c6b2c}
+  .rl-b.pendente{background:#f3e3c0;color:#8a5a14}.rl-b.ok{background:#dff3e5;color:#1c6b2c}
   .rl-ov{position:fixed;inset:0;background:rgba(60,20,35,.4);display:flex;align-items:center;justify-content:center;z-index:99990;padding:12px}
-  .rl-md{background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;border:1px solid #f3c6d4;box-shadow:0 12px 40px rgba(0,0,0,.3)}
-  .rl-md header{background:#fde4ec;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:14px 14px 0 0}
-  .rl-md header h3{margin:0;color:#7a2d4a;font-size:1rem}
+  .rl-md{background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;border:1px solid #e8dcc8;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+  .rl-md header{background:#f5ecdb;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:14px 14px 0 0}
+  .rl-md header h3{margin:0;color:#6b5a3e;font-size:1rem}
   .rl-md .bd{padding:14px 16px}
-  .rl-md textarea{width:100%;box-sizing:border-box;min-height:110px;border:1px solid #f0c4d2;border-radius:8px;padding:8px;font:inherit}
+  .rl-md textarea{width:100%;box-sizing:border-box;min-height:110px;border:1px solid #e6d9c0;border-radius:8px;padding:8px;font:inherit}
   .rl-md table{width:100%;border-collapse:collapse;font-size:.82rem}
-  .rl-md th,.rl-md td{border-bottom:1px solid #f6d9e2;padding:5px 6px;text-align:left}
-  .rl-md th{background:#fff1f6;color:#7a2d4a}
-  .rl-md input[type=text]{border:1px solid #f0c4d2;border-radius:6px;padding:5px 7px;font:inherit;width:100%;box-sizing:border-box}
-  .rl-note{font-size:.78rem;color:#7b5a66;background:#fff8fa;border:1px solid #f6d9e2;border-radius:8px;padding:8px 10px;margin:8px 0}
+  .rl-md th,.rl-md td{border-bottom:1px solid #efe6d3;padding:5px 6px;text-align:left}
+  .rl-md th{background:#f8f1e3;color:#6b5a3e}
+  .rl-md input[type=text]{border:1px solid #e6d9c0;border-radius:6px;padding:5px 7px;font:inherit;width:100%;box-sizing:border-box}
+  .rl-note{font-size:.78rem;color:#7a6a50;background:#fcf8ef;border:1px solid #efe6d3;border-radius:8px;padding:8px 10px;margin:8px 0}
   `;
 
   function inject() {
@@ -102,7 +102,7 @@
       '<div class="rl-info"><span id="rlCount"></span><span id="rlSelCount"></span><span id="rlSave" class="rl-save"></span></div>' +
       '<div id="rlMsg" class="hint-text"></div>' +
       '<div class="rl-wrap"><table class="rl"><thead><tr>' +
-      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th><th>Status</th><th title="A cliente autorizou receber mensagens">Autoriza WhatsApp</th>' +
+      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th>' +
       '</tr></thead><tbody id="rlBody"></tbody></table></div></div>';
     content.appendChild(view);
     ["rlQ", "rlTam", "rlPref"].forEach((i) => $(i).addEventListener("input", draw));
@@ -173,8 +173,7 @@
       '<td style="width:128px"><input type="date" data-f="ultimo_contato" value="' + esc(String(r.ultimo_contato || "").slice(0, 10)) + '"></td>' +
       '<td style="min-width:170px"><button type="button" class="rl-enc' + (pend ? " has" : "") + '" title="Abrir encomendas">' + esc(encSummary(r)) + "</button></td>" +
       '<td style="min-width:190px"><input type="text" data-f="observacoes" value="' + esc(r.observacoes || "") + '"></td>' +
-      '<td class="c-st" style="text-align:center">' + statusBadge(s) + "</td>" +
-      '<td style="text-align:center"><input type="checkbox" data-f="whatsapp_autorizado"' + (r.whatsapp_autorizado ? " checked" : "") + "></td></tr>";
+      '</tr>';
   }
   function statusBadge(s) { return '<span class="rl-b ' + (s.t === "pendente" ? "pendente" : "ok") + '">' + (s.t === "pendente" ? "Pendente" : "Em dia") + "</span>" + (s.late ? '<div class="rl-tel">há ' + s.d + " dias</div>" : (s.d === null ? '<div class="rl-tel">nunca</div>' : "")); }
 
@@ -193,7 +192,7 @@
   function refreshRow(id) {
     const r = find(id), tr = $("rlBody").querySelector('tr[data-id="' + id + '"]'); if (!r || !tr) return;
     const s = statusOf(r); tr.classList.toggle("late", s.late);
-    tr.querySelector(".c-st").innerHTML = statusBadge(s);
+    
     const eb = tr.querySelector(".rl-enc"); eb.textContent = encSummary(r); eb.classList.toggle("has", (r.encomendas || []).some((e) => e.situacao === "pendente"));
     const uc = tr.querySelector('[data-f="ultimo_contato"]'); if (uc && document.activeElement !== uc) uc.value = String(r.ultimo_contato || "").slice(0, 10);
   }
@@ -294,7 +293,7 @@
       '<div class="rl-note">Prévia para <strong id="snWho"></strong>:<div id="snPrev" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
       '<h4 style="margin:10px 0 4px">Destinatárias (' + okL.length + ")</h4>" +
       (okL.length ? '<div style="max-height:170px;overflow:auto"><table><tbody>' + okL.map((r) => "<tr><td>" + esc(r.nome) + "</td><td>" + esc(r.telefone || "") + "</td></tr>").join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente selecionada pode receber (é preciso marcar "Autoriza WhatsApp" e ter telefone).</p>') +
-      (bad.length ? '<h4 style="margin:10px 0 4px">Não serão enviadas (' + bad.length + ')</h4><div style="max-height:110px;overflow:auto"><table><tbody>' + bad.map((b) => "<tr><td>" + esc(b.r.nome) + '</td><td style="color:#b3294f">' + b.motivo + "</td></tr>").join("") + "</tbody></table></div>" : "") +
+      (bad.length ? '<h4 style="margin:10px 0 4px">Não serão enviadas (' + bad.length + ')</h4><div style="max-height:110px;overflow:auto"><table><tbody>' + bad.map((b) => "<tr><td>" + esc(b.r.nome) + '</td><td style="color:#8a5a14">' + b.motivo + "</td></tr>").join("") + "</tbody></table></div>" : "") +
       '<div class="rl-note">Envio manual: o sistema abre a conversa de cada cliente com a mensagem pronta, e o envio fica registrado. A ligação com a API oficial do WhatsApp (Meta) fica para quando as credenciais forem configuradas.</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="snCancel">Cancelar</button><button type="button" class="rl-btn main" id="snGo"' + (okL.length ? "" : " disabled") + '>Confirmar e preparar envio (' + okL.length + ")</button></div>";
     const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? msg.value.replace(/\{nome\}/g, firstName(w.nome)) : ""; };
