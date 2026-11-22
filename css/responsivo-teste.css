@@ -36,3 +36,9 @@ img,video{max-width:100%}
   .rl-btn,.rl-wa,.rl-enc{min-height:38px}
   table.rl input[type=checkbox],.rl-md input[type=checkbox]{width:20px;height:20px}
 }
+
+@media (max-width:760px){
+  .vg-row{flex-wrap:wrap;gap:6px}
+  .vg-label{flex:1 1 100%;min-width:0}
+  .vg-est{flex:0 0 auto}
+}
