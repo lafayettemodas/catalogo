@@ -93,7 +93,7 @@
       '<div class="f"><label>Último contato</label><select id="rlUC"><option value="">Todos</option><option value="30">Mais de 30 dias</option><option value="nunca">Nunca contatada</option><option value="7">Últimos 7 dias</option><option value="ok">Até 30 dias (em dia)</option></select></div>' +
       '<div class="f"><label>Status</label><select id="rlSt"><option value="">Todos</option><option value="pendente">Pendente</option><option value="em dia">Em dia</option></select></div>' +
       '<div class="f"><label>Encomendas</label><select id="rlEnc"><option value="">Todas</option><option value="pend">Com pendentes</option><option value="sem">Sem pendentes</option></select></div>' +
-      '<div class="f"><label>WhatsApp</label><select id="rlAut"><option value="">Todas</option><option value="sim">Autorizadas</option><option value="nao">Sem autorização</option></select></div>' +
+      
       '<button type="button" class="rl-btn" id="rlClear">Limpar filtros</button></div>' +
       '<div class="rl-bar" style="margin-top:0">' +
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
@@ -106,8 +106,8 @@
       '</tr></thead><tbody id="rlBody"></tbody></table></div></div>';
     content.appendChild(view);
     ["rlQ", "rlTam", "rlPref"].forEach((i) => $(i).addEventListener("input", draw));
-    ["rlAniv", "rlUC", "rlSt", "rlEnc", "rlAut"].forEach((i) => $(i).addEventListener("change", draw));
-    $("rlClear").addEventListener("click", () => { ["rlQ", "rlTam", "rlPref"].forEach((i) => ($(i).value = "")); ["rlAniv", "rlUC", "rlSt", "rlEnc", "rlAut"].forEach((i) => ($(i).value = "")); draw(); });
+    ["rlAniv", "rlUC", "rlSt", "rlEnc"].forEach((i) => $(i).addEventListener("change", draw));
+    $("rlClear").addEventListener("click", () => { ["rlQ", "rlTam", "rlPref"].forEach((i) => ($(i).value = "")); ["rlAniv", "rlUC", "rlSt", "rlEnc"].forEach((i) => ($(i).value = "")); draw(); });
     $("rlSelClear").addEventListener("click", () => { sel.clear(); draw(); });
     $("rlAll").addEventListener("change", (e) => { filtered().forEach((r) => { if (e.target.checked) sel.add(r.id); else sel.delete(r.id); }); draw(); });
     $("rlSend").addEventListener("click", openSend);
@@ -128,7 +128,7 @@
 
   function filtered() {
     const q = norm($("rlQ").value.trim()), qd = q.replace(/\D/g, ""), tam = norm($("rlTam").value.trim()), pref = norm($("rlPref").value.trim());
-    const an = $("rlAniv").value, uc = $("rlUC").value, st = $("rlSt").value, en = $("rlEnc").value, au = $("rlAut").value;
+    const an = $("rlAniv").value, uc = $("rlUC").value, st = $("rlSt").value, en = $("rlEnc").value;
     const now = new Date(), mNow = now.getMonth() + 1, dNow = now.getDate();
     return rows.filter((r) => {
       if (q) {
@@ -154,8 +154,6 @@
       const pend = (r.encomendas || []).some((e) => e.situacao === "pendente");
       if (en === "pend" && !pend) return false;
       if (en === "sem" && pend) return false;
-      if (au === "sim" && !r.whatsapp_autorizado) return false;
-      if (au === "nao" && r.whatsapp_autorizado) return false;
       return true;
     });
   }
@@ -284,15 +282,15 @@
   function openSend() {
     if (!sel.size) { alert("Selecione ao menos uma cliente."); return; }
     const chosen = rows.filter((r) => sel.has(r.id));
-    const okL = chosen.filter((r) => r.whatsapp_autorizado && waNum(r.telefone));
-    const bad = chosen.filter((r) => !okL.includes(r)).map((r) => ({ r, motivo: !r.whatsapp_autorizado ? "sem autorização de WhatsApp" : "sem telefone válido" }));
+    const okL = chosen.filter((r) => waNum(r.telefone));
+    const bad = chosen.filter((r) => !okL.includes(r)).map((r) => ({ r, motivo: "sem telefone válido" }));
     const m = modal("Enviar WhatsApp", '<div id="snStep1"></div>');
     const step1 = m.q("#snStep1");
     step1.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label>' +
       '<textarea id="snMsg" placeholder="Ex.: Olá, {nome}! Temos novidades e promoções na Lafayette Modas. Venha conferir!"></textarea>' +
       '<div class="rl-note">Prévia para <strong id="snWho"></strong>:<div id="snPrev" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
       '<h4 style="margin:10px 0 4px">Destinatárias (' + okL.length + ")</h4>" +
-      (okL.length ? '<div style="max-height:170px;overflow:auto"><table><tbody>' + okL.map((r) => "<tr><td>" + esc(r.nome) + "</td><td>" + esc(r.telefone || "") + "</td></tr>").join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente selecionada pode receber (é preciso marcar "Autoriza WhatsApp" e ter telefone).</p>') +
+      (okL.length ? '<div style="max-height:170px;overflow:auto"><table><tbody>' + okL.map((r) => "<tr><td>" + esc(r.nome) + "</td><td>" + esc(r.telefone || "") + "</td></tr>").join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente selecionada pode receber (é preciso ter telefone válido).</p>') +
       (bad.length ? '<h4 style="margin:10px 0 4px">Não serão enviadas (' + bad.length + ')</h4><div style="max-height:110px;overflow:auto"><table><tbody>' + bad.map((b) => "<tr><td>" + esc(b.r.nome) + '</td><td style="color:#8a5a14">' + b.motivo + "</td></tr>").join("") + "</tbody></table></div>" : "") +
       '<div class="rl-note">Envio manual: o sistema abre a conversa de cada cliente com a mensagem pronta, e o envio fica registrado. A ligação com a API oficial do WhatsApp (Meta) fica para quando as credenciais forem configuradas.</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="snCancel">Cancelar</button><button type="button" class="rl-btn main" id="snGo"' + (okL.length ? "" : " disabled") + '>Confirmar e preparar envio (' + okL.length + ")</button></div>";
