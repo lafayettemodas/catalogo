@@ -403,8 +403,8 @@
     try {
       const blob = await (await fetch(url)).blob();
       if (window.matchMedia("(pointer:coarse)").matches && navigator.canShare) {
-        const f = new File([blob], (pRef(p) || "peca") + "." + (blob.type.split("/")[1] || "jpg"), { type: blob.type });
-        if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: cap }); btn.disabled = false; btn.textContent = orig; return; }
+        const f = new File([blob], "produto.jpg", { type: blob.type || "image/jpeg" });
+        if (navigator.canShare({ files: [f] })) { await navigator.share({ title: p.name, text: p.name + " — " + money(pPrice(p)), url: pLink(p), files: [f] }); btn.disabled = false; btn.textContent = orig; return; }
       }
       const bmp = await createImageBitmap(blob), cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height; cv.getContext("2d").drawImage(bmp, 0, 0);
       const png = await new Promise((r) => cv.toBlob(r, "image/png"));
@@ -416,7 +416,7 @@
 
   function queue(m, host, data, items) {
     const envs = data.envios || []; let done = 0; items = items || [];
-    const photoBtns = () => items.length ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
+    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Fotos: no celular o botão "Foto" abre o compartilhamento com legenda; no computador ele copia a foto (cole com Ctrl+V na conversa) e, clicando de novo, copia a legenda. Clique em "Abrir WhatsApp": a conversa abre com a mensagem pronta (peças em forma de link). Depois de enviar no WhatsApp, volte e clique em "Confirmar envio": só então o envio é registrado e o último contato recebe a data de hoje.</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>' +
       envs.map((e) => '<tr data-e="' + esc(e.id) + '"><td>' + esc(e.nome) + photoBtns() + "</td><td>" + esc(e.telefone || "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-wa" data-open>Abrir WhatsApp</button></td></tr>').join("") + "</tbody></table></div>" +
