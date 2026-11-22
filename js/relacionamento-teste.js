@@ -294,30 +294,47 @@
     return "\n\nPeças selecionadas:\n" + prods.map((p) => "• " + p.name + (pRef(p) ? " (ref. " + pRef(p) + ")" : "") + " - " + money(pPrice(p)) + "\n" + pLink(p)).join("\n\n");
   }
   function updateProdBtn() { const b = $("rlProd"); if (b) b.textContent = prods.length ? "Produtos (" + prods.length + ")" : "Adicionar produtos"; }
+  async function pagedAll(build) {
+    let out = [], from = 0;
+    for (;;) { const { data, error } = await build().range(from, from + 999); if (error) throw error; out = out.concat(data || []); if (!data || data.length < 1000) break; from += 1000; }
+    return out;
+  }
+  const SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "U", "UNICO", "ÚNICO"];
+  const sizeSort = (x, y) => { const ix = SIZE_ORDER.indexOf(String(x).toUpperCase()), iy = SIZE_ORDER.indexOf(String(y).toUpperCase()); if (ix >= 0 && iy >= 0) return ix - iy; if (ix >= 0) return -1; if (iy >= 0) return 1; return String(x).localeCompare(String(y), "pt-BR", { numeric: true }); };
+  let cats = {};
   async function loadCatalog() {
     if (catalog) return catalog;
-    const { data, error } = await supabaseClient.from("produtos").select("id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, active, ocultar, esgotado, product_images ( path, position )").order("created_at", { ascending: false }).limit(1000);
-    if (error) throw error;
-    catalog = (data || []).filter((p) => p.active !== false && !p.ocultar);
+    const [pr, es, ct] = await Promise.all([
+      pagedAll(() => supabaseClient.from("produtos").select("id, name, ref_fabrica, ref_loja, price, promocao, preco_promocao, active, ocultar, esgotado, category_id, product_images ( path, position )").order("created_at", { ascending: false }).order("id")),
+      pagedAll(() => supabaseClient.from("estoque").select("produto_id, tamanho, quantidade").gt("quantidade", 0).order("produto_id").order("tamanho")),
+      supabaseClient.from("categories").select("id, name").order("name")
+    ]);
+    cats = {}; (ct.data || []).forEach((c) => { cats[c.id] = c.name; });
+    const tams = {};
+    es.forEach((e) => { (tams[e.produto_id] = tams[e.produto_id] || new Set()).add(String(e.tamanho || "").trim()); });
+    catalog = pr.filter((p) => p.active !== false && !p.ocultar && !p.esgotado && tams[p.id]).map((p) => { p.tams = Array.from(tams[p.id]).filter(Boolean).sort(sizeSort); return p; });
     return catalog;
   }
   async function openProd(onDone) {
-    const m = modal("Adicionar produtos", '<input type="text" id="pdQ" placeholder="Buscar por nome ou referência"><div id="pdInfo" class="hint-text" style="margin:6px 0"></div>' +
-      '<div id="pdGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:52vh;overflow:auto"></div>' +
+    const sel = 'style="border:1px solid #e6d9c0;border-radius:8px;padding:6px 8px;font-size:.85rem;background:#fff"';
+    const m = modal("Adicionar produtos", '<div style="display:flex;flex-wrap:wrap;gap:6px"><input type="text" id="pdQ" placeholder="Buscar por nome ou referência" style="flex:1;min-width:180px"><select id="pdCat" ' + sel + '><option value="">Categoria</option></select><select id="pdTam" ' + sel + '><option value="">Tamanho</option></select><select id="pdPromo" ' + sel + '><option value="">Promoção: todas</option><option value="sim">Só promoção</option><option value="nao">Sem promoção</option></select></div>' +
+      '<div id="pdInfo" class="hint-text" style="margin:6px 0"></div>' +
+      '<div id="pdGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:50vh;overflow:auto"></div>' +
       '<div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px"><span id="pdSel" style="font-weight:700"></span><span><button type="button" class="rl-btn" id="pdClear">Limpar</button> <button type="button" class="rl-btn main" id="pdOk">Concluir</button></span></div>');
     const grid = m.q("#pdGrid"), info = m.q("#pdInfo"), chosen = new Map(prods.map((p) => [p.id, p]));
     const upd = () => { m.q("#pdSel").textContent = chosen.size + " peça" + (chosen.size === 1 ? "" : "s") + " selecionada" + (chosen.size === 1 ? "" : "s"); };
     let list = [];
     const draw2 = () => {
-      const q = norm(m.q("#pdQ").value.trim());
-      const f = list.filter((p) => !q || norm(p.name + " " + p.ref_loja + " " + p.ref_fabrica).includes(q));
-      info.textContent = f.length + " produto(s)" + (f.length > 120 ? " - mostrando 120, use a busca" : "");
+      const q = norm(m.q("#pdQ").value.trim()), ca = m.q("#pdCat").value, ta = m.q("#pdTam").value, pr = m.q("#pdPromo").value;
+      const f = list.filter((p) => (!q || norm(p.name + " " + p.ref_loja + " " + p.ref_fabrica).includes(q)) && (!ca || p.category_id === ca) && (!ta || p.tams.includes(ta)) && (pr !== "sim" || (p.promocao && Number(p.preco_promocao) > 0)) && (pr !== "nao" || !(p.promocao && Number(p.preco_promocao) > 0)));
+      info.textContent = f.length + " produto(s) com estoque" + (f.length > 120 ? " - mostrando 120, use os filtros" : "");
       grid.innerHTML = f.slice(0, 120).map((p) => {
-        const ph = pPhoto(p), on = chosen.has(p.id);
+        const ph = pPhoto(p), on = chosen.has(p.id), promo = p.promocao && Number(p.preco_promocao) > 0;
         return '<div class="pd" data-id="' + esc(p.id) + '" style="border:2px solid ' + (on ? "#7a5a3a" : "#e8dcc8") + ';border-radius:10px;overflow:hidden;cursor:pointer;background:#fff;position:relative">' +
           (ph ? '<img loading="lazy" src="' + esc(ph) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block">' : '<div style="aspect-ratio:3/4;background:#f5ecdb"></div>') +
           '<div style="position:absolute;top:6px;left:6px;background:' + (on ? "#7a5a3a" : "rgba(255,255,255,.9)") + ';color:#fff;border-radius:4px;width:20px;height:20px;text-align:center;line-height:20px;font-weight:800">' + (on ? "✓" : "") + "</div>" +
-          '<div style="padding:5px 6px;font-size:.74rem"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.name) + "</div><div>ref. " + esc(pRef(p)) + "</div><div style=\"font-weight:700\">" + money(pPrice(p)) + (p.esgotado ? ' <span style="color:#a33">esgotado</span>' : "") + "</div></div></div>";
+          (promo ? '<div style="position:absolute;top:6px;right:6px;background:#7a5a3a;color:#fff;border-radius:4px;padding:1px 5px;font-size:.66rem;font-weight:800">PROMO</div>' : "") +
+          '<div style="padding:5px 6px;font-size:.74rem"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.name) + "</div><div>ref. " + esc(pRef(p)) + " · " + esc(p.tams.join("/")) + '</div><div style="font-weight:700">' + (promo ? '<s style="font-weight:400;color:#999">' + money(p.price) + "</s> " : "") + money(pPrice(p)) + "</div></div></div>";
       }).join("");
       upd();
     };
@@ -328,10 +345,15 @@
       draw2();
     });
     m.q("#pdQ").addEventListener("input", draw2);
+    ["#pdCat", "#pdTam", "#pdPromo"].forEach((i) => m.q(i).addEventListener("change", draw2));
     m.q("#pdClear").addEventListener("click", () => { chosen.clear(); draw2(); });
     m.q("#pdOk").addEventListener("click", () => { prods = Array.from(chosen.values()); updateProdBtn(); m.close(); if (onDone) onDone(); });
     info.textContent = "Carregando produtos...";
     try { list = await loadCatalog(); } catch (e) { info.textContent = "Erro ao carregar: " + (e.message || e); return; }
+    const usedCats = Array.from(new Set(list.map((p) => p.category_id).filter(Boolean))).sort((x, y) => String(cats[x]).localeCompare(String(cats[y]), "pt-BR"));
+    m.q("#pdCat").innerHTML = '<option value="">Categoria: todas</option>' + usedCats.map((id) => '<option value="' + esc(id) + '">' + esc(cats[id] || "Sem categoria") + "</option>").join("");
+    const allT = Array.from(new Set(list.reduce((acc, p) => acc.concat(p.tams), []))).sort(sizeSort);
+    m.q("#pdTam").innerHTML = '<option value="">Tamanho: todos</option>' + allT.map((t) => '<option value="' + esc(t) + '">' + esc(t) + "</option>").join("");
     draw2();
   }
 
