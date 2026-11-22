@@ -66,6 +66,11 @@
   .rl-md th,.rl-md td{border-bottom:1px solid #efe6d3;padding:5px 6px;text-align:left}
   .rl-md th{background:#f8f1e3;color:#6b5a3e}
   .rl-md input[type=text]{border:1px solid #e6d9c0;border-radius:6px;padding:5px 7px;font:inherit;width:100%;box-sizing:border-box}
+  .rl-alert{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fbf3e2;border:1px solid #d8c08f;border-radius:10px;padding:8px 12px;margin:8px 0;color:#6b5a3e}
+  .rl-toast{position:fixed;right:16px;bottom:16px;z-index:99980;background:#fff;border:1px solid #d8c08f;border-left:5px solid #7a5a3a;border-radius:10px;padding:12px 28px 12px 14px;max-width:300px;box-shadow:0 8px 28px rgba(0,0,0,.2);font-size:.85rem;color:#4a3d28}
+  .rl-x{position:absolute;top:2px;right:6px;border:0;background:none;font-size:1.3rem;cursor:pointer;color:#6b5a3e}
+  .rl-sb-badge{background:#c0392b;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:6px}
+  #rlAnivBadge{background:#c0392b;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:6px;display:none}
   .rl-note{font-size:.78rem;color:#7a6a50;background:#fcf8ef;border:1px solid #efe6d3;border-radius:8px;padding:8px 10px;margin:8px 0}
   `;
 
@@ -84,6 +89,7 @@
     view.className = "admin-view"; view.id = "viewRelac";
     view.innerHTML = '<div class="rl-panel"><h2>Clientes - Relacionamento</h2>' +
       '<div class="hint-text">Planilha com todas as clientes do cadastro. Edite direto na linha: tudo salva automaticamente.</div>' +
+      '<div id="rlAnivBanner" style="display:none"></div>' +
       '<div class="rl-bar">' +
       '<div class="f"><label>Pesquisar</label><input type="text" id="rlQ" placeholder="Nome, telefone, preferência..." style="min-width:200px"></div>' +
       '<div class="f"><label>Tamanho</label><input type="text" id="rlTam" placeholder="Ex.: M, 38" style="min-width:90px"></div>' +
@@ -99,7 +105,8 @@
       '<button type="button" class="rl-btn" id="rlProd">Adicionar produtos</button>' +
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
       '<button type="button" class="rl-btn" id="rlSelClear">Limpar seleção</button>' +
-      '<button type="button" class="rl-btn" id="rlHist">Histórico de envios</button></div>' +
+      '<button type="button" class="rl-btn" id="rlHist">Histórico de envios</button>' +
+      '<button type="button" class="rl-btn" id="rlAnivBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Mensagem aniversariante<span id="rlAnivBadge"></span></button></div>' +
       '<div class="rl-info"><span id="rlCount"></span><span id="rlSelCount"></span><span id="rlSave" class="rl-save"></span></div>' +
       '<div id="rlMsg" class="hint-text"></div>' +
       '<div class="rl-wrap"><table class="rl"><thead><tr>' +
@@ -114,6 +121,7 @@
     $("rlSend").addEventListener("click", openSend);
     $("rlProd").addEventListener("click", () => openProd());
     $("rlHist").addEventListener("click", openHist);
+    $("rlAnivBtn").addEventListener("click", () => openAniv());
     const body = $("rlBody");
     body.addEventListener("input", (e) => { const t = e.target; if (t.dataset && t.dataset.f && t.type === "text") { const tr = t.closest("tr"), k = tr.dataset.id + t.dataset.f; clearTimeout(timers[k]); timers[k] = setTimeout(() => commit(t), 900); } });
     body.addEventListener("change", (e) => { const t = e.target; if (t.classList.contains("rl-sel")) { const id = t.closest("tr").dataset.id; if (t.checked) sel.add(id); else sel.delete(id); counts(); return; } if (t.dataset && t.dataset.f) { const k = t.closest("tr").dataset.id + t.dataset.f; clearTimeout(timers[k]); commit(t); } });
@@ -231,6 +239,74 @@
     save(id, { [f]: v });
     if (f === "ultimo_contato") refreshRow(id);
     if (f === "whatsapp_autorizado") counts();
+  }
+
+  // ---------- aniversariantes ----------
+  const ANIV_KEY = "rlAnivMsg";
+  const ANIV_DEFAULT = "Parabéns, {nome}! A Lafayette Modas deseja um dia muito especial para você, cheio de alegria e saúde. Passe aqui na loja, temos um carinho preparado para o seu aniversário!";
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
+  const anivSent = () => { try { const o = JSON.parse(lsGet("rlAnivSent", "{}")); return o.d === todayStr() ? (o.ids || []) : []; } catch (e) { return []; } };
+  const markAnivSent = (id) => { const ids = anivSent(); if (ids.indexOf(id) < 0) ids.push(id); lsSet("rlAnivSent", JSON.stringify({ d: todayStr(), ids: ids })); };
+  const bParts = (r) => String(r.aniversario).slice(0, 10).split("-").map(Number);
+  function anivToday() { const t = new Date(), mo = t.getMonth() + 1, d = t.getDate(); return rows.filter((r) => { if (!r.aniversario) return false; const p = bParts(r); return p[1] === mo && p[2] === d; }); }
+  function anivPending() { const s = anivSent(); return anivToday().filter((r) => s.indexOf(r.id) < 0); }
+  function anivNext() {
+    const now = new Date(), b0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), out = [];
+    rows.forEach((r) => { if (!r.aniversario) return; const p = bParts(r); let diff = Math.round((new Date(now.getFullYear(), p[1] - 1, p[2]) - b0) / MS); if (diff < 0) diff = Math.round((new Date(now.getFullYear() + 1, p[1] - 1, p[2]) - b0) / MS); if (diff >= 1 && diff <= 7) out.push({ r: r, diff: diff }); });
+    return out.sort((a, b) => a.diff - b.diff);
+  }
+  function updateAnivAlert() {
+    const pend = anivPending(), n = pend.length;
+    const bd = $("rlAnivBadge"); if (bd) { bd.textContent = n || ""; bd.style.display = n ? "inline-block" : "none"; }
+    const sb = document.querySelector('.sidebar-link[data-view="relac"]');
+    if (sb) { let b = sb.querySelector(".rl-sb-badge"); if (n) { if (!b) { b = document.createElement("span"); b.className = "rl-sb-badge"; sb.appendChild(b); } b.textContent = n; } else if (b) b.remove(); }
+    const bn = $("rlAnivBanner");
+    if (bn) {
+      if (n) { bn.style.display = "block"; bn.innerHTML = '<div class="rl-alert"><span><strong>Aniversário hoje:</strong> ' + esc(pend.map((r) => r.nome).join(", ")) + '</span><button type="button" class="rl-btn main" id="rlAnivNow">Enviar mensagem agora</button></div>'; $("rlAnivNow").addEventListener("click", () => openAniv()); }
+      else { bn.style.display = "none"; bn.innerHTML = ""; }
+    }
+    let t = $("rlAnivToast");
+    if (n && lsGet("rlAnivDismiss", "") !== todayStr()) {
+      if (!t) { t = document.createElement("div"); t.id = "rlAnivToast"; t.className = "rl-toast"; document.body.appendChild(t); }
+      t.innerHTML = '<button type="button" class="rl-x" aria-label="Fechar">×</button><strong>Aniversariantes hoje (' + n + ")</strong><div style=\"margin:4px 0\">" + esc(pend.slice(0, 4).map((r) => r.nome).join(", ")) + (n > 4 ? " e mais " + (n - 4) : "") + '</div><button type="button" class="rl-btn main">Enviar mensagem agora</button>';
+      t.querySelector(".rl-x").addEventListener("click", () => { lsSet("rlAnivDismiss", todayStr()); t.remove(); });
+      t.querySelector(".rl-btn").addEventListener("click", () => { t.remove(); window.showView("relac"); openAniv(); });
+    } else if (t) t.remove();
+  }
+  function openAniv() {
+    const m = modal("Mensagem de aniversariante", '<div id="anBody"></div>'), body = m.q("#anBody");
+    const today = anivToday(), sent = anivSent(), next = anivNext();
+    body.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label><textarea id="anMsg"></textarea>' +
+      '<div class="rl-note">Prévia para <strong id="anWho"></strong>:<div id="anPrev" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
+      '<h4 style="margin:10px 0 4px">Teste de envio</h4><div class="rl-note" style="margin:0 0 6px">Abre o WhatsApp do número que você digitar (use o seu) com a mensagem de exemplo. Não registra envio e não altera nenhuma cliente.</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap"><input type="text" id="anTel" placeholder="Seu WhatsApp (DDD + número)" style="flex:2;min-width:160px"><input type="text" id="anName" placeholder="Nome de teste" style="flex:1;min-width:110px"><button type="button" class="rl-btn" id="anTest">Enviar teste</button></div>' +
+      '<h4 style="margin:12px 0 4px">Aniversariantes de hoje (' + today.length + ")</h4>" +
+      (today.length ? '<div style="max-height:190px;overflow:auto">' + today.map((r) => { const ok = !!waNum(r.telefone), was = sent.indexOf(r.id) >= 0; return '<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" class="anChk" value="' + esc(r.id) + '"' + (ok && !was ? " checked" : "") + (ok ? "" : " disabled") + "><span>" + esc(r.nome) + ' <small style="color:#8a7a5e">' + esc(r.telefone || "") + (ok ? "" : " - sem telefone válido") + (was ? " - já enviado hoje" : "") + "</small></span></label>"; }).join("") + "</div>" : '<p class="hint-text">Nenhuma cliente faz aniversário hoje.</p>') +
+      (next.length ? '<p class="hint-text">Próximos 7 dias: ' + next.map((x) => esc(x.r.nome) + " (" + dm(x.r) + ")").join(", ") + "</p>" : "") +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="anCancel">Fechar</button><button type="button" class="rl-btn main" id="anGo"' + (today.length ? "" : " disabled") + ">Enviar para as marcadas</button></div>";
+    const msg = m.q("#anMsg"); msg.value = lsGet(ANIV_KEY, ANIV_DEFAULT);
+    m.q("#anTel").value = lsGet("rlAnivTel", "");
+    const nm = () => (today[0] ? firstName(today[0].nome) : "Maria");
+    const prev = () => { m.q("#anWho").textContent = nm(); m.q("#anPrev").textContent = msg.value.replace(/\{nome\}/g, nm()); };
+    msg.addEventListener("input", () => { lsSet(ANIV_KEY, msg.value); prev(); }); prev();
+    m.q("#anCancel").addEventListener("click", m.close);
+    m.q("#anTest").addEventListener("click", () => {
+      const n = waNum(m.q("#anTel").value); if (!n) { alert("Digite um WhatsApp válido, com DDD."); return; }
+      lsSet("rlAnivTel", m.q("#anTel").value);
+      const nome = firstName(m.q("#anName").value) || "Maria";
+      window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(msg.value.replace(/\{nome\}/g, nome)), "_blank");
+    });
+    m.q("#anGo").addEventListener("click", async (ev) => {
+      const ids = Array.from(body.querySelectorAll(".anChk:checked")).map((c) => c.value);
+      if (!ids.length) { alert("Marque ao menos uma aniversariante."); return; }
+      if (!msg.value.trim()) { alert("Escreva a mensagem."); return; }
+      if (!confirm("Preparar o envio para " + ids.length + " aniversariante(s)?")) return;
+      ev.target.disabled = true;
+      const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: msg.value, p_clientes: ids });
+      if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
+      queue(m, body, data, [], (e) => { markAnivSent(e.cliente_id); updateAnivAlert(); });
+    });
   }
 
   // ---------- janelas ----------
@@ -414,7 +490,7 @@
     btn.disabled = false;
   }
 
-  function queue(m, host, data, items) {
+  function queue(m, host, data, items, onSent) {
     const envs = data.envios || []; let done = 0; items = items || [];
     const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
@@ -435,7 +511,7 @@
       b.disabled = true; b.textContent = "Registrando...";
       const { error } = await supabaseClient.rpc("whatsapp_registrar_envio", { p_envio: e.id, p_status: "enviado" });
       if (error) { b.disabled = false; b.textContent = "Confirmar envio"; alert("Erro ao registrar: " + error.message); return; }
-      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog();
+      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog(); if (onSent) onSent(e);
       const r = find(e.cliente_id); if (r) { r.ultimo_contato = todayStr(); refreshRow(r.id); }
     });
   }
@@ -457,12 +533,20 @@
     const { data, error } = await supabaseClient.rpc("relacionamento_listar");
     if (error) { $("rlMsg").textContent = "Erro: " + error.message; return; }
     rows = (data || []).slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
-    loaded = true; indicator(); draw();
+    loaded = true; indicator(); draw(); updateAnivAlert();
   }
 
   function boot() {
     let n = 0;
     const iv = setInterval(() => { if (inject() || ++n > 40) clearInterval(iv); }, 250);
+    let tries = 0;
+    const pre = setInterval(async () => {
+      tries++; if (loaded || tries > 30) { clearInterval(pre); return; }
+      if (!$("viewRelac") || typeof supabaseClient === "undefined") return;
+      try { const { data } = await supabaseClient.auth.getSession(); if (!data || !data.session) return; } catch (e) { return; }
+      clearInterval(pre); await load();
+    }, 1500);
+    setInterval(() => { if (loaded) updateAnivAlert(); }, 600000);
     const prev = window.showView;
     if (typeof prev === "function") {
       window.showView = function (v) {
