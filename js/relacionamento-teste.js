@@ -372,7 +372,7 @@
       const nome = m.q("#adNome").value.trim().replace(/\s+/g, " ").toUpperCase(), tel = m.q("#adTel").value.trim(), an = m.q("#adAniv").value.trim();
       if (!nome) { err("Informe o nome da cliente."); return; }
       const key = phoneKey(tel);
-      if (tel && key.length < 10) { err("WhatsApp inválido: use DDD + número."); return; }
+      
       const dupN = rows.find((r) => norm(r.nome) === norm(nome));
       if (dupN) { err("Já existe uma cliente com este nome: " + dupN.nome + "."); return; }
       if (key) { const dupT = rows.find((r) => phoneKey(r.telefone) === key); if (dupT) { err("Este WhatsApp já pertence a: " + dupT.nome + "."); return; } }
@@ -382,6 +382,9 @@
         if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { err("Aniversário inválido: use dd/mm."); return; }
         aniv = "2000-" + pad(mo) + "-" + pad(d);
       }
+      const vv = await supabaseClient.rpc("cliente_validar", { p_nome: nome, p_tel: tel, p_novo: true });
+      if (vv.error) { err("Erro ao validar: " + vv.error.message); return; }
+      if (!vv.data.ok) { err(vv.data.erro); return; }
       ev.target.disabled = true;
       const { data, error } = await supabaseClient.from("clientes").insert({ nome: nome, telefone: tel || null, aniversario: aniv }).select("id").single();
       if (error) { err("Erro ao salvar: " + error.message); ev.target.disabled = false; return; }
