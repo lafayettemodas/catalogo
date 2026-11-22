@@ -38,7 +38,10 @@ img,video{max-width:100%}
 }
 
 @media (max-width:760px){
-  .vg-row{flex-wrap:wrap;gap:6px}
+  .vg-row{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:6px!important}
+  .vg-row>*{min-width:0;max-width:100%}
+  .vg-code{display:flex;gap:6px}
+  .vg-code .vg-in{flex:1;min-width:0}
   .vg-label{flex:1 1 100%;min-width:0}
   .vg-est{flex:0 0 auto}
 }
