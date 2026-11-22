@@ -106,7 +106,8 @@
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
       '<button type="button" class="rl-btn" id="rlSelClear">Limpar seleção</button>' +
       '<button type="button" class="rl-btn" id="rlHist">Histórico de envios</button>' +
-      '<button type="button" class="rl-btn" id="rlAnivBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Mensagem aniversariante<span id="rlAnivBadge"></span></button></div>' +
+      '<button type="button" class="rl-btn" id="rlAnivBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Mensagem aniversariante<span id="rlAnivBadge"></span></button>' +
+      '<button type="button" class="rl-btn" id="rlWelBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>Mensagem boas-vindas</button></div>' +
       '<div class="rl-info"><span id="rlCount"></span><span id="rlSelCount"></span><span id="rlSave" class="rl-save"></span></div>' +
       '<div id="rlMsg" class="hint-text"></div>' +
       '<div class="rl-wrap"><table class="rl"><thead><tr>' +
@@ -122,6 +123,7 @@
     $("rlProd").addEventListener("click", () => openProd());
     $("rlHist").addEventListener("click", openHist);
     $("rlAnivBtn").addEventListener("click", () => openAniv());
+    $("rlWelBtn").addEventListener("click", () => openWelcome());
     const body = $("rlBody");
     body.addEventListener("input", (e) => { const t = e.target; if (t.dataset && t.dataset.f && t.type === "text") { const tr = t.closest("tr"), k = tr.dataset.id + t.dataset.f; clearTimeout(timers[k]); timers[k] = setTimeout(() => commit(t), 900); } });
     body.addEventListener("change", (e) => { const t = e.target; if (t.classList.contains("rl-sel")) { const id = t.closest("tr").dataset.id; if (t.checked) sel.add(id); else sel.delete(id); counts(); return; } if (t.dataset && t.dataset.f) { const k = t.closest("tr").dataset.id + t.dataset.f; clearTimeout(timers[k]); commit(t); } });
@@ -306,6 +308,42 @@
       const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: msg.value, p_clientes: ids });
       if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
       queue(m, body, data, [], (e) => { markAnivSent(e.cliente_id); updateAnivAlert(); });
+    });
+  }
+
+  // ---------- boas-vindas ----------
+  const WEL_KEY = "rlWelMsg";
+  const WEL_DEFAULT = "Olá, {nome}! Seja muito bem-vinda à Lafayette Modas! Ficamos felizes em ter você como cliente.\n\nSiga a gente no Instagram: https://instagram.com/lafayettemodas\nConheça todo o nosso catálogo no site: https://lafayettemodas.github.io/catalogo/\n\nQualquer dúvida, é só chamar por aqui!";
+  function openWelcome() {
+    const m = modal("Mensagem de boas-vindas", '<div id="wlBody"></div>'), body = m.q("#wlBody");
+    const chosen = rows.filter((r) => sel.has(r.id)), okL = chosen.filter((r) => waNum(r.telefone)), bad = chosen.filter((r) => !waNum(r.telefone));
+    body.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label><textarea id="wlMsg" style="min-height:170px"></textarea>' +
+      '<div style="text-align:right"><button type="button" class="rl-btn" id="wlReset" style="padding:4px 10px;font-size:.75rem">Restaurar modelo</button></div>' +
+      '<div class="rl-note">Prévia para <strong id="wlWho"></strong>:<div id="wlPrev" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
+      '<h4 style="margin:10px 0 4px">Teste de envio</h4><div class="rl-note" style="margin:0 0 6px">Abre o WhatsApp do número que você digitar (use o seu) com a mensagem de exemplo. Não registra envio e não altera nenhuma cliente.</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap"><input type="text" id="wlTel" placeholder="Seu WhatsApp (DDD + número)" style="flex:2;min-width:160px"><input type="text" id="wlName" placeholder="Nome de teste" style="flex:1;min-width:110px"><button type="button" class="rl-btn" id="wlTest">Enviar teste</button></div>' +
+      '<h4 style="margin:12px 0 4px">Destinatárias (' + okL.length + ")</h4>" +
+      (okL.length ? '<div style="max-height:150px;overflow:auto"><table><tbody>' + okL.map((r) => "<tr><td>" + esc(r.nome) + "</td><td>" + esc(r.telefone || "") + "</td></tr>").join("") + "</tbody></table></div>" : '<p class="hint-text">Marque as clientes na planilha antes de abrir esta janela para enviar. Para apenas testar, use o campo acima.</p>') +
+      (bad.length ? '<p class="hint-text">Sem telefone válido (não serão enviadas): ' + esc(bad.map((r) => r.nome).join(", ")) + "</p>" : "") +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="wlCancel">Fechar</button><button type="button" class="rl-btn main" id="wlGo"' + (okL.length ? "" : " disabled") + ">Preparar envio (" + okL.length + ")</button></div>";
+    const msg = m.q("#wlMsg"); msg.value = lsGet(WEL_KEY, WEL_DEFAULT); m.q("#wlTel").value = lsGet("rlAnivTel", "");
+    const nm = () => (okL[0] ? firstName(okL[0].nome) : "Maria");
+    const prev = () => { m.q("#wlWho").textContent = nm(); m.q("#wlPrev").textContent = msg.value.replace(/\{nome\}/g, nm()); };
+    msg.addEventListener("input", () => { lsSet(WEL_KEY, msg.value); prev(); }); prev();
+    m.q("#wlReset").addEventListener("click", () => { msg.value = WEL_DEFAULT; lsSet(WEL_KEY, WEL_DEFAULT); prev(); });
+    m.q("#wlCancel").addEventListener("click", m.close);
+    m.q("#wlTest").addEventListener("click", () => {
+      const n = waNum(m.q("#wlTel").value); if (!n) { alert("Digite um WhatsApp válido, com DDD."); return; }
+      lsSet("rlAnivTel", m.q("#wlTel").value);
+      window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(msg.value.replace(/\{nome\}/g, firstName(m.q("#wlName").value) || "Maria")), "_blank");
+    });
+    m.q("#wlGo").addEventListener("click", async (ev) => {
+      if (!msg.value.trim()) { alert("Escreva a mensagem."); return; }
+      if (!confirm("Preparar o envio para " + okL.length + " cliente(s)?")) return;
+      ev.target.disabled = true;
+      const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: msg.value, p_clientes: okL.map((r) => r.id) });
+      if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
+      queue(m, body, data, []);
     });
   }
 
