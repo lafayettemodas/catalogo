@@ -290,7 +290,7 @@
   const pLink = (p) => SITE + "?produto=" + p.id;
   const pPhoto = (p) => { const im = (p.product_images || []).slice().sort((a, b) => a.position - b.position)[0]; return im ? SITE + im.path : ""; };
   function prodBlock() {
-    if (!prods.length) return "";
+    return "";
     return "\n\nPeças selecionadas:\n" + prods.map((p) => "• " + p.name + (pRef(p) ? " (ref. " + pRef(p) + ")" : "") + " - " + money(pPrice(p)) + "\n" + pLink(p)).join("\n\n");
   }
   function updateProdBtn() { const b = $("rlProd"); if (b) b.textContent = prods.length ? "Produtos (" + prods.length + ")" : "Adicionar produtos"; }
@@ -376,7 +376,7 @@
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="snCancel">Cancelar</button><button type="button" class="rl-btn main" id="snGo"' + (okL.length ? "" : " disabled") + '>Confirmar e preparar envio (' + okL.length + ")</button></div>";
     const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? (msg.value + prodBlock() + (withPhotos && prods.length ? "\n\n[+ " + prods.length + " foto(s) com legenda, pelos botões Foto]" : "")).replace(/\{nome\}/g, firstName(w.nome)) : ""; };
     msg.addEventListener("input", prev);
-    const prodUi = () => { m.q("#snProd").textContent = prods.length ? "Alterar produtos (" + prods.length + ")" : "Adicionar produtos"; m.q("#snProdList").textContent = prods.map((p) => pRef(p) || p.name).join(", "); m.q("#snPhotoRow").style.display = prods.length ? "block" : "none"; prev(); };
+    const prodUi = () => { m.q("#snProd").textContent = prods.length ? "Alterar produtos (" + prods.length + ")" : "Adicionar produtos"; m.q("#snProdList").textContent = prods.map((p) => pRef(p) || p.name).join(", "); m.q("#snPhotoRow").style.display = "none"; prev(); };
     m.q("#snProd").addEventListener("click", () => openProd(prodUi));
     m.q("#snPhotos").checked = withPhotos; m.q("#snPhotos").addEventListener("change", (e) => { withPhotos = e.target.checked; prev(); });
     prodUi();
@@ -417,15 +417,14 @@
   function queue(m, host, data, items) {
     const envs = data.envios || []; let done = 0; items = items || [];
     const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
-    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Fotos: no celular o botão "Foto" abre o compartilhamento com legenda; no computador ele copia a foto (cole com Ctrl+V na conversa) e, clicando de novo, copia a legenda. Clique em "Abrir WhatsApp": a conversa abre com a mensagem pronta (peças em forma de link). Depois de enviar no WhatsApp, volte e clique em "Confirmar envio": só então o envio é registrado e o último contato recebe a data de hoje.</div>' +
-      '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>' +
-      envs.map((e) => '<tr data-e="' + esc(e.id) + '"><td>' + esc(e.nome) + photoBtns() + "</td><td>" + esc(e.telefone || "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-wa" data-open>Abrir WhatsApp</button></td></tr>').join("") + "</tbody></table></div>" +
+    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
+      '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Abrir WhatsApp</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
     const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
     host.addEventListener("click", async (ev) => {
       const pb = ev.target.closest("[data-photo]"); if (pb) { await sendPhoto(pb, items[+pb.dataset.photo]); return; }
       const b = ev.target.closest("[data-open],[data-confirm]"); if (!b) return;
-      const tr = b.closest("tr"), e = envs.find((x) => x.id === tr.dataset.e);
+      const tr = b.closest("[data-e]"), e = envs.find((x) => x.id === tr.dataset.e);
       if (b.hasAttribute("data-open")) {
         const n = waNum(e.telefone); if (!n) { alert("Telefone inválido."); return; }
         window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(e.mensagem), "_blank");
