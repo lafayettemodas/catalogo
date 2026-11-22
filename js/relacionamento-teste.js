@@ -71,6 +71,8 @@
   .rl-x{position:absolute;top:2px;right:6px;border:0;background:none;font-size:1.3rem;cursor:pointer;color:#6b5a3e}
   .rl-sb-badge{background:#c0392b;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:6px}
   #rlAnivBadge{background:#c0392b;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:6px;display:none}
+  .rl-del{border:1px solid #e6d9c0;background:#fff;color:#a33;border-radius:6px;padding:4px 6px;cursor:pointer;line-height:0}
+  .rl-del:hover{background:#fdeaea;border-color:#c0392b}
   .rl-note{font-size:.78rem;color:#7a6a50;background:#fcf8ef;border:1px solid #efe6d3;border-radius:8px;padding:8px 10px;margin:8px 0}
   `;
 
@@ -102,6 +104,7 @@
       
       '<button type="button" class="rl-btn" id="rlClear">Limpar filtros</button></div>' +
       '<div class="rl-bar" style="margin-top:0">' +
+      '<button type="button" class="rl-btn main" id="rlAddCli">Adicionar cliente</button>' +
       '<button type="button" class="rl-btn" id="rlProd">Adicionar produtos</button>' +
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
       '<button type="button" class="rl-btn" id="rlSelClear">Limpar seleção</button>' +
@@ -111,7 +114,7 @@
       '<div class="rl-info"><span id="rlCount"></span><span id="rlSelCount"></span><span id="rlSave" class="rl-save"></span></div>' +
       '<div id="rlMsg" class="hint-text"></div>' +
       '<div class="rl-wrap"><table class="rl"><thead><tr>' +
-      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th>' +
+      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th><th title="Excluir cliente"></th>' +
       '</tr></thead><tbody id="rlBody"></tbody></table></div></div>';
     content.appendChild(view);
     ["rlQ", "rlTam", "rlPref"].forEach((i) => $(i).addEventListener("input", draw));
@@ -121,6 +124,7 @@
     $("rlAll").addEventListener("change", (e) => { filtered().forEach((r) => { if (e.target.checked) sel.add(r.id); else sel.delete(r.id); }); draw(); });
     $("rlSend").addEventListener("click", openSend);
     $("rlProd").addEventListener("click", () => openProd());
+    $("rlAddCli").addEventListener("click", () => openAdd());
     $("rlHist").addEventListener("click", openHist);
     $("rlAnivBtn").addEventListener("click", () => openAniv());
     $("rlWelBtn").addEventListener("click", () => openWelcome());
@@ -131,6 +135,7 @@
       const tr = e.target.closest("tr"); if (!tr) return; const id = tr.dataset.id;
       if (e.target.closest(".rl-wa")) { const r = find(id), n = waNum(r.telefone); if (n) window.open("https://wa.me/" + n, "_blank"); return; }
       if (e.target.closest(".rl-enc")) { openEnc(id); return; }
+      if (e.target.closest(".rl-del")) { delClient(id); return; }
       if (e.target.closest(".c-nome a")) { if (window.clOpenFicha) window.clOpenFicha(id); }
     });
     return true;
@@ -183,7 +188,7 @@
       '<td style="width:128px"><input type="date" data-f="ultimo_contato" value="' + esc(String(r.ultimo_contato || "").slice(0, 10)) + '"></td>' +
       '<td style="min-width:170px"><button type="button" class="rl-enc' + (pend ? " has" : "") + '" title="Abrir encomendas">' + esc(encSummary(r)) + "</button></td>" +
       '<td style="min-width:190px"><input type="text" data-f="observacoes" value="' + esc(r.observacoes || "") + '"></td>' +
-      '</tr>';
+      '<td style="text-align:center;width:40px"><button type="button" class="rl-del" title="Excluir cliente"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></td></tr>';
   }
   function statusBadge(s) { return '<span class="rl-b ' + (s.t === "pendente" ? "pendente" : "ok") + '">' + (s.t === "pendente" ? "Pendente" : "Em dia") + "</span>" + (s.late ? '<div class="rl-tel">há ' + s.d + " dias</div>" : (s.d === null ? '<div class="rl-tel">nunca</div>' : "")); }
 
@@ -345,6 +350,59 @@
       if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
       queue(m, body, data, []);
     });
+  }
+
+  // ---------- adicionar / excluir cliente ----------
+  const phoneKey = (t) => { let d = String(t || "").replace(/\D/g, ""); if (d.length > 11 && d.indexOf("55") === 0) d = d.slice(2); return d; };
+  function openAdd() {
+    const m = modal("Adicionar cliente", '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+      '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Nome da cliente *<input type="text" id="adNome"></label>' +
+      '<label style="font-size:.8rem;font-weight:700">WhatsApp (DDD + número)<input type="text" id="adTel" placeholder="48 99999-9999"></label>' +
+      '<label style="font-size:.8rem;font-weight:700">Aniversário (dd/mm)<input type="text" id="adAniv" maxlength="5" placeholder="dd/mm"></label>' +
+      '<label style="font-size:.8rem;font-weight:700">Tamanhos<input type="text" id="adTam" placeholder="Ex.: M, 38"></label>' +
+      '<label style="font-size:.8rem;font-weight:700">Preferências<input type="text" id="adPref" placeholder="Ex.: vestidos"></label>' +
+      '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Observações<input type="text" id="adObs"></label></div>' +
+      '<div id="adErr" class="cl-err" style="color:#b3294f;margin-top:8px"></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="adCancel">Cancelar</button><button type="button" class="rl-btn main" id="adSave">Salvar cliente</button></div>');
+    const err = (t) => { m.q("#adErr").textContent = t || ""; };
+    m.q("#adCancel").addEventListener("click", m.close);
+    m.q("#adNome").focus();
+    m.q("#adSave").addEventListener("click", async (ev) => {
+      err("");
+      const nome = m.q("#adNome").value.trim().replace(/\s+/g, " ").toUpperCase(), tel = m.q("#adTel").value.trim(), an = m.q("#adAniv").value.trim();
+      if (!nome) { err("Informe o nome da cliente."); return; }
+      const key = phoneKey(tel);
+      if (tel && key.length < 10) { err("WhatsApp inválido: use DDD + número."); return; }
+      const dupN = rows.find((r) => norm(r.nome) === norm(nome));
+      if (dupN) { err("Já existe uma cliente com este nome: " + dupN.nome + "."); return; }
+      if (key) { const dupT = rows.find((r) => phoneKey(r.telefone) === key); if (dupT) { err("Este WhatsApp já pertence a: " + dupT.nome + "."); return; } }
+      let aniv = null;
+      if (an) {
+        const mm = an.match(/^(\d{1,2})[\/\-.](\d{1,2})$/), d = mm ? +mm[1] : 0, mo = mm ? +mm[2] : 0, dt = new Date(2000, mo - 1, d);
+        if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { err("Aniversário inválido: use dd/mm."); return; }
+        aniv = "2000-" + pad(mo) + "-" + pad(d);
+      }
+      ev.target.disabled = true;
+      const { data, error } = await supabaseClient.from("clientes").insert({ nome: nome, telefone: tel || null, aniversario: aniv }).select("id").single();
+      if (error) { err("Erro ao salvar: " + error.message); ev.target.disabled = false; return; }
+      const extra = { tamanhos: m.q("#adTam").value.trim(), preferencias: m.q("#adPref").value.trim(), observacoes: m.q("#adObs").value.trim() };
+      Object.keys(extra).forEach((k) => { if (!extra[k]) delete extra[k]; });
+      if (Object.keys(extra).length) await supabaseClient.rpc("relacionamento_salvar", { p_cliente: data.id, p: extra });
+      m.close(); await load();
+      $("rlQ").value = nome; draw();
+      $("rlMsg").textContent = "Cliente adicionada: " + nome + ".";
+    });
+  }
+  async function delClient(id) {
+    const r = find(id); if (!r) return;
+    if (!confirm('Excluir a cliente "' + r.nome + '"?\n\nIsso apaga também as observações, encomendas e dados de relacionamento dela. Não pode ser desfeito.\n\nVendas já registradas ficam no histórico de pedidos. Clientes com crediário não podem ser excluídas.')) return;
+    const { error } = await supabaseClient.from("clientes").delete().eq("id", id);
+    if (error) {
+      if (error.code === "23503" || /foreign key|violates/i.test(error.message)) alert("Não foi possível excluir: esta cliente tem lançamentos de crediário.");
+      else alert("Erro ao excluir: " + error.message);
+      return;
+    }
+    rows = rows.filter((x) => x.id !== id); sel.delete(id); draw(); updateAnivAlert();
   }
 
   // ---------- janelas ----------
