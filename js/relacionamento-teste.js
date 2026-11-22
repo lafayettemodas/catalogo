@@ -290,7 +290,7 @@
   const pLink = (p) => SITE + "?produto=" + p.id;
   const pPhoto = (p) => { const im = (p.product_images || []).slice().sort((a, b) => a.position - b.position)[0]; return im ? SITE + im.path : ""; };
   function prodBlock() {
-    if (!prods.length || withPhotos) return "";
+    if (!prods.length) return "";
     return "\n\nPeças selecionadas:\n" + prods.map((p) => "• " + p.name + (pRef(p) ? " (ref. " + pRef(p) + ")" : "") + " - " + money(pPrice(p)) + "\n" + pLink(p)).join("\n\n");
   }
   function updateProdBtn() { const b = $("rlProd"); if (b) b.textContent = prods.length ? "Produtos (" + prods.length + ")" : "Adicionar produtos"; }
@@ -374,7 +374,7 @@
       (bad.length ? '<h4 style="margin:10px 0 4px">Não serão enviadas (' + bad.length + ')</h4><div style="max-height:110px;overflow:auto"><table><tbody>' + bad.map((b) => "<tr><td>" + esc(b.r.nome) + '</td><td style="color:#8a5a14">' + b.motivo + "</td></tr>").join("") + "</tbody></table></div>" : "") +
       '<div class="rl-note">Envio manual: o sistema abre a conversa de cada cliente com a mensagem pronta, e o envio fica registrado. A ligação com a API oficial do WhatsApp (Meta) fica para quando as credenciais forem configuradas.</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="snCancel">Cancelar</button><button type="button" class="rl-btn main" id="snGo"' + (okL.length ? "" : " disabled") + '>Confirmar e preparar envio (' + okL.length + ")</button></div>";
-    const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? (msg.value + prodBlock() + (withPhotos && prods.length ? "\n\n[+ " + prods.length + " foto(s) com legenda: nome — preço — link]" : "")).replace(/\{nome\}/g, firstName(w.nome)) : ""; };
+    const msg = m.q("#snMsg"), prev = () => { const w = okL[0]; m.q("#snWho").textContent = w ? w.nome : "-"; m.q("#snPrev").textContent = w ? (msg.value + prodBlock() + (withPhotos && prods.length ? "\n\n[+ " + prods.length + " foto(s) com legenda, pelos botões Foto]" : "")).replace(/\{nome\}/g, firstName(w.nome)) : ""; };
     msg.addEventListener("input", prev);
     const prodUi = () => { m.q("#snProd").textContent = prods.length ? "Alterar produtos (" + prods.length + ")" : "Adicionar produtos"; m.q("#snProdList").textContent = prods.map((p) => pRef(p) || p.name).join(", "); m.q("#snPhotoRow").style.display = prods.length ? "block" : "none"; prev(); };
     m.q("#snProd").addEventListener("click", () => openProd(prodUi));
