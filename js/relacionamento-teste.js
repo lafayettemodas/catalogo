@@ -511,7 +511,7 @@
     const ov = document.createElement("div"); ov.className = "rl-ov";
     ov.innerHTML = '<div class="rl-md"><header><h3>' + esc(title) + '</h3><button type="button" class="rl-btn" data-x>Fechar</button></header><div class="bd">' + html + "</div></div>";
     document.body.appendChild(ov);
-    const close = () => ov.remove();
+    const close = () => { if (ov.querySelector("#qProg")) { try { localStorage.removeItem("rlQueue"); } catch (e) { } } ov.remove(); };
     ov.querySelector("[data-x]").addEventListener("click", close);
     ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
     return { el: ov, close, q: (s) => ov.querySelector(s) };
@@ -689,11 +689,17 @@
 
   function queue(m, host, data, items, onSent) {
     const envs = data.envios || []; let done = 0; items = items || [];
+    const QK = "rlQueue"; let svd = null; try { svd = JSON.parse(localStorage.getItem(QK) || "null"); } catch (e) { }
+    const doneIds = (window.__rlRestoring && svd && svd.done) ? svd.done.slice() : [];
+    const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, ts: Date.now() })); } catch (e) { } };
+    saveQ();
     const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Abrir WhatsApp</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
     const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
+    doneIds.forEach((id) => { const tr = host.querySelector('[data-e="' + id + '"]'); const bt = tr && tr.querySelector("button[data-open],button[data-confirm]"); if (bt) { bt.textContent = "Enviado"; bt.disabled = true; bt.removeAttribute("data-open"); bt.removeAttribute("data-confirm"); bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "0"; done++; } });
+    prog();
     host.addEventListener("click", async (ev) => {
       const pb = ev.target.closest("[data-photo]"); if (pb) { await sendPhoto(pb, items[+pb.dataset.photo]); return; }
       const b = ev.target.closest("[data-open],[data-confirm]"); if (!b) return;
@@ -708,9 +714,16 @@
       b.disabled = true; b.textContent = "Registrando...";
       const { error } = await supabaseClient.rpc("whatsapp_registrar_envio", { p_envio: e.id, p_status: "enviado" });
       if (error) { b.disabled = false; b.textContent = "Confirmar envio"; alert("Erro ao registrar: " + error.message); return; }
-      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog(); if (onSent) onSent(e);
+      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog(); doneIds.push(e.id); saveQ(); if (onSent) onSent(e);
       const r = find(e.cliente_id); if (r) { r.ultimo_contato = todayStr(); refreshRow(r.id); }
     });
+  }
+
+  function restoreQueue() {
+    let sv = null; try { sv = JSON.parse(localStorage.getItem("rlQueue") || "null"); } catch (e) { }
+    if (!sv || !sv.envios || !sv.envios.length || Date.now() - sv.ts > 3 * 3600 * 1000 || (sv.done || []).length >= sv.envios.length) return;
+    window.__rlRestoring = true;
+    try { const m = modal("Enviar WhatsApp", '<div id="snStep1"></div>'); queue(m, m.q("#snStep1"), { envios: sv.envios }, sv.items || []); } finally { window.__rlRestoring = false; }
   }
 
   async function openHist() {
@@ -750,7 +763,7 @@
         const r = prev.apply(this, arguments);
         const lay = document.querySelector(".admin-layout"), wrap = lay && lay.parentElement;
         if (wrap) wrap.style.maxWidth = (v === "relac") ? "98vw" : "";
-        if (v === "relac" && $("viewRelac")) load();
+        if (v === "relac" && $("viewRelac")) { load().then(() => { if (!window.__rlQTried) { window.__rlQTried = true; restoreQueue(); } }); }
         return r;
       };
     }
