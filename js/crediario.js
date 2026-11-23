@@ -49,6 +49,15 @@
     ]);
     if (rs.error) { box.innerHTML = '<span class="cl-err">Erro: ' + esc(rs.error.message) + "</span>"; return; }
     const r = rs.data, pend = pe.data || [], saldo = Number(r.saldo);
+    const pmap = {};
+    try { const ids = (r.compras || []).map((c) => c.pedido_id).filter(Boolean); if (ids.length) { const { data: pp } = await supabaseClient.from("pedidos").select("id, parcelas, parcela_valor, total").in("id", ids); (pp || []).forEach((p) => { if (p.parcelas) pmap[p.id] = { n: p.parcelas, v: p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas }; }); const { data: px } = await supabaseClient.from("pedido_parcelas").select("pedido_id, parcelas, parcela_valor").in("pedido_id", ids); (px || []).forEach((p) => { const tot = ((r.compras || []).find((c) => c.pedido_id === p.pedido_id) || {}).valor; pmap[p.pedido_id] = { n: p.parcelas, v: p.parcela_valor != null ? Number(p.parcela_valor) : Number(tot) / p.parcelas }; }); } } catch (e) { }
+    const parcBtn = (c) => ' <button type="button" data-pe="' + esc(c.pedido_id) + '" title="Editar parcelas" style="border:1px solid #d9c9a8;background:#fff;border-radius:6px;cursor:pointer;padding:0 6px;font-size:.8rem">✎</button>';
+    const parcTxt0 = (c) => { const m = pmap[c.pedido_id]; if (!m) { const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? esc(mm[0].trim()) : "-"; } const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
+    const parcPlain = (c) => { const m = pmap[c.pedido_id]; if (m) return m.n + "x " + m.v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? mm[0].trim() : ""; };
+    const parcTxt = (c) => '<span data-pt="' + esc(c.pedido_id) + '">' + parcTxt0(c) + "</span>" + parcBtn(c);
+    const hojeP = (r.pagamentos || []).filter((p) => String(p.data).slice(0, 10) === today());
+    const hojeTot = hojeP.reduce((a, p) => a + Number(p.valor || 0), 0);
+    const comprasTab = (r.compras || []).filter((c) => !/quit/i.test(c.situacao)).sort((a, b) => String(b.data).localeCompare(String(a.data)) || Number(b.numero) - Number(a.numero));
     const abertas = r.compras.filter((c) => Number(c.saldo) > 0);
     const token = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
     let h = '<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:10px">' +
@@ -83,17 +92,17 @@
     if (saldo > 0) {
       h += '<div style="border:1px solid #c9dff2;background:#fff;border-radius:12px;padding:12px;margin:10px 0"><strong>Registrar pagamento</strong><div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">' +
         '<div class="field" style="flex:1 1 230px;margin:0"><label>Abater de</label><select id="crModo"><option value="total">Saldo total (compras mais antigas primeiro)</option><option value="pedido">Uma compra específica</option></select></div>' +
-        '<div class="field" id="crPedWrap" style="flex:2 1 300px;margin:0;display:none"><label>Compra</label><select id="crPed">' + abertas.map((c) => '<option value="' + esc(c.pedido_id) + '">#' + c.numero + " · " + dateF(c.data) + " · saldo " + money(c.saldo) + "</option>").join("") + "</select></div>" +
+        '<div class="field" id="crPedWrap" style="flex:2 1 300px;margin:0;display:none"><label>Compra</label><select id="crPed">' + abertas.map((c) => '<option value="' + esc(c.pedido_id) + '">#' + c.numero + " - " + dateF(c.data) + (parcPlain(c) ? " - " + parcPlain(c) : "") + "</option>").join("") + "</select></div>" +
         '<div class="field" style="flex:1 1 130px;margin:0"><label>Valor (R$)</label><input type="text" id="crVal" inputmode="decimal" placeholder="0,00"></div>' +
         '<div class="field" style="flex:1 1 130px;margin:0"><label>Forma</label><select id="crForma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option></select></div>' +
         '<div class="field" style="flex:1 1 140px;margin:0"><label>Data</label><input type="date" id="crData" readonly tabindex="-1" style="pointer-events:none;background:#f3efe9"></div>' +
         '<div class="field" style="flex:2 1 180px;margin:0"><label>Observação</label><input type="text" id="crObs"></div></div>' +
-        '<div id="crInfo" class="hint-text" style="margin:8px 0 0"></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button type="button" class="primary" id="crPay">Receber pagamento</button><button type="button" class="secondary" id="crAll">Quitar</button><span id="crMsg" class="cl-msg"></span></div></div>';
+        '<div id="crInfo" class="hint-text" style="margin:8px 0 0"></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button type="button" class="primary" id="crPay">Receber pagamento</button><button type="button" class="secondary" id="crSim">Simular pagamento</button><button type="button" class="secondary" id="crAll">Quitar</button><span id="crHoje" style="margin-left:6px;padding:7px 12px;border-radius:999px;background:#e8f5e9;border:1px solid #bfe0c3;color:#256029;font-weight:600;white-space:nowrap">Recebido hoje: ' + money(hojeTot) + (hojeP.length ? " (" + hojeP.length + " pagamento" + (hojeP.length > 1 ? "s" : "") + ")" : "") + '</span><span id="crMsg" class="cl-msg"></span></div></div>';
     }
     h += "<h5 style=\"margin:14px 0 6px\">Compras no crediário</h5>";
-    h += r.compras.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Abatido</th><th>Saldo</th><th>Observação</th><th>Situação</th><th></th></tr></thead><tbody>' +
-      r.compras.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + esc(c.observacoes || "") + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="primary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
-      '<p class="hint-text">Nenhuma compra no crediário.</p>';
+    h += comprasTab.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Abatido</th><th>Saldo</th><th>Parcelas</th><th>Situação</th><th></th></tr></thead><tbody>' +
+      comprasTab.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + parcTxt(c) + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="primary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
+      '<p class="hint-text">Nenhuma compra em aberto no crediário. As compras quitadas ficam no histórico de compras.</p>';
     h += "<h5 style=\"margin:14px 0 6px\">Pagamentos recebidos</h5>";
     h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th><th></th></tr></thead><tbody>' +
       r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td><td style=\"white-space:nowrap\">nº " + p.numero + ' <button type="button" data-wa="' + esc(p.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer">WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(p.id) + '">PDF</button></td><td style="width:1%">' + trashBtn(p.id) + '</td></tr>').join("") + "</tbody></table></div>" :
@@ -105,6 +114,65 @@
     if (!pc && card && card.parentNode) { pc = document.createElement("div"); pc.id = "fcPagCard"; pc.style.cssText = "border:1px solid #e7e2da;background:#fff;border-radius:14px;padding:16px;margin:14px 0"; card.parentNode.insertBefore(pc, card.nextSibling); }
     if (pc) { pc.style.display = ""; pc.innerHTML = '<h4 style="margin:0 0 10px">Pagamentos recebidos</h4>' + pagHtml; }
     box.querySelectorAll("button[data-pv]").forEach((b) => b.addEventListener("click", () => { if (window.pvOpenOrder) window.pvOpenOrder(b.dataset.pv); }));
+    const simBtn = box.querySelector("#crSim");
+    if (simBtn) simBtn.addEventListener("click", () => {
+      const old = document.getElementById("crSimModal"); if (old) old.remove();
+      const ord = abertas.slice().sort((a, b) => String(a.data).localeCompare(String(b.data)) || Number(a.numero) - Number(b.numero));
+      const cents = (x) => Math.round(Number(x) * 100);
+      const blocos = ord.map((c) => {
+        const S = cents(c.saldo); let m = pmap[c.pedido_id];
+        if (!m) { const mm = String(c.observacoes || "").match(/(\d+)\s*[x×]\s*([\d.,]+)/i); if (mm) { const vv = parseFloat(mm[2].replace(/\./g, "").replace(",", ".")); if (vv > 0) m = { n: parseInt(mm[1], 10), v: vv }; } }
+        const v = m && m.v > 0 ? cents(m.v) : 0; const ps = [];
+        if (!v) ps.push(S); else { const cnt = Math.max(1, Math.round(S / v)); for (let i = 0; i < cnt; i++) ps.push(i === cnt - 1 ? S - v * (cnt - 1) : v); }
+        return { c, S, ps, k: 0, unit: v ? v : S, txt: parcPlain(c) };
+      });
+      const sumK = (b) => b.ps.slice(0, b.k).reduce((a, x) => a + x, 0);
+      const ov = document.createElement("div"); ov.id = "crSimModal";
+      ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px";
+      const btn = "width:34px;height:34px;border-radius:50%;border:1px solid #c9b48a;background:#fff;font-size:1.2rem;cursor:pointer;line-height:1";
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:92vh;display:flex;flex-direction:column;border:1px solid #e8dcc8">' +
+        '<div style="padding:14px 18px 8px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#6b5a3e">Simular pagamento</h3><button type="button" class="secondary" id="smX">Fechar</button></div>' +
+        '<div class="hint-text" style="margin-top:6px">' + esc(cli.nome) + ' · saldo devedor <strong>' + money(saldo) + '</strong><br>Escolha quantas parcelas de cada compra. Só simulação, nada é gravado.</div></div>' +
+        '<div style="padding:0 18px;overflow:auto;flex:1">' + blocos.map((b, i) => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #efe6d3;padding:10px 0">' +
+          '<div style="min-width:0"><div style="font-weight:600;color:#4a3d28">#' + b.c.numero + ' · ' + dateF(b.c.data) + '</div><div class="hint-text" style="margin:0">' + (b.txt ? b.txt + ' · ' : '') + 'saldo ' + money(b.c.saldo) + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:8px"><button type="button" style="' + btn + '" data-m="' + i + '">−</button><div style="text-align:center;min-width:64px"><div style="font-size:1.1rem;font-weight:700" id="smK' + i + '">0</div><div class="hint-text" style="margin:0;font-size:.7rem">de ' + b.ps.length + ' parcela(s)</div></div><button type="button" style="' + btn + '" data-p="' + i + '">+</button>' +
+          '<div style="min-width:92px;text-align:right;font-weight:600" id="smV' + i + '">R$ 0,00</div></div></div>').join("") + "</div>" +
+        '<div style="padding:12px 18px 16px;border-top:1px solid #e8dcc8;background:#f8f1e3;border-radius:0 0 14px 14px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span>Total a pagar</span><strong id="smTotal" style="font-size:1.5rem;color:#6b3f1d">R$ 0,00</strong></div>' +
+        '<div style="display:flex;justify-content:space-between;margin-top:4px"><span class="hint-text" style="margin:0">Saldo devedor após</span><strong id="smApos">' + money(saldo) + '</strong></div>' +
+        '<div style="margin-top:10px;display:flex;gap:8px"><button type="button" class="secondary" id="smNext">1 parcela de cada</button><button type="button" class="secondary" id="smClear">Limpar</button></div></div></div>';
+      document.body.appendChild(ov);
+      const q = (id) => ov.querySelector("#" + id);
+      const draw = () => { let tot = 0; blocos.forEach((b, i) => { const s = sumK(b); tot += s; q("smK" + i).textContent = b.k; q("smV" + i).textContent = money(s / 100); }); q("smTotal").textContent = money(tot / 100); q("smApos").textContent = money((cents(saldo) - tot) / 100); };
+      ov.addEventListener("click", (e) => {
+        const t = e.target; if (t === ov) { ov.remove(); return; }
+        if (t.dataset && t.dataset.p !== undefined) { const b = blocos[t.dataset.p]; if (b.k < b.ps.length) b.k++; draw(); }
+        if (t.dataset && t.dataset.m !== undefined) { const b = blocos[t.dataset.m]; if (b.k > 0) b.k--; draw(); }
+      });
+      q("smNext").addEventListener("click", () => { blocos.forEach((b) => { b.k = Math.min(1, b.ps.length); }); draw(); });
+      q("smClear").addEventListener("click", () => { blocos.forEach((b) => { b.k = 0; }); draw(); });
+      q("smX").addEventListener("click", () => ov.remove());
+      draw();
+    });
+    box.querySelectorAll("button[data-pe]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.pe, c = (r.compras || []).find((x) => x.pedido_id === id) || {}, m = pmap[id];
+      const ob = String(c.observacoes || "").match(/(\d+)\s*[x×]\s*([\d.,]+)?/i);
+      const n0 = m ? m.n : (ob ? parseInt(ob[1], 10) : 1);
+      const v0 = m ? m.v : (ob && ob[2] ? parseFloat(ob[2].replace(/\./g, "").replace(",", ".")) : Number(c.valor) / n0);
+      const td = b.parentNode;
+      td.innerHTML = '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="number" min="1" max="24" value="' + n0 + '" id="peN" style="width:56px"> x <input type="text" inputmode="decimal" id="peV" value="' + (isFinite(v0) ? v0.toFixed(2).replace(".", ",") : "") + '" style="width:90px"><button type="button" class="primary" id="peOk" style="padding:3px 10px">Salvar</button><button type="button" class="secondary" id="peNo" style="padding:3px 10px">Cancelar</button><span id="peMsg" class="cl-msg"></span></div>';
+      const nI = td.querySelector("#peN"), vI = td.querySelector("#peV");
+      nI.addEventListener("input", () => { const n = Math.max(1, parseInt(nI.value, 10) || 1); vI.value = (Number(c.valor) / n).toFixed(2).replace(".", ","); });
+      td.querySelector("#peNo").addEventListener("click", () => render(box, cli, paidId));
+      td.querySelector("#peOk").addEventListener("click", async () => {
+        const n = parseInt(nI.value, 10), v = parseFloat(String(vI.value).replace(/\./g, "").replace(",", "."));
+        if (!(n >= 1 && n <= 24)) { td.querySelector("#peMsg").textContent = "Parcelas de 1 a 24."; return; }
+        if (!(v >= 0)) { td.querySelector("#peMsg").textContent = "Valor inválido."; return; }
+        td.querySelector("#peOk").disabled = true;
+        const { error } = await supabaseClient.rpc("pedido_parcelas_salvar", { p_pedido: id, p_parcelas: n, p_valor: v });
+        if (error) { td.querySelector("#peMsg").textContent = "Erro: " + error.message; td.querySelector("#peOk").disabled = false; return; }
+        render(box, cli, paidId);
+      });
+    }));
     box.querySelectorAll("button[data-lanc]").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;
       const { error } = await supabaseClient.rpc("crediario_lancar_pedido", { p_pedido: b.dataset.lanc });
@@ -160,7 +228,9 @@
         ev.target.disabled = true;
         const { data: nid, error } = await supabaseClient.rpc("crediario_pagar", { p_cliente: cli.id, p_valor: v, p_forma: box.querySelector("#crForma").value, p_data: today(), p_obs: box.querySelector("#crObs").value, p_pedido: k.c ? k.c.pedido_id : null, p_token: token });
         if (error) { msg.textContent = "Erro: " + error.message; ev.target.disabled = false; return; }
-        render(box, cli, nid);
+        sess.cid !== cli.id && (sess = { cid: cli.id, list: [] }); sess.list.push({ id: nid, valor: v, forma: box.querySelector("#crForma").value, alvo: k.c ? "#" + k.c.numero : "compras mais antigas" });
+        await render(box, cli, nid);
+        askMore(cli);
       });
     }
   }
@@ -176,6 +246,44 @@
     if (p.saldo_anterior != null) L.push("Saldo anterior: " + money(p.saldo_anterior), "Saldo restante: " + money(p.saldo_restante));
     L.push("", "Obrigada pela preferência!");
     return L.join("\n");
+  }
+  let sess = { cid: null, list: [] };
+  function modal(html) {
+    const old = document.getElementById("crMoreModal"); if (old) old.remove();
+    const ov = document.createElement("div"); ov.id = "crMoreModal";
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px";
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:18px;border:1px solid #e8dcc8">' + html + "</div>";
+    document.body.appendChild(ov); return ov;
+  }
+  function askMore(cli) {
+    const tot = sess.list.reduce((a, x) => a + x.valor, 0);
+    const ov = modal('<h3 style="margin:0 0 6px;color:#6b5a3e">Pagamento registrado</h3><div>Recebido agora: <strong>' + money(sess.list[sess.list.length - 1].valor) + '</strong> (' + esc(sess.list[sess.list.length - 1].alvo) + ')</div>' +
+      '<div class="hint-text" style="margin:6px 0 12px">Total desta cliente nesta sessão: <strong>' + money(tot) + '</strong> em ' + sess.list.length + ' pagamento(s).</div>' +
+      '<div style="font-weight:600;margin-bottom:10px">Deseja dar baixa em mais alguma venda?</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="cmYes">Sim, outra venda</button><button type="button" class="secondary" id="cmNo">Não, finalizar e gerar relatório</button></div>');
+    ov.querySelector("#cmYes").addEventListener("click", () => { ov.remove(); const f = document.getElementById("crVal"); if (f) { f.scrollIntoView({ block: "center" }); f.focus(); } });
+    ov.querySelector("#cmNo").addEventListener("click", () => finishReport(cli));
+  }
+  async function finishReport(cli) {
+    const ov = document.getElementById("crMoreModal"); if (ov) ov.querySelector("div").innerHTML = '<span class="hint-text">Gerando relatório...</span>';
+    const { data: r, error } = await supabaseClient.rpc("crediario_resumo", { p_cliente: cli.id });
+    if (error) { modal('<span class="cl-err">Erro: ' + esc(error.message) + "</span>"); return; }
+    const L = ["*Lafayette Modas*", "Relatório de pagamentos", "Data: " + dateF(today()), "Cliente: " + cli.nome, "", "*Pagamentos recebidos:*"];
+    let tot = 0;
+    sess.list.forEach((s) => { tot += s.valor; const p = (r.pagamentos || []).find((x) => x.id === s.id); const d = (p && p.distribuicao) || [];
+      if (d.length) d.forEach((x) => L.push("• Pedido #" + x.numero + ": " + money(x.valor) + " (" + s.forma + ")")); else L.push("• " + s.alvo + ": " + money(s.valor) + " (" + s.forma + ")"); });
+    L.push("", "Total pago agora: " + money(tot), "*Saldo devedor: " + money(r.saldo) + "*", "", "Obrigada pela preferência!");
+    const text = L.join("\n");
+    const m = modal('<h3 style="margin:0 0 8px;color:#6b5a3e">Relatório de pagamentos</h3><textarea readonly style="width:100%;box-sizing:border-box;min-height:220px;border:1px solid #e6d9c0;border-radius:8px;padding:8px;font:inherit">' + esc(text) + '</textarea>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" class="primary" id="cmWa">Enviar pelo WhatsApp</button><button type="button" class="secondary" id="cmX">Fechar</button><span id="cmMsg" class="cl-msg"></span></div>');
+    m.querySelector("#cmX").addEventListener("click", () => { sess = { cid: null, list: [] }; m.remove(); });
+    m.querySelector("#cmWa").addEventListener("click", () => {
+      let ph = phoneOf(cli);
+      if (ph.length < 10) { m.querySelector("#cmMsg").textContent = "Cliente sem telefone válido cadastrado."; return; }
+      if (!/^55/.test(ph) || ph.length < 12) ph = "55" + ph;
+      window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(text), "_blank");
+      sess = { cid: null, list: [] };
+    });
   }
   function sendWa(cli, p) {
     if (!p) return;
