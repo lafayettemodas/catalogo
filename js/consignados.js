@@ -189,6 +189,9 @@
     if (!$("csData").value) { err.textContent = "Informe a data de saída."; return null; }
     if (!$("csCliente").value.trim()) { err.textContent = "Informe o nome da cliente."; return null; }
     if (!items.length) { err.textContent = "Adicione ao menos uma peça."; return null; }
+    { const vv = await sb().rpc("cliente_validar", { p_nome: $("csCliente").value, p_tel: $("csTel").value, p_novo: false });
+      if (vv.error) { err.textContent = "Erro ao validar cliente: " + vv.error.message; return null; }
+      if (!vv.data.ok) { err.textContent = vv.data.erro; $("csTel").focus(); return null; } }
     busy = true; const btn = $("csSave"); btn.disabled = true; const old = btn.textContent; btn.textContent = "Salvando...";
     try {
       const ids = [...new Set(items.map((i) => i.produto_id))];
