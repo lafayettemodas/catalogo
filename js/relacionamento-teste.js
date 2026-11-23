@@ -677,7 +677,7 @@
       const blob = await (await fetch(url)).blob();
       if (window.matchMedia("(pointer:coarse)").matches && navigator.canShare) {
         const f = new File([blob], "produto.jpg", { type: blob.type || "image/jpeg" });
-        if (navigator.canShare({ files: [f] })) { await navigator.share({ title: p.name, text: p.name + " — " + money(pPrice(p)), url: pLink(p), files: [f] }); btn.disabled = false; btn.textContent = orig; return; }
+        if (navigator.canShare({ files: [f] })) { await navigator.share({ title: p.name, text: p.name + " — " + money(pPrice(p)), url: pLink(p), files: [f] }); btn.disabled = false; btn.textContent = orig; return true; }
       }
       const bmp = await createImageBitmap(blob), cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height; cv.getContext("2d").drawImage(bmp, 0, 0);
       const png = await new Promise((r) => cv.toBlob(r, "image/png"));
@@ -691,7 +691,8 @@
     const envs = data.envios || []; let done = 0; items = items || [];
     const QK = "rlQueue"; let svd = null; try { svd = JSON.parse(localStorage.getItem(QK) || "null"); } catch (e) { }
     const doneIds = (window.__rlRestoring && svd && svd.done) ? svd.done.slice() : [];
-    const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, ts: Date.now() })); } catch (e) { } };
+    const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
+    const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, ts: Date.now() })); } catch (e) { } };
     saveQ();
     const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
@@ -700,8 +701,18 @@
     const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
     doneIds.forEach((id) => { const tr = host.querySelector('[data-e="' + id + '"]'); const bt = tr && tr.querySelector("button[data-open],button[data-confirm]"); if (bt) { bt.textContent = "Enviado"; bt.disabled = true; bt.removeAttribute("data-open"); bt.removeAttribute("data-confirm"); bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "0"; done++; } });
     prog();
+    const markPhoto = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'); const bt = tr && tr.querySelector('[data-photo="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Foto " + (i + 1) + " enviada"; bt.dataset.sent = "1"; bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "1px solid #9fd3ac";
+      const nx = [...tr.querySelectorAll("[data-photo]")].find((x) => x.dataset.sent !== "1"); tr.querySelectorAll("[data-photo]").forEach((x) => { if (x.dataset.sent !== "1") x.style.outline = ""; }); if (nx) { nx.style.outline = "2px solid #7a5a3a"; } };
+    photoDone.forEach((k) => { const [eid, ix] = k.split("|"); markPhoto(eid, +ix); });
     host.addEventListener("click", async (ev) => {
-      const pb = ev.target.closest("[data-photo]"); if (pb) { await sendPhoto(pb, items[+pb.dataset.photo]); return; }
+      const pb = ev.target.closest("[data-photo]"); if (pb) {
+        const row = pb.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e));
+        let hint = row && row.querySelector(".qHint"); if (row && !hint) { hint = document.createElement("div"); hint.className = "qHint"; hint.style.cssText = "margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff4dc;border:1px solid #f0dca8;font-size:.78rem;font-weight:600"; row.appendChild(hint); }
+        if (hint && env) hint.textContent = "No WhatsApp, escolha o contato: " + (env.nome || env.telefone) + " (" + (env.telefone || "") + ")";
+        const ok = await sendPhoto(pb, items[+pb.dataset.photo]);
+        if (ok === true && env) { const key = env.id + "|" + pb.dataset.photo; if (!photoDone.includes(key)) photoDone.push(key); saveQ(); markPhoto(env.id, +pb.dataset.photo); if (hint) hint.textContent = "Foto enviada para " + (env.nome || env.telefone) + ". Toque na próxima foto."; }
+        return;
+      }
       const b = ev.target.closest("[data-open],[data-confirm]"); if (!b) return;
       const tr = b.closest("[data-e]"), e = envs.find((x) => x.id === tr.dataset.e);
       if (b.hasAttribute("data-open")) {
