@@ -694,7 +694,7 @@
     const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
     const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, ts: Date.now() })); } catch (e) { } };
     saveQ();
-    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + '</button><button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + "</div>" : "";
+    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + '</button><button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + (items.length > 1 ? '<button type="button" class="rl-btn main" style="padding:3px 9px;font-size:.72rem" data-linkall="1" title="Uma mensagem só com os links de todas as peças">Todos os links</button>' : "") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Abrir WhatsApp</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
@@ -719,6 +719,17 @@
       })();
     }
     host.addEventListener("click", async (ev) => {
+      const la = ev.target.closest("[data-linkall]");
+      if (la) {
+        const row = la.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e));
+        if (!env) return;
+        if (items.some((p) => !(prevUrls[p.id] && prevUrls[p.id].ok))) { alert("A prévia de algum link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
+        const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
+        const txt = items.map((p) => p.name + " — " + money(pPrice(p)) + "\n" + prevUrls[p.id].url).join("\n\n");
+        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(txt), "_blank");
+        items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); }); saveQ();
+        return;
+      }
       const lb = ev.target.closest("[data-linkp]");
       if (lb) {
         const row = lb.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e)), i = +lb.dataset.linkp, p = items[i], u = p && prevUrls[p.id];
