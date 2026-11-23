@@ -116,38 +116,37 @@
     if (simBtn) simBtn.addEventListener("click", () => {
       const old = document.getElementById("crSimModal"); if (old) old.remove();
       const ord = abertas.slice().sort((a, b) => String(a.data).localeCompare(String(b.data)) || Number(a.numero) - Number(b.numero));
+      const cents = (x) => Math.round(Number(x) * 100);
+      const blocos = ord.map((c) => {
+        const S = cents(c.saldo), m = pmap[c.pedido_id], v = m && m.v > 0 ? cents(m.v) : 0;
+        const ps = [];
+        if (!v) ps.push({ label: "Saldo", val: S });
+        else { const cnt = Math.max(1, Math.ceil(S / v)); const ini = Math.max(1, (m.n || cnt) - cnt + 1); for (let i = 0; i < cnt; i++) ps.push({ label: (ini + i) + "/" + (m.n || cnt), val: i === cnt - 1 ? S - v * (cnt - 1) : v }); }
+        return { c, S, ps, txt: parcPlain(c) };
+      });
       const ov = document.createElement("div"); ov.id = "crSimModal";
       ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px";
-      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;border:1px solid #e8dcc8">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#6b5a3e">Simular pagamento</h3><button type="button" class="secondary" id="smX">Fechar</button></div>' +
-        '<div class="hint-text" style="margin:6px 0 10px">Apenas simulação: nada é gravado e o crediário real não muda. Cliente: <strong>' + esc(cli.nome) + '</strong> · Saldo atual: <strong>' + money(saldo) + '</strong></div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:1 1 230px;margin:0"><label>Abater de</label><select id="smModo"><option value="total">Saldo total (compras mais antigas primeiro)</option><option value="pedido">Compras específicas (uma ou mais)</option></select></div>' +
-        '<div class="field" id="smPedW" style="flex:2 1 100%;margin:0;display:none"><label>Compras (marque uma ou mais)</label><div id="smPed" style="display:flex;flex-direction:column;gap:4px;max-height:170px;overflow:auto;border:1px solid #e6d9c0;border-radius:8px;padding:6px 8px">' + ord.map((c) => '<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" value="' + esc(c.pedido_id) + '"> #' + c.numero + " - " + dateF(c.data) + (parcPlain(c) ? " - " + parcPlain(c) : "") + " · saldo " + money(c.saldo) + "</label>").join("") + '</div><div id="smSoma" class="hint-text" style="margin-top:4px"></div></div>' +
-        '<div class="field" style="flex:1 1 140px;margin:0"><label>Valor a pagar (R$)</label><input type="text" id="smVal" inputmode="decimal" placeholder="0,00"></div></div>' +
-        '<div id="smOut" style="margin-top:12px"></div></div>';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:780px;width:100%;max-height:92vh;display:flex;flex-direction:column;border:1px solid #e8dcc8">' +
+        '<div style="padding:14px 18px 6px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#6b5a3e">Simular pagamento</h3><button type="button" class="secondary" id="smX">Fechar</button></div>' +
+        '<div class="hint-text" style="margin:6px 0 4px">Marque as parcelas que a cliente vai pagar. Apenas simulação: nada é gravado e o crediário real não muda. Cliente: <strong>' + esc(cli.nome) + '</strong> · Saldo atual: <strong>' + money(saldo) + '</strong></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0"><button type="button" class="secondary" id="smNext">Marcar a próxima parcela de cada compra</button><button type="button" class="secondary" id="smClear">Limpar</button></div></div>' +
+        '<div id="smList" style="padding:0 18px;overflow:auto;flex:1">' + blocos.map((b, i) => '<div style="border:1px solid #efe6d3;border-radius:10px;padding:8px 10px;margin:8px 0;background:#fcf8ef"><div style="font-weight:600;color:#4a3d28">#' + b.c.numero + " - " + dateF(b.c.data) + (b.txt ? " - " + b.txt : "") + ' <span class="hint-text" style="font-weight:400">· saldo ' + money(b.c.saldo) + '</span></div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">' +
+          b.ps.map((p, j) => '<label style="display:flex;align-items:center;gap:6px;border:1px solid #e6d9c0;background:#fff;border-radius:8px;padding:5px 9px;cursor:pointer"><input type="checkbox" data-b="' + i + '" data-p="' + j + '"> ' + p.label + " · <strong>" + money(p.val / 100) + "</strong></label>").join("") + "</div></div>").join("") + "</div>" +
+        '<div id="smTot" style="padding:10px 18px 14px;border-top:1px solid #e8dcc8;background:#f8f1e3;border-radius:0 0 14px 14px"></div></div>';
       document.body.appendChild(ov);
-      const $s = (id) => ov.querySelector("#" + id);
-      const pv = document.getElementById("crVal"); if (pv && pv.value) $s("smVal").value = pv.value;
+      const cbs = () => [...ov.querySelectorAll("#smList input[type=checkbox]")];
       const calc = () => {
-        const modo = $s("smModo").value; $s("smPedW").style.display = modo === "pedido" ? "" : "none";
-        let v = parseFloat(String($s("smVal").value).replace(/\./g, "").replace(",", ".")); if (!(v > 0)) v = 0;
-        let rest = v; const linhas = [];
-        const sel = [...ov.querySelectorAll("#smPed input:checked")].map((i) => i.value);
-        const alvo = modo === "pedido" ? ord.filter((c) => sel.includes(c.pedido_id)) : ord;
-        if (modo === "pedido") { const soma = alvo.reduce((a, c) => a + Number(c.saldo), 0); $s("smSoma").textContent = sel.length ? sel.length + " compra(s) marcada(s) · soma dos saldos: " + money(soma) + " (valor em branco = pagar tudo)" : "Nenhuma compra marcada."; if (sel.length && String($s("smVal").value).trim() === "") { v = soma; rest = soma; } }
-        alvo.forEach((c) => { const s0 = Number(c.saldo), ab = Math.min(rest, s0); rest = Math.round((rest - ab) * 100) / 100; linhas.push({ c, s0, ab, s1: Math.round((s0 - ab) * 100) / 100 }); });
-        const pm = (c) => { const m = pmap[c.pedido_id]; return m && m.v > 0 ? m : null; };
-        const html = '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Saldo atual</th><th>Pagamento</th><th>Saldo após</th><th>Parcelas após</th></tr></thead><tbody>' +
-          linhas.map((l) => { const m = pm(l.c); const p = l.s1 <= 0 ? "Quitado" : (m ? Math.ceil(l.s1 / m.v - 1e-9) + " de " + m.n + "x " + money(m.v) : "-"); return "<tr><td>#" + l.c.numero + "</td><td>" + dateF(l.c.data) + "</td><td>" + money(l.s0) + "</td><td>" + (l.ab > 0 ? money(l.ab) : "-") + "</td><td><strong>" + money(l.s1) + "</strong></td><td>" + p + "</td></tr>"; }).join("") + "</tbody></table></div>";
-        const tot = linhas.reduce((a, l) => a + l.s1, 0), totAt = ord.reduce((a, c) => a + Number(c.saldo), 0) - linhas.reduce((a, l) => a + l.s0, 0) + tot;
-        $s("smOut").innerHTML = html + '<div style="margin-top:10px;display:flex;gap:18px;flex-wrap:wrap"><div>Valor simulado: <strong>' + money(v - rest) + '</strong></div><div>Saldo total após: <strong>' + money(totAt) + '</strong></div>' +
-          (rest > 0 ? '<div style="color:#8a5a00">Sobra ' + money(rest) + ' acima do saldo (ficaria como crédito).</div>' : "") + "</div>";
+        let soma = 0, qtd = 0; const por = {};
+        cbs().forEach((i) => { if (i.checked) { const p = blocos[i.dataset.b].ps[i.dataset.p]; soma += p.val; qtd++; por[i.dataset.b] = (por[i.dataset.b] || 0) + p.val; } });
+        const detalhe = Object.keys(por).map((k) => "#" + blocos[k].c.numero + ": " + money(por[k] / 100) + " (saldo após " + money((blocos[k].S - por[k]) / 100) + ")").join(" · ");
+        ov.querySelector("#smTot").innerHTML = '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:baseline"><div>Parcelas marcadas: <strong>' + qtd + '</strong></div><div style="font-size:1.15rem">Soma a pagar: <strong style="color:#6b3f1d">' + money(soma / 100) + '</strong></div><div>Saldo total após: <strong>' + money((cents(saldo) - soma) / 100) + "</strong></div></div>" + (detalhe ? '<div class="hint-text" style="margin-top:4px">' + detalhe + "</div>" : "");
       };
-      ["smModo", "smPed"].forEach((id) => $s(id).addEventListener("change", calc)); $s("smVal").addEventListener("input", calc);
-      $s("smX").addEventListener("click", () => ov.remove()); ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
+      ov.querySelector("#smList").addEventListener("change", calc);
+      ov.querySelector("#smNext").addEventListener("click", () => { cbs().forEach((i) => { i.checked = i.dataset.p === "0"; }); calc(); });
+      ov.querySelector("#smClear").addEventListener("click", () => { cbs().forEach((i) => { i.checked = false; }); calc(); });
+      ov.querySelector("#smX").addEventListener("click", () => ov.remove()); ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
       calc();
     });
-
     box.querySelectorAll("button[data-pe]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.pe, c = (r.compras || []).find((x) => x.pedido_id === id) || {}, m = pmap[id];
       const ob = String(c.observacoes || "").match(/(\d+)\s*[x×]\s*([\d.,]+)?/i);
