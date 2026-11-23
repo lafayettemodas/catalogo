@@ -705,6 +705,7 @@
       const nx = [...tr.querySelectorAll("[data-photo]")].find((x) => x.dataset.sent !== "1"); tr.querySelectorAll("[data-photo]").forEach((x) => { if (x.dataset.sent !== "1") x.style.outline = ""; }); if (nx) { nx.style.outline = "2px solid #7a5a3a"; } };
     photoDone.forEach((k) => { const [eid, ix] = k.split("|"); markPhoto(eid, +ix); });
     const prevUrls = {};
+    const intro = (env, row) => { const ob = row && row.querySelector("button[data-confirm]"); const enviado = row && /Enviado/.test((row.querySelector("button[disabled]") || {}).textContent || ""); const jaFoto = photoDone.some((k) => k.indexOf(env.id + "|") === 0); return (ob || enviado || jaFoto || !env.mensagem) ? "" : env.mensagem + "\n\n"; };
     if (items.length) {
       const st = document.createElement("div"); st.className = "hint-text"; st.id = "qPrev"; st.textContent = "Preparando a prévia dos links..."; host.querySelector("#qProg").after(st);
       (async () => {
@@ -743,7 +744,7 @@
         if (!env) return;
         if (items.some((p) => !(prevUrls[p.id] && prevUrls[p.id].ok))) { alert("A prévia de algum link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
         const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
-        const txt = items.map((p) => p.name + " — " + money(pPrice(p)) + "\n" + prevUrls[p.id].url).join("\n\n");
+        const txt = intro(env, row) + items.map((p) => p.name + " — " + money(pPrice(p)) + "\n" + prevUrls[p.id].url).join("\n\n");
         window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(txt), "_blank");
         items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); }); saveQ();
         return;
@@ -754,7 +755,7 @@
         if (!env) return;
         if (!u || !u.ok) { alert("A prévia do link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
         const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
-        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(p.name + " — " + money(pPrice(p)) + "\n" + u.url), "_blank");
+        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(intro(env, row) + p.name + " — " + money(pPrice(p)) + "\n" + u.url), "_blank");
         const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); saveQ(); markPhoto(env.id, i);
         return;
       }
