@@ -17,6 +17,7 @@
   const dm = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const waNum = (tel) => { let d = String(tel || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) d = "55" + d; return d.length >= 12 ? d : ""; };
+  const fmtTel = (t) => { const d = String(t || "").replace(/\D/g, ""); return d.length === 11 ? d.replace(/(\d{2})(\d{5})(\d{4})/, "$1 $2-$3") : t; };
   const firstName = (n) => { const f = String(n || "").trim().split(/\s+/)[0] || ""; return f.charAt(0).toUpperCase() + f.slice(1).toLowerCase(); };
   const encSummary = (r) => {
     const p = (r.encomendas || []).filter((e) => e.situacao === "pendente");
@@ -73,6 +74,8 @@
   #rlAnivBadge{background:#c0392b;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:6px;display:none}
   .rl-del{border:1px solid #e6d9c0;background:#fff;color:#a33;border-radius:6px;padding:4px 6px;cursor:pointer;line-height:0}
   .rl-del:hover{background:#fdeaea;border-color:#c0392b}
+  .rl-tels{cursor:pointer}
+  .rl-tels:hover{text-decoration:underline}
   .rl-note{font-size:.78rem;color:#7a6a50;background:#fcf8ef;border:1px solid #efe6d3;border-radius:8px;padding:8px 10px;margin:8px 0}
   `;
 
@@ -108,13 +111,15 @@
       '<button type="button" class="rl-btn" id="rlProd">Adicionar produtos</button>' +
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
       '<button type="button" class="rl-btn" id="rlSelClear">Limpar seleção</button>' +
+      '<button type="button" class="rl-btn" id="rlRemSel" title="Remover as clientes selecionadas da lista de relacionamento"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>Remover da lista</button>' +
+      '<button type="button" class="rl-btn" id="rlRemoved">Removidas</button>' +
       '<button type="button" class="rl-btn" id="rlHist">Histórico de envios</button>' +
       '<button type="button" class="rl-btn" id="rlAnivBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Mensagem aniversariante<span id="rlAnivBadge"></span></button>' +
       '<button type="button" class="rl-btn" id="rlWelBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>Mensagem boas-vindas</button></div>' +
       '<div class="rl-info"><span id="rlCount"></span><span id="rlSelCount"></span><span id="rlSave" class="rl-save"></span></div>' +
       '<div id="rlMsg" class="hint-text"></div>' +
       '<div class="rl-wrap"><table class="rl"><thead><tr>' +
-      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th><th title="Excluir cliente"></th>' +
+      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th><th title="Remover da lista de relacionamento"></th>' +
       '</tr></thead><tbody id="rlBody"></tbody></table></div></div>';
     content.appendChild(view);
     ["rlQ", "rlTam", "rlPref"].forEach((i) => $(i).addEventListener("input", draw));
@@ -126,6 +131,8 @@
     $("rlProd").addEventListener("click", () => openProd());
     $("rlAddCli").addEventListener("click", () => openAdd());
     $("rlHist").addEventListener("click", openHist);
+    $("rlRemSel").addEventListener("click", () => removeFromList(Array.from(sel)));
+    $("rlRemoved").addEventListener("click", openRemoved);
     $("rlAnivBtn").addEventListener("click", () => openAniv());
     $("rlWelBtn").addEventListener("click", () => openWelcome());
     const body = $("rlBody");
@@ -135,7 +142,8 @@
       const tr = e.target.closest("tr"); if (!tr) return; const id = tr.dataset.id;
       if (e.target.closest(".rl-wa")) { const r = find(id), n = waNum(r.telefone); if (n) window.open("https://wa.me/" + n, "_blank"); return; }
       if (e.target.closest(".rl-enc")) { openEnc(id); return; }
-      if (e.target.closest(".rl-del")) { delClient(id); return; }
+      if (e.target.closest(".rl-del")) { removeFromList([id]); return; }
+      if (e.target.closest(".rl-tels")) { openTels(id); return; }
       if (e.target.closest(".c-nome a")) { if (window.clOpenFicha) window.clOpenFicha(id); }
     });
     return true;
@@ -149,8 +157,8 @@
     const now = new Date(), mNow = now.getMonth() + 1, dNow = now.getDate();
     return rows.filter((r) => {
       if (q) {
-        const hay = norm([r.nome, r.telefone, r.tamanhos, r.preferencias, r.observacoes, (r.encomendas || []).map((e) => e.produto).join(" ")].join(" "));
-        if (!hay.includes(q) && !(qd.length >= 3 && String(r.telefone || "").replace(/\D/g, "").includes(qd))) return false;
+        const hay = norm([r.nome, r.telefone, (r.telefones || []).map((t) => t.telefone + " " + (t.rotulo || "")).join(" "), r.tamanhos, r.preferencias, r.observacoes, (r.encomendas || []).map((e) => e.produto).join(" ")].join(" "));
+        if (!hay.includes(q) && !(qd.length >= 3 && (String(r.telefone || "").replace(/\D/g, "").includes(qd) || (r.telefones || []).some((t) => String(t.telefone).replace(/\D/g, "").includes(qd))))) return false;
       }
       if (tam && !norm(r.tamanhos).includes(tam)) return false;
       if (pref && !norm(r.preferencias).includes(pref)) return false;
@@ -180,7 +188,7 @@
     return '<tr data-id="' + esc(r.id) + '"' + (s.late ? ' class="late"' : "") + ">" +
       '<td style="text-align:center"><input type="checkbox" class="rl-sel"' + (sel.has(r.id) ? " checked" : "") + "></td>" +
       '<td class="c-nome" title="Abrir cadastro"><a>' + esc(r.nome) + "</a></td>" +
-      '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel">' + esc(r.telefone || "") + "</div></td>" +
+      '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + (esc(r.telefone || "") || "—") + "</div>" + (r.telefones || []).map((t) => '<div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + esc(fmtTel(t.telefone)) + (t.rotulo ? " (" + esc(t.rotulo) + ")" : "") + "</div>").join("") + "</td>" +
       '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="5" placeholder="dd/mm" value="' + esc(dm(r)) + '"></td>' +
       '<td style="width:110px"><input type="text" data-f="tamanhos" value="' + esc(r.tamanhos || "") + '"></td>' +
       '<td style="min-width:190px"><input type="text" data-f="preferencias" value="' + esc(r.preferencias || "") + '"></td>' +
@@ -188,7 +196,7 @@
       '<td style="width:128px"><input type="date" data-f="ultimo_contato" value="' + esc(String(r.ultimo_contato || "").slice(0, 10)) + '"></td>' +
       '<td style="min-width:170px"><button type="button" class="rl-enc' + (pend ? " has" : "") + '" title="Abrir encomendas">' + esc(encSummary(r)) + "</button></td>" +
       '<td style="min-width:190px"><input type="text" data-f="observacoes" value="' + esc(r.observacoes || "") + '"></td>' +
-      '<td style="text-align:center;width:40px"><button type="button" class="rl-del" title="Excluir cliente"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></td></tr>';
+      '<td style="text-align:center;width:40px"><button type="button" class="rl-del" title="Remover da lista de relacionamento"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></td></tr>';
   }
   function statusBadge(s) { return '<span class="rl-b ' + (s.t === "pendente" ? "pendente" : "ok") + '">' + (s.t === "pendente" ? "Pendente" : "Em dia") + "</span>" + (s.late ? '<div class="rl-tel">há ' + s.d + " dias</div>" : (s.d === null ? '<div class="rl-tel">nunca</div>' : "")); }
 
@@ -359,6 +367,7 @@
       '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Nome da cliente *<input type="text" id="adNome"></label>' +
       '<label style="font-size:.8rem;font-weight:700">WhatsApp (DDD + número)<input type="text" id="adTel" placeholder="48 99999-9999"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Aniversário (dd/mm)<input type="text" id="adAniv" maxlength="5" placeholder="dd/mm"></label>' +
+      '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Outro telefone (opcional)<input type="text" id="adTel2" placeholder="48 99999-9999"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Tamanhos<input type="text" id="adTam" placeholder="Ex.: M, 38"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Preferências<input type="text" id="adPref" placeholder="Ex.: vestidos"></label>' +
       '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Observações<input type="text" id="adObs"></label></div>' +
@@ -366,13 +375,14 @@
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="adCancel">Cancelar</button><button type="button" class="rl-btn main" id="adSave">Salvar cliente</button></div>');
     const err = (t) => { m.q("#adErr").textContent = t || ""; };
     m.q("#adCancel").addEventListener("click", m.close);
+    ["#adNome", "#adTam", "#adPref", "#adObs"].forEach((q) => upperInput(m.q(q)));
     m.q("#adNome").focus();
     m.q("#adSave").addEventListener("click", async (ev) => {
       err("");
       const nome = m.q("#adNome").value.trim().replace(/\s+/g, " ").toUpperCase(), tel = m.q("#adTel").value.trim(), an = m.q("#adAniv").value.trim();
       if (!nome) { err("Informe o nome da cliente."); return; }
       const key = phoneKey(tel);
-      if (tel && key.length < 10) { err("WhatsApp inválido: use DDD + número."); return; }
+      
       const dupN = rows.find((r) => norm(r.nome) === norm(nome));
       if (dupN) { err("Já existe uma cliente com este nome: " + dupN.nome + "."); return; }
       if (key) { const dupT = rows.find((r) => phoneKey(r.telefone) === key); if (dupT) { err("Este WhatsApp já pertence a: " + dupT.nome + "."); return; } }
@@ -382,12 +392,23 @@
         if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { err("Aniversário inválido: use dd/mm."); return; }
         aniv = "2000-" + pad(mo) + "-" + pad(d);
       }
+      const vv = await supabaseClient.rpc("cliente_validar", { p_nome: nome, p_tel: tel, p_novo: true });
+      if (vv.error) { err("Erro ao validar: " + vv.error.message); return; }
+      if (!vv.data.ok) { err(vv.data.erro); return; }
+      const tel2 = m.q("#adTel2").value.trim();
+      if (tel2) {
+        if (phoneKey(tel2) === key) { err("O outro telefone é igual ao principal."); return; }
+        const v2 = await supabaseClient.rpc("cliente_validar", { p_nome: "", p_tel: tel2, p_novo: true });
+        if (v2.error) { err("Erro ao validar: " + v2.error.message); return; }
+        if (!v2.data.ok) { err("Outro telefone: " + v2.data.erro); return; }
+      }
       ev.target.disabled = true;
       const { data, error } = await supabaseClient.from("clientes").insert({ nome: nome, telefone: tel || null, aniversario: aniv }).select("id").single();
       if (error) { err("Erro ao salvar: " + error.message); ev.target.disabled = false; return; }
       const extra = { tamanhos: m.q("#adTam").value.trim(), preferencias: m.q("#adPref").value.trim(), observacoes: m.q("#adObs").value.trim() };
       Object.keys(extra).forEach((k) => { if (!extra[k]) delete extra[k]; });
       if (Object.keys(extra).length) await supabaseClient.rpc("relacionamento_salvar", { p_cliente: data.id, p: extra });
+      if (tel2) await supabaseClient.rpc("cliente_telefone_add", { p_cliente: data.id, p_tel: tel2, p_rotulo: "" });
       m.close(); await load();
       $("rlQ").value = nome; draw();
       $("rlMsg").textContent = "Cliente adicionada: " + nome + ".";
@@ -408,6 +429,81 @@
       return;
     }
     rows = rows.filter((x) => x.id !== id); sel.delete(id); draw(); updateAnivAlert();
+  }
+
+  // ---------- telefones da cliente ----------
+  function openTels(id) {
+    const m = modal("Telefones", '<div id="tlBody"></div>'), body = m.q("#tlBody");
+    const waBtn = (tel) => waNum(tel) ? '<button type="button" class="rl-wa" data-wa="' + esc(tel) + '">WhatsApp</button>' : "";
+    const render = (msgErr) => {
+      const r = find(id); if (!r) { m.close(); return; }
+      m.el.querySelector("h3").textContent = "Telefones - " + r.nome;
+      const ex = r.telefones || [];
+      body.innerHTML = '<table><thead><tr><th>Telefone</th><th>Tipo</th><th></th></tr></thead><tbody>' +
+        '<tr><td>' + esc(r.telefone || "(sem telefone principal)") + '</td><td><span class="rl-b ok">Principal</span></td><td>' + (r.telefone ? waBtn(r.telefone) : "") + "</td></tr>" +
+        ex.map((t) => '<tr data-t="' + esc(t.id) + '"><td>' + esc(t.telefone) + "</td><td>" + esc(t.rotulo || "Outro") + '</td><td style="white-space:nowrap">' + waBtn(t.telefone) + ' <button type="button" class="rl-btn" data-main style="padding:3px 9px;font-size:.72rem">Tornar principal</button> <button type="button" class="rl-del" data-rm title="Remover telefone"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></td></tr>').join("") +
+        '</tbody></table><h4 style="margin:12px 0 6px">Adicionar telefone</h4>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap"><input type="text" id="tlNew" placeholder="48 99999-9999" style="flex:2;min-width:150px"><input type="text" id="tlRot" placeholder="Tipo (ex.: marido, trabalho)" style="flex:2;min-width:150px"><button type="button" class="rl-btn main" id="tlAdd">Adicionar</button></div>' +
+        '<div id="tlErr" style="color:#b3294f;margin-top:8px">' + esc(msgErr || "") + "</div>";
+    };
+    const reload = async (msgErr) => { await load(); render(msgErr); };
+    render();
+    body.addEventListener("click", async (e) => {
+      const w = e.target.closest("[data-wa]"); if (w) { const n = waNum(w.dataset.wa); if (n) window.open("https://wa.me/" + n, "_blank"); return; }
+      const tr = e.target.closest("tr[data-t]");
+      if (tr && e.target.closest("[data-main]")) { const { error } = await supabaseClient.rpc("cliente_telefone_principal", { p_id: tr.dataset.t }); await reload(error ? "Erro: " + error.message : ""); return; }
+      if (tr && e.target.closest("[data-rm]")) { if (!confirm("Remover este telefone da cliente?")) return; const { error } = await supabaseClient.rpc("cliente_telefone_remover", { p_id: tr.dataset.t }); await reload(error ? "Erro: " + error.message : ""); return; }
+      if (e.target.closest("#tlAdd")) {
+        const tel = body.querySelector("#tlNew").value.trim(), rot = body.querySelector("#tlRot").value.trim();
+        if (!tel) { body.querySelector("#tlErr").textContent = "Digite o telefone."; return; }
+        const { data, error } = await supabaseClient.rpc("cliente_telefone_add", { p_cliente: id, p_tel: tel, p_rotulo: rot });
+        if (error) { body.querySelector("#tlErr").textContent = "Erro: " + error.message; return; }
+        if (!data.ok) { body.querySelector("#tlErr").textContent = data.erro; return; }
+        await reload("");
+      }
+    });
+  }
+
+  // ---------- remover da lista de relacionamento (nao exclui a cliente) ----------
+  function upperInput(el) {
+    if (!el) return; el.style.textTransform = "uppercase";
+    el.addEventListener("input", () => { const a = el.selectionStart, b = el.selectionEnd, v = el.value.toUpperCase(); if (v !== el.value) { el.value = v; try { el.setSelectionRange(a, b); } catch (e) { } } });
+  }
+  function removeFromList(ids) {
+    if (!ids.length) { alert("Selecione ao menos uma cliente para remover da lista."); return; }
+    const nomes = ids.map((i) => { const r = find(i); return r ? r.nome : ""; }).filter(Boolean);
+    const m = modal("Remover da lista de relacionamento", '<p style="margin:0 0 8px"><strong>' + ids.length + " cliente(s):</strong> " + esc(nomes.slice(0, 6).join(", ")) + (nomes.length > 6 ? " e mais " + (nomes.length - 6) : "") + "</p>" +
+      '<div class="rl-note">Elas saem só desta lista. O cadastro da cliente, o histórico de compras, vendas, crediário, consignados, mensagens e contatos <strong>não são apagados</strong>, e nenhum dado financeiro é alterado. Você pode trazê-las de volta em "Removidas".</div>' +
+      '<label style="font-size:.8rem;font-weight:700">Senha para confirmar<input type="password" id="rmSenha" autocomplete="off"></label>' +
+      '<div id="rmErr" style="color:#b3294f;margin-top:8px"></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="rmNo">Cancelar</button><button type="button" class="rl-btn main" id="rmYes">Remover da lista</button></div>');
+    m.q("#rmNo").addEventListener("click", m.close); m.q("#rmSenha").focus();
+    const go = async () => {
+      const senha = m.q("#rmSenha").value; if (!senha) { m.q("#rmErr").textContent = "Digite a senha."; return; }
+      m.q("#rmYes").disabled = true;
+      const { error } = await supabaseClient.rpc("relacionamento_remover", { p_clientes: ids, p_senha: senha });
+      if (error) { m.q("#rmErr").textContent = /senha/i.test(error.message) ? "Senha incorreta." : "Erro: " + error.message; m.q("#rmYes").disabled = false; return; }
+      rows = rows.filter((r) => ids.indexOf(r.id) < 0); ids.forEach((i) => sel.delete(i));
+      m.close(); draw(); updateAnivAlert(); $("rlMsg").textContent = ids.length + " cliente(s) removida(s) da lista de relacionamento.";
+    };
+    m.q("#rmYes").addEventListener("click", go);
+    m.q("#rmSenha").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  }
+  async function openRemoved() {
+    const m = modal("Clientes removidas da lista", '<p class="hint-text">Carregando...</p>'), bd = m.el.querySelector(".bd");
+    const draw3 = async () => {
+      const { data, error } = await supabaseClient.rpc("relacionamento_removidas");
+      if (error) { bd.innerHTML = '<p style="color:#b3294f">Erro: ' + esc(error.message) + "</p>"; return; }
+      if (!data.length) { bd.innerHTML = '<p class="hint-text">Nenhuma cliente removida da lista.</p>'; return; }
+      bd.innerHTML = '<div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Removida em</th><th></th></tr></thead><tbody>' + data.map((c) => '<tr data-id="' + esc(c.id) + '"><td>' + esc(c.nome) + "</td><td>" + esc(c.telefone || "") + "</td><td>" + dateBR(c.oculto_em) + '</td><td><button type="button" class="rl-btn" data-back style="padding:3px 10px;font-size:.75rem">Restaurar</button></td></tr>').join("") + "</tbody></table></div>";
+    };
+    bd.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-back]"); if (!b) return; b.disabled = true;
+      const { error } = await supabaseClient.rpc("relacionamento_restaurar", { p_clientes: [b.closest("tr").dataset.id] });
+      if (error) { alert("Erro: " + error.message); b.disabled = false; return; }
+      await load(); await draw3();
+    });
+    await draw3();
   }
 
   // ---------- janelas ----------
