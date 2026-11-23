@@ -54,6 +54,7 @@
     const parcBtn = (c) => ' <button type="button" data-pe="' + esc(c.pedido_id) + '" title="Editar parcelas" style="border:1px solid #d9c9a8;background:#fff;border-radius:6px;cursor:pointer;padding:0 6px;font-size:.8rem">✎</button>';
     const parcTxt0 = (c) => { const m = pmap[c.pedido_id]; if (!m) { const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? esc(mm[0].trim()) : "-"; } const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
     const parcTxt = (c) => '<span data-pt="' + esc(c.pedido_id) + '">' + parcTxt0(c) + "</span>" + parcBtn(c);
+    const comprasTab = (r.compras || []).filter((c) => !/quit/i.test(c.situacao)).sort((a, b) => String(b.data).localeCompare(String(a.data)) || Number(b.numero) - Number(a.numero));
     const abertas = r.compras.filter((c) => Number(c.saldo) > 0);
     const token = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
     let h = '<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:10px">' +
@@ -96,9 +97,9 @@
         '<div id="crInfo" class="hint-text" style="margin:8px 0 0"></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button type="button" class="primary" id="crPay">Receber pagamento</button><button type="button" class="secondary" id="crAll">Quitar</button><span id="crMsg" class="cl-msg"></span></div></div>';
     }
     h += "<h5 style=\"margin:14px 0 6px\">Compras no crediário</h5>";
-    h += r.compras.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Abatido</th><th>Saldo</th><th>Parcelas</th><th>Situação</th><th></th></tr></thead><tbody>' +
-      r.compras.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + parcTxt(c) + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="primary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
-      '<p class="hint-text">Nenhuma compra no crediário.</p>';
+    h += comprasTab.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Abatido</th><th>Saldo</th><th>Parcelas</th><th>Situação</th><th></th></tr></thead><tbody>' +
+      comprasTab.map((c) => "<tr><td>#" + c.numero + "</td><td>" + dateF(c.data) + "</td><td>" + money(c.valor) + "</td><td>" + money(c.pago) + "</td><td>" + money(c.saldo) + "</td><td>" + parcTxt(c) + "</td><td>" + badge(c.situacao) + '</td><td><button type="button" class="primary" data-pv="' + esc(c.pedido_id) + '">Ver</button></td></tr>').join("") + "</tbody></table></div>" :
+      '<p class="hint-text">Nenhuma compra em aberto no crediário. As compras quitadas ficam no histórico de compras.</p>';
     h += "<h5 style=\"margin:14px 0 6px\">Pagamentos recebidos</h5>";
     h += r.pagamentos.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Abatido de</th><th>Obs.</th><th>Comprovante</th><th></th></tr></thead><tbody>' +
       r.pagamentos.map((p) => "<tr><td>" + dateF(p.data) + "</td><td>" + money(p.valor) + "</td><td>" + esc(p.forma) + "</td><td>" + dist(p) + "</td><td>" + esc(p.obs || "") + "</td><td style=\"white-space:nowrap\">nº " + p.numero + ' <button type="button" data-wa="' + esc(p.id) + '" style="background:#25D366;color:#fff;border:0;border-radius:999px;padding:4px 10px;font-weight:700;cursor:pointer">WhatsApp</button> <button type="button" class="secondary" data-pdf="' + esc(p.id) + '">PDF</button></td><td style="width:1%">' + trashBtn(p.id) + '</td></tr>').join("") + "</tbody></table></div>" :
