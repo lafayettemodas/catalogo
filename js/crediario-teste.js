@@ -118,10 +118,12 @@
       const ord = abertas.slice().sort((a, b) => String(a.data).localeCompare(String(b.data)) || Number(a.numero) - Number(b.numero));
       const cents = (x) => Math.round(Number(x) * 100);
       const blocos = ord.map((c) => {
-        const S = cents(c.saldo), m = pmap[c.pedido_id], v = m && m.v > 0 ? cents(m.v) : 0;
+        const S = cents(c.saldo); let m = pmap[c.pedido_id];
+        if (!m) { const mm = String(c.observacoes || "").match(/(\d+)\s*[x×]\s*([\d.,]+)/i); if (mm) { const vv = parseFloat(mm[2].replace(/\./g, "").replace(",", ".")); if (vv > 0) m = { n: parseInt(mm[1], 10), v: vv }; } }
+        const v = m && m.v > 0 ? cents(m.v) : 0;
         const ps = [];
         if (!v) ps.push({ label: "Saldo", val: S });
-        else { const cnt = Math.max(1, Math.ceil(S / v)); const ini = Math.max(1, (m.n || cnt) - cnt + 1); for (let i = 0; i < cnt; i++) ps.push({ label: (ini + i) + "/" + (m.n || cnt), val: i === cnt - 1 ? S - v * (cnt - 1) : v }); }
+        else { const cnt = Math.max(1, Math.round(S / v)); const ini = Math.max(1, (m.n || cnt) - cnt + 1); for (let i = 0; i < cnt; i++) ps.push({ label: (ini + i) + "/" + (m.n || cnt), val: i === cnt - 1 ? S - v * (cnt - 1) : v }); }
         return { c, S, ps, txt: parcPlain(c) };
       });
       const ov = document.createElement("div"); ov.id = "crSimModal";
