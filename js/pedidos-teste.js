@@ -138,7 +138,7 @@
           <div class="field" style="flex:0 1 130px"><label>Desconto (%)</label><input type="number" id="pvDescValor" step="0.01" min="0" max="100" value="0"></div>
           <div class="field"><label>Forma de pagamento</label><select id="pvPagto"></select></div>
         </div>
-        <div class="pv-row" style="margin-top:10px"><div class="field"><label>Observações</label><textarea id="pvObs"></textarea></div><div class="field" id="pvParcBox" style="flex:0 1 130px;display:none"><label>Parcelas</label><input type="number" id="pvParc" min="1" max="24" value="1"><small id="pvParcVal" style="display:block;margin-top:4px;font-weight:600;white-space:nowrap"></small></div></div>
+        <div class="pv-row" style="margin-top:10px"><div class="field"><label>Observações</label><textarea id="pvObs"></textarea></div><div class="field" id="pvParcBox" style="flex:0 1 190px;display:none"><label>Parcelas</label><input type="number" id="pvParc" min="1" max="24" value="1"><label style="margin-top:6px">Valor da parcela</label><input type="number" id="pvParcValor" step="0.01" min="0" title="Valor de cada parcela (pode editar)"></div></div>
 
         <div class="pv-totals">
           <div>Subtotal: <strong id="pvSubtotal">R$ 0,00</strong></div>
@@ -167,8 +167,9 @@
     $("pvPagto").innerHTML = '<option value="">Selecione...</option>' + PAGAMENTOS.map((p) => `<option>${esc(p)}</option>`).join("");
 
     window.__pvTogParc = () => { $("pvParcBox").style.display = $("pvPagto").value === "Crediário" ? "" : "none"; window.__pvParcVal(); };
-    window.__pvParcVal = () => { const n = Math.max(1, Math.min(24, parseInt($("pvParc").value, 10) || 1)); const tot = parseFloat(String($("pvTotal").textContent).replace(/[^0-9,]/g, "").replace(",", ".")) || 0; $("pvParcVal").textContent = n + "x " + (tot / n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-    $("pvParc").addEventListener("input", window.__pvParcVal);
+    window.__pvParcVal = () => { const n = Math.max(1, Math.min(24, parseInt($("pvParc").value, 10) || 1)); const tot = parseFloat(String($("pvTotal").textContent).replace(/[^0-9,]/g, "").replace(",", ".")) || 0; const v = $("pvParcValor"); if (v.dataset.m !== "1") v.value = (tot / n).toFixed(2); };
+    $("pvParc").addEventListener("input", () => { $("pvParcValor").dataset.m = ""; window.__pvParcVal(); });
+    $("pvParcValor").addEventListener("input", () => { $("pvParcValor").dataset.m = "1"; });
     setInterval(() => { if ($("pvParcBox").style.display !== "none") window.__pvParcVal(); }, 400);
 
     $("pvPagto").addEventListener("change", window.__pvTogParc);
@@ -226,7 +227,7 @@
         <td>${fmtDate(p.data_venda)}</td>
         <td>${esc(p.cliente_nome || "-")}</td>
         <td>${money(p.total)}</td>
-        <td>${esc(p.forma_pagamento || "-")}${p.parcelas ? " em " + p.parcelas + "x " + (Number(p.total) / p.parcelas).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</td>
+        <td>${esc(p.forma_pagamento || "-")}${p.parcelas ? " em " + p.parcelas + "x " + (p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</td>
         <td><span class="pv-badge ${p.status}">${STATUS_LABEL[p.status] || p.status}</span></td>
         <td><div class="pv-actions">
           <button type="button" class="secondary" data-a="ver" data-id="${p.id}">Visualizar</button>
@@ -356,7 +357,7 @@
       <h2>Pedido de venda nº ${p.numero} <span class="pv-badge ${p.status}">${STATUS_LABEL[p.status] || p.status}</span></h2>
       <p><strong>Data da venda:</strong> ${fmtDate(p.data_venda)}<br>
       <strong>Cliente:</strong> ${esc(p.cliente_nome || "-")} ${p.cliente_telefone ? " - " + esc(p.cliente_telefone) : ""}<br>
-      <strong>Forma de pagamento:</strong> ${esc(p.forma_pagamento || "-")}${p.parcelas ? " em " + p.parcelas + "x " + (Number(p.total) / p.parcelas).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</p>
+      <strong>Forma de pagamento:</strong> ${esc(p.forma_pagamento || "-")}${p.parcelas ? " em " + p.parcelas + "x " + (p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</p>
       <div class="table-wrap"><table>
         <thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tamanho</th><th>Qtd</th><th>Preço unit.</th><th>Desc. (%)</th><th>Subtotal</th></tr></thead>
         <tbody>${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td>${i.quantidade}</td><td>${money(i.preco_unit)}</td><td>${Number(i.desconto_pct) || 0}%</td><td>${money(i.total)}</td></tr>`).join("")}</tbody>
@@ -423,7 +424,7 @@
       <div class="sub">Pedido de venda nº <strong>${p.numero}</strong> &nbsp; <span class="st">${esc(STATUS_LABEL[p.status] || p.status)}</span></div>
       <div>Data da venda: <strong>${fmtDate(p.data_venda)}</strong></div>
       <div>Cliente: <strong>${esc(p.cliente_nome || "-")}</strong>${p.cliente_telefone ? " - " + esc(p.cliente_telefone) : ""}</div>
-      <div>Forma de pagamento: <strong>${esc(p.forma_pagamento || "-")}${p.parcelas ? " em " + p.parcelas + "x " + (Number(p.total) / p.parcelas).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</strong></div>
+      <div>Forma de pagamento: <strong>${esc(p.forma_pagamento || "-")}${p.parcelas ? " em " + p.parcelas + "x " + (p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</strong></div>
       <table><thead><tr><th>Produto</th><th>Ref.</th><th>Cor</th><th>Tam.</th><th class="r">Qtd</th><th class="r">Preço unit.</th><th class="r">Desc. (%)</th><th class="r">Subtotal</th></tr></thead><tbody>
       ${itens.map((i) => `<tr><td>${esc(i.nome)}</td><td>${esc(i.ref_fabrica || i.ref_loja || "-")}</td><td>${esc(i.cor || "-")}</td><td>${esc(i.tamanho || "-")}</td><td class="r">${i.quantidade}</td><td class="r">${money(i.preco_unit)}</td><td class="r">${Number(i.desconto_pct) || 0}%</td><td class="r">${money(i.total)}</td></tr>`).join("")}
       </tbody></table>
@@ -564,7 +565,7 @@
     $("pvError").textContent = "";
     $("pvSearch").value = ""; $("pvPick").innerHTML = ""; $("pvProd").style.display = "none";
     $("pvData").value = todayStr(); $("pvCliente").value = ""; $("pvTelefone").value = "";
-    $("pvDescTipo").value = "percentual"; $("pvDescValor").value = "0"; $("pvPagto").value = ""; $("pvObs").value = ""; $("pvParc").value = "1"; window.__pvTogParc();
+    $("pvDescTipo").value = "percentual"; $("pvDescValor").value = "0"; $("pvPagto").value = ""; $("pvObs").value = ""; $("pvParc").value = "1"; $("pvParcValor").dataset.m = ""; window.__pvTogParc();
     $("pvFormTitle").textContent = "Novo pedido de venda";
     if (id) {
       const { pedido, itens } = await fetchOrder(id);
@@ -574,7 +575,7 @@
       $("pvData").value = String(pedido.data_venda).slice(0, 10);
       $("pvCliente").value = pedido.cliente_nome || ""; $("pvTelefone").value = pedido.cliente_telefone || "";
       $("pvDescTipo").value = "percentual"; $("pvDescValor").value = pedido.desconto_tipo === "percentual" ? pedido.desconto_valor : (Number(pedido.subtotal) > 0 ? Math.round(Number(pedido.desconto_valor) / Number(pedido.subtotal) * 10000) / 100 : 0);
-      $("pvPagto").value = pedido.forma_pagamento || ""; $("pvObs").value = pedido.observacoes || ""; $("pvParc").value = pedido.parcelas || 1; window.__pvTogParc();
+      $("pvPagto").value = pedido.forma_pagamento || ""; $("pvObs").value = pedido.observacoes || ""; $("pvParc").value = pedido.parcelas || 1; if (pedido.parcela_valor != null) { $("pvParcValor").value = Number(pedido.parcela_valor).toFixed(2); $("pvParcValor").dataset.m = "1"; } else { $("pvParcValor").dataset.m = ""; } window.__pvTogParc();
       items = itens.map((i) => ({ produto_id: i.produto_id, nome: i.nome, ref_fabrica: i.ref_fabrica, ref_loja: i.ref_loja, cor: i.cor || "", tamanho: i.tamanho || "", quantidade: i.quantidade, preco_unit: Number(i.preco_unit), desconto_pct: Number(i.desconto_pct) || 0, consignado_item_id: i.consignado_item_id || null }));
     }
     $("pvListPanel").style.display = "none";
@@ -726,6 +727,7 @@
       cliente_telefone: $("pvTelefone").value.trim() || null,
       forma_pagamento: $("pvPagto").value,
       observacoes: $("pvObs").value.trim() || null,
+      parcela_valor: ($("pvPagto").value === "Crediário" && $("pvParcValor").value !== "") ? Math.round(Number($("pvParcValor").value) * 100) / 100 : null,
       parcelas: ($("pvPagto").value === "Crediário") ? Math.max(1, Math.min(24, parseInt($("pvParc").value, 10) || 1)) : null,
       desconto_tipo: t.tipo, desconto_valor: t.dv,
       subtotal: t.subtotal, desconto_total: t.desc, total: t.total,
