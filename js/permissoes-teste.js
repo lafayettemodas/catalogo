@@ -129,6 +129,20 @@
         return r;
       };
     }
+    // A restricao antiga (classe restricted-user) esconde tudo menos 2 abas; as permissoes novas passam a mandar.
+    try {
+      const st = document.createElement("style");
+      st.textContent = 'body.pm-user #logoutBtn{display:inline-block!important}' +
+        'body.pm-user.pm-noedit .bc-result button[data-edit]{display:none!important}';
+      document.head.appendChild(st);
+      const fix = () => {
+        const b = document.body; if (!b) return;
+        if (b.classList.contains("restricted-user")) { b.classList.remove("restricted-user"); b.classList.add("pm-user"); }
+        if (b.classList.contains("pm-user")) b.classList.toggle("pm-noedit", !(me && (me.admin || me.abas == null || me.abas.indexOf("editar") >= 0)));
+      };
+      new MutationObserver(fix).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+      setInterval(fix, 1500); fix();
+    } catch (e) { }
     loadMe();
     try { supabaseClient.auth.onAuthStateChange(() => setTimeout(loadMe, 0)); } catch (e) { }
     let n = 0; const iv = setInterval(() => { if (me && me.admin) injectAdmin(); if ($("viewPerm") || ++n > 40) clearInterval(iv); }, 500);
