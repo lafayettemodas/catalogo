@@ -111,13 +111,15 @@
       '<button type="button" class="rl-btn" id="rlProd">Adicionar produtos</button>' +
       '<button type="button" class="rl-btn main" id="rlSend">Enviar WhatsApp</button>' +
       '<button type="button" class="rl-btn" id="rlSelClear">Limpar seleção</button>' +
+      '<button type="button" class="rl-btn" id="rlRemSel" title="Remover as clientes selecionadas da lista de relacionamento"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>Remover da lista</button>' +
+      '<button type="button" class="rl-btn" id="rlRemoved">Removidas</button>' +
       '<button type="button" class="rl-btn" id="rlHist">Histórico de envios</button>' +
       '<button type="button" class="rl-btn" id="rlAnivBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Mensagem aniversariante<span id="rlAnivBadge"></span></button>' +
       '<button type="button" class="rl-btn" id="rlWelBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>Mensagem boas-vindas</button></div>' +
       '<div class="rl-info"><span id="rlCount"></span><span id="rlSelCount"></span><span id="rlSave" class="rl-save"></span></div>' +
       '<div id="rlMsg" class="hint-text"></div>' +
       '<div class="rl-wrap"><table class="rl"><thead><tr>' +
-      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th><th title="Excluir cliente"></th>' +
+      '<th style="width:30px"><input type="checkbox" id="rlAll" title="Selecionar todas as clientes filtradas"></th><th class="c-nome">Nome da cliente</th><th>WhatsApp</th><th>Aniversário</th><th>Tamanhos</th><th>Preferências</th><th>Última compra</th><th>Último contato</th><th>Pedidos / encomendas</th><th>Observações</th><th title="Remover da lista de relacionamento"></th>' +
       '</tr></thead><tbody id="rlBody"></tbody></table></div></div>';
     content.appendChild(view);
     ["rlQ", "rlTam", "rlPref"].forEach((i) => $(i).addEventListener("input", draw));
@@ -129,6 +131,8 @@
     $("rlProd").addEventListener("click", () => openProd());
     $("rlAddCli").addEventListener("click", () => openAdd());
     $("rlHist").addEventListener("click", openHist);
+    $("rlRemSel").addEventListener("click", () => removeFromList(Array.from(sel)));
+    $("rlRemoved").addEventListener("click", openRemoved);
     $("rlAnivBtn").addEventListener("click", () => openAniv());
     $("rlWelBtn").addEventListener("click", () => openWelcome());
     const body = $("rlBody");
@@ -138,7 +142,7 @@
       const tr = e.target.closest("tr"); if (!tr) return; const id = tr.dataset.id;
       if (e.target.closest(".rl-wa")) { const r = find(id), n = waNum(r.telefone); if (n) window.open("https://wa.me/" + n, "_blank"); return; }
       if (e.target.closest(".rl-enc")) { openEnc(id); return; }
-      if (e.target.closest(".rl-del")) { delClient(id); return; }
+      if (e.target.closest(".rl-del")) { removeFromList([id]); return; }
       if (e.target.closest(".rl-tels")) { openTels(id); return; }
       if (e.target.closest(".c-nome a")) { if (window.clOpenFicha) window.clOpenFicha(id); }
     });
@@ -192,7 +196,7 @@
       '<td style="width:128px"><input type="date" data-f="ultimo_contato" value="' + esc(String(r.ultimo_contato || "").slice(0, 10)) + '"></td>' +
       '<td style="min-width:170px"><button type="button" class="rl-enc' + (pend ? " has" : "") + '" title="Abrir encomendas">' + esc(encSummary(r)) + "</button></td>" +
       '<td style="min-width:190px"><input type="text" data-f="observacoes" value="' + esc(r.observacoes || "") + '"></td>' +
-      '<td style="text-align:center;width:40px"><button type="button" class="rl-del" title="Excluir cliente"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></td></tr>';
+      '<td style="text-align:center;width:40px"><button type="button" class="rl-del" title="Remover da lista de relacionamento"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></td></tr>';
   }
   function statusBadge(s) { return '<span class="rl-b ' + (s.t === "pendente" ? "pendente" : "ok") + '">' + (s.t === "pendente" ? "Pendente" : "Em dia") + "</span>" + (s.late ? '<div class="rl-tel">há ' + s.d + " dias</div>" : (s.d === null ? '<div class="rl-tel">nunca</div>' : "")); }
 
@@ -371,6 +375,7 @@
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="adCancel">Cancelar</button><button type="button" class="rl-btn main" id="adSave">Salvar cliente</button></div>');
     const err = (t) => { m.q("#adErr").textContent = t || ""; };
     m.q("#adCancel").addEventListener("click", m.close);
+    ["#adNome", "#adTam", "#adPref", "#adObs"].forEach((q) => upperInput(m.q(q)));
     m.q("#adNome").focus();
     m.q("#adSave").addEventListener("click", async (ev) => {
       err("");
@@ -457,6 +462,48 @@
         await reload("");
       }
     });
+  }
+
+  // ---------- remover da lista de relacionamento (nao exclui a cliente) ----------
+  function upperInput(el) {
+    if (!el) return; el.style.textTransform = "uppercase";
+    el.addEventListener("input", () => { const a = el.selectionStart, b = el.selectionEnd, v = el.value.toUpperCase(); if (v !== el.value) { el.value = v; try { el.setSelectionRange(a, b); } catch (e) { } } });
+  }
+  function removeFromList(ids) {
+    if (!ids.length) { alert("Selecione ao menos uma cliente para remover da lista."); return; }
+    const nomes = ids.map((i) => { const r = find(i); return r ? r.nome : ""; }).filter(Boolean);
+    const m = modal("Remover da lista de relacionamento", '<p style="margin:0 0 8px"><strong>' + ids.length + " cliente(s):</strong> " + esc(nomes.slice(0, 6).join(", ")) + (nomes.length > 6 ? " e mais " + (nomes.length - 6) : "") + "</p>" +
+      '<div class="rl-note">Elas saem só desta lista. O cadastro da cliente, o histórico de compras, vendas, crediário, consignados, mensagens e contatos <strong>não são apagados</strong>, e nenhum dado financeiro é alterado. Você pode trazê-las de volta em "Removidas".</div>' +
+      '<label style="font-size:.8rem;font-weight:700">Senha para confirmar<input type="password" id="rmSenha" autocomplete="off"></label>' +
+      '<div id="rmErr" style="color:#b3294f;margin-top:8px"></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="rmNo">Cancelar</button><button type="button" class="rl-btn main" id="rmYes">Remover da lista</button></div>');
+    m.q("#rmNo").addEventListener("click", m.close); m.q("#rmSenha").focus();
+    const go = async () => {
+      const senha = m.q("#rmSenha").value; if (!senha) { m.q("#rmErr").textContent = "Digite a senha."; return; }
+      m.q("#rmYes").disabled = true;
+      const { error } = await supabaseClient.rpc("relacionamento_remover", { p_clientes: ids, p_senha: senha });
+      if (error) { m.q("#rmErr").textContent = /senha/i.test(error.message) ? "Senha incorreta." : "Erro: " + error.message; m.q("#rmYes").disabled = false; return; }
+      rows = rows.filter((r) => ids.indexOf(r.id) < 0); ids.forEach((i) => sel.delete(i));
+      m.close(); draw(); updateAnivAlert(); $("rlMsg").textContent = ids.length + " cliente(s) removida(s) da lista de relacionamento.";
+    };
+    m.q("#rmYes").addEventListener("click", go);
+    m.q("#rmSenha").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  }
+  async function openRemoved() {
+    const m = modal("Clientes removidas da lista", '<p class="hint-text">Carregando...</p>'), bd = m.el.querySelector(".bd");
+    const draw3 = async () => {
+      const { data, error } = await supabaseClient.rpc("relacionamento_removidas");
+      if (error) { bd.innerHTML = '<p style="color:#b3294f">Erro: ' + esc(error.message) + "</p>"; return; }
+      if (!data.length) { bd.innerHTML = '<p class="hint-text">Nenhuma cliente removida da lista.</p>'; return; }
+      bd.innerHTML = '<div style="max-height:60vh;overflow:auto"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Removida em</th><th></th></tr></thead><tbody>' + data.map((c) => '<tr data-id="' + esc(c.id) + '"><td>' + esc(c.nome) + "</td><td>" + esc(c.telefone || "") + "</td><td>" + dateBR(c.oculto_em) + '</td><td><button type="button" class="rl-btn" data-back style="padding:3px 10px;font-size:.75rem">Restaurar</button></td></tr>').join("") + "</tbody></table></div>";
+    };
+    bd.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-back]"); if (!b) return; b.disabled = true;
+      const { error } = await supabaseClient.rpc("relacionamento_restaurar", { p_clientes: [b.closest("tr").dataset.id] });
+      if (error) { alert("Erro: " + error.message); b.disabled = false; return; }
+      await load(); await draw3();
+    });
+    await draw3();
   }
 
   // ---------- janelas ----------
