@@ -694,7 +694,7 @@
     const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
     const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, ts: Date.now() })); } catch (e) { } };
     saveQ();
-    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + '</button><button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + (items.length > 1 ? '<button type="button" class="rl-btn main" style="padding:3px 9px;font-size:.72rem" data-linkall="1" title="Uma mensagem só com os links de todas as peças">Todos os links</button>' : "") + "</div>" : "";
+    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + '</button><button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + (items.length > 1 ? '<button type="button" class="rl-btn main" style="padding:3px 9px;font-size:.72rem" data-photoall="1" title="Envia as fotos de todas as peças de uma vez (uma imagem por peça)">Todas as fotos (' + items.length + ')</button><button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkall="1" title="Uma mensagem só com os links de todas as peças">Todos os links</button>' : "") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Abrir WhatsApp</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
@@ -719,6 +719,24 @@
       })();
     }
     host.addEventListener("click", async (ev) => {
+      const pa = ev.target.closest("[data-photoall]");
+      if (pa) {
+        const row = pa.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e)); if (!env) return;
+        let hint = row.querySelector(".qHint"); if (!hint) { hint = document.createElement("div"); hint.className = "qHint"; hint.style.cssText = "margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff4dc;border:1px solid #f0dca8;font-size:.78rem;font-weight:600"; row.appendChild(hint); }
+        hint.textContent = "No WhatsApp, escolha o contato: " + (env.nome || env.telefone) + " (" + (env.telefone || "") + ")";
+        const orig = pa.textContent; pa.disabled = true; pa.textContent = "Carregando fotos...";
+        try {
+          const files = [];
+          for (let i = 0; i < items.length; i++) { const p = items[i], u = pPhoto(p); if (!u) continue; const b = await (await fetch(u)).blob(); files.push(new File([b], (pRef(p) || ("peca" + (i + 1))) + ".jpg", { type: b.type || "image/jpeg" })); }
+          if (!files.length) alert("Nenhuma das peças tem foto.");
+          else if (navigator.canShare && navigator.canShare({ files })) {
+            await navigator.share({ files, title: "Peças selecionadas", text: items.map((p) => p.name + " — " + money(pPrice(p)) + "\n" + pLink(p)).join("\n\n") });
+            items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); }); saveQ();
+            hint.textContent = files.length + " foto(s) enviadas para " + (env.nome || env.telefone) + ".";
+          } else alert("Este aparelho não permite enviar várias fotos de uma vez. Use os botões Enviar foto ou Link.");
+        } catch (e) { if (!e || e.name !== "AbortError") alert("Não foi possível compartilhar as fotos: " + ((e && e.message) || e)); }
+        pa.disabled = false; pa.textContent = orig; return;
+      }
       const la = ev.target.closest("[data-linkall]");
       if (la) {
         const row = la.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e));
