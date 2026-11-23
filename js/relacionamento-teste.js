@@ -694,7 +694,7 @@
     const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
     const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, ts: Date.now() })); } catch (e) { } };
     saveQ();
-    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
+    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + '</button><button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Abrir WhatsApp</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
@@ -704,7 +704,31 @@
     const markPhoto = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'); const bt = tr && tr.querySelector('[data-photo="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Foto " + (i + 1) + " enviada"; bt.dataset.sent = "1"; bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "1px solid #9fd3ac";
       const nx = [...tr.querySelectorAll("[data-photo]")].find((x) => x.dataset.sent !== "1"); tr.querySelectorAll("[data-photo]").forEach((x) => { if (x.dataset.sent !== "1") x.style.outline = ""; }); if (nx) { nx.style.outline = "2px solid #7a5a3a"; } };
     photoDone.forEach((k) => { const [eid, ix] = k.split("|"); markPhoto(eid, +ix); });
+    const prevUrls = {};
+    if (items.length) {
+      const st = document.createElement("div"); st.className = "hint-text"; st.id = "qPrev"; st.textContent = "Preparando a prévia dos links..."; host.querySelector("#qProg").after(st);
+      (async () => {
+        try {
+          const { data, error } = await supabaseClient.functions.invoke("gerar-previa", { body: { ids: items.map((p) => p.id) } });
+          if (error || !data || !data.previas) throw (error || new Error((data && data.error) || "falha"));
+          items.forEach((p) => { if (data.previas[p.id]) prevUrls[p.id] = { url: data.previas[p.id].url, ok: false }; });
+          const check = async () => { let all = true; for (const p of items) { const u = prevUrls[p.id]; if (!u) { all = false; continue; } if (u.ok) continue; try { const r = await fetch(u.url + "?v=" + Date.now(), { cache: "no-store" }); u.ok = r.ok; } catch (e) { } if (!u.ok) all = false; }
+            st.textContent = all ? "Prévia dos links pronta: o botão Link abre direto a conversa da cliente com a foto da peça." : "Publicando a prévia dos links (pode levar alguns minutos)..."; return all; };
+          let n = 0; const iv = setInterval(async () => { if (!document.body.contains(host) || ++n > 120 || await check()) clearInterval(iv); }, 6000); check();
+        } catch (e) { st.textContent = "Prévia dos links indisponível: " + ((e && e.message) || e); }
+      })();
+    }
     host.addEventListener("click", async (ev) => {
+      const lb = ev.target.closest("[data-linkp]");
+      if (lb) {
+        const row = lb.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e)), i = +lb.dataset.linkp, p = items[i], u = p && prevUrls[p.id];
+        if (!env) return;
+        if (!u || !u.ok) { alert("A prévia do link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
+        const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
+        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(p.name + " — " + money(pPrice(p)) + "\n" + u.url), "_blank");
+        const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); saveQ(); markPhoto(env.id, i);
+        return;
+      }
       const pb = ev.target.closest("[data-photo]"); if (pb) {
         const row = pb.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e));
         let hint = row && row.querySelector(".qHint"); if (row && !hint) { hint = document.createElement("div"); hint.className = "qHint"; hint.style.cssText = "margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff4dc;border:1px solid #f0dca8;font-size:.78rem;font-weight:600"; row.appendChild(hint); }
