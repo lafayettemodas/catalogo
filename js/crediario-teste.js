@@ -121,8 +121,8 @@
       ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;border:1px solid #e8dcc8">' +
         '<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#6b5a3e">Simular pagamento</h3><button type="button" class="secondary" id="smX">Fechar</button></div>' +
         '<div class="hint-text" style="margin:6px 0 10px">Apenas simulação: nada é gravado e o crediário real não muda. Cliente: <strong>' + esc(cli.nome) + '</strong> · Saldo atual: <strong>' + money(saldo) + '</strong></div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:1 1 230px;margin:0"><label>Abater de</label><select id="smModo"><option value="total">Saldo total (compras mais antigas primeiro)</option><option value="pedido">Uma compra específica</option></select></div>' +
-        '<div class="field" id="smPedW" style="flex:2 1 260px;margin:0;display:none"><label>Compra</label><select id="smPed">' + ord.map((c) => '<option value="' + esc(c.pedido_id) + '">#' + c.numero + " - " + dateF(c.data) + (parcPlain(c) ? " - " + parcPlain(c) : "") + "</option>").join("") + '</select></div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:10px"><div class="field" style="flex:1 1 230px;margin:0"><label>Abater de</label><select id="smModo"><option value="total">Saldo total (compras mais antigas primeiro)</option><option value="pedido">Compras específicas (uma ou mais)</option></select></div>' +
+        '<div class="field" id="smPedW" style="flex:2 1 100%;margin:0;display:none"><label>Compras (marque uma ou mais)</label><div id="smPed" style="display:flex;flex-direction:column;gap:4px;max-height:170px;overflow:auto;border:1px solid #e6d9c0;border-radius:8px;padding:6px 8px">' + ord.map((c) => '<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" value="' + esc(c.pedido_id) + '"> #' + c.numero + " - " + dateF(c.data) + (parcPlain(c) ? " - " + parcPlain(c) : "") + " · saldo " + money(c.saldo) + "</label>").join("") + '</div><div id="smSoma" class="hint-text" style="margin-top:4px"></div></div>' +
         '<div class="field" style="flex:1 1 140px;margin:0"><label>Valor a pagar (R$)</label><input type="text" id="smVal" inputmode="decimal" placeholder="0,00"></div></div>' +
         '<div id="smOut" style="margin-top:12px"></div></div>';
       document.body.appendChild(ov);
@@ -132,7 +132,9 @@
         const modo = $s("smModo").value; $s("smPedW").style.display = modo === "pedido" ? "" : "none";
         let v = parseFloat(String($s("smVal").value).replace(/\./g, "").replace(",", ".")); if (!(v > 0)) v = 0;
         let rest = v; const linhas = [];
-        const alvo = modo === "pedido" ? ord.filter((c) => c.pedido_id === $s("smPed").value) : ord;
+        const sel = [...ov.querySelectorAll("#smPed input:checked")].map((i) => i.value);
+        const alvo = modo === "pedido" ? ord.filter((c) => sel.includes(c.pedido_id)) : ord;
+        if (modo === "pedido") { const soma = alvo.reduce((a, c) => a + Number(c.saldo), 0); $s("smSoma").textContent = sel.length ? sel.length + " compra(s) marcada(s) · soma dos saldos: " + money(soma) + " (valor em branco = pagar tudo)" : "Nenhuma compra marcada."; if (sel.length && String($s("smVal").value).trim() === "") { v = soma; rest = soma; } }
         alvo.forEach((c) => { const s0 = Number(c.saldo), ab = Math.min(rest, s0); rest = Math.round((rest - ab) * 100) / 100; linhas.push({ c, s0, ab, s1: Math.round((s0 - ab) * 100) / 100 }); });
         const pm = (c) => { const m = pmap[c.pedido_id]; return m && m.v > 0 ? m : null; };
         const html = '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Saldo atual</th><th>Pagamento</th><th>Saldo após</th><th>Parcelas após</th></tr></thead><tbody>' +
