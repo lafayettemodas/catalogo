@@ -709,6 +709,9 @@
     if (!$("pvData").value) { err.textContent = "Informe a data da venda."; return; }
     if (!items.length) { err.textContent = "Adicione ao menos um produto."; return; }
     if (!$("pvPagto").value) { err.textContent = "Escolha a forma de pagamento."; return; }
+    { const vv = await supabaseClient.rpc("cliente_validar", { p_nome: $("pvCliente").value, p_tel: $("pvTelefone").value, p_novo: false });
+      if (vv.error) { err.textContent = "Erro ao validar cliente: " + vv.error.message; return; }
+      if (!vv.data.ok) { err.textContent = vv.data.erro; $("pvTelefone").focus(); return; } }
     const t = totals();
     const header = {
       data_venda: $("pvData").value,
