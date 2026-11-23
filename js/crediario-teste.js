@@ -226,7 +226,9 @@
         ev.target.disabled = true;
         const { data: nid, error } = await supabaseClient.rpc("crediario_pagar", { p_cliente: cli.id, p_valor: v, p_forma: box.querySelector("#crForma").value, p_data: today(), p_obs: box.querySelector("#crObs").value, p_pedido: k.c ? k.c.pedido_id : null, p_token: token });
         if (error) { msg.textContent = "Erro: " + error.message; ev.target.disabled = false; return; }
-        render(box, cli, nid);
+        sess.cid !== cli.id && (sess = { cid: cli.id, list: [] }); sess.list.push({ id: nid, valor: v, forma: box.querySelector("#crForma").value, alvo: k.c ? "#" + k.c.numero : "compras mais antigas" });
+        await render(box, cli, nid);
+        askMore(cli);
       });
     }
   }
@@ -242,6 +244,44 @@
     if (p.saldo_anterior != null) L.push("Saldo anterior: " + money(p.saldo_anterior), "Saldo restante: " + money(p.saldo_restante));
     L.push("", "Obrigada pela preferência!");
     return L.join("\n");
+  }
+  let sess = { cid: null, list: [] };
+  function modal(html) {
+    const old = document.getElementById("crMoreModal"); if (old) old.remove();
+    const ov = document.createElement("div"); ov.id = "crMoreModal";
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px";
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:18px;border:1px solid #e8dcc8">' + html + "</div>";
+    document.body.appendChild(ov); return ov;
+  }
+  function askMore(cli) {
+    const tot = sess.list.reduce((a, x) => a + x.valor, 0);
+    const ov = modal('<h3 style="margin:0 0 6px;color:#6b5a3e">Pagamento registrado</h3><div>Recebido agora: <strong>' + money(sess.list[sess.list.length - 1].valor) + '</strong> (' + esc(sess.list[sess.list.length - 1].alvo) + ')</div>' +
+      '<div class="hint-text" style="margin:6px 0 12px">Total desta cliente nesta sessão: <strong>' + money(tot) + '</strong> em ' + sess.list.length + ' pagamento(s).</div>' +
+      '<div style="font-weight:600;margin-bottom:10px">Deseja dar baixa em mais alguma venda?</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="cmYes">Sim, outra venda</button><button type="button" class="secondary" id="cmNo">Não, finalizar e gerar relatório</button></div>');
+    ov.querySelector("#cmYes").addEventListener("click", () => { ov.remove(); const f = document.getElementById("crVal"); if (f) { f.scrollIntoView({ block: "center" }); f.focus(); } });
+    ov.querySelector("#cmNo").addEventListener("click", () => finishReport(cli));
+  }
+  async function finishReport(cli) {
+    const ov = document.getElementById("crMoreModal"); if (ov) ov.querySelector("div").innerHTML = '<span class="hint-text">Gerando relatório...</span>';
+    const { data: r, error } = await supabaseClient.rpc("crediario_resumo", { p_cliente: cli.id });
+    if (error) { modal('<span class="cl-err">Erro: ' + esc(error.message) + "</span>"); return; }
+    const L = ["*Lafayette Modas*", "Relatório de pagamentos", "Data: " + dateF(today()), "Cliente: " + cli.nome, "", "*Pagamentos recebidos:*"];
+    let tot = 0;
+    sess.list.forEach((s) => { tot += s.valor; const p = (r.pagamentos || []).find((x) => x.id === s.id); const d = (p && p.distribuicao) || [];
+      if (d.length) d.forEach((x) => L.push("• Pedido #" + x.numero + ": " + money(x.valor) + " (" + s.forma + ")")); else L.push("• " + s.alvo + ": " + money(s.valor) + " (" + s.forma + ")"); });
+    L.push("", "Total pago agora: " + money(tot), "*Saldo devedor: " + money(r.saldo) + "*", "", "Obrigada pela preferência!");
+    const text = L.join("\n");
+    const m = modal('<h3 style="margin:0 0 8px;color:#6b5a3e">Relatório de pagamentos</h3><textarea readonly style="width:100%;box-sizing:border-box;min-height:220px;border:1px solid #e6d9c0;border-radius:8px;padding:8px;font:inherit">' + esc(text) + '</textarea>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" class="primary" id="cmWa">Enviar pelo WhatsApp</button><button type="button" class="secondary" id="cmX">Fechar</button><span id="cmMsg" class="cl-msg"></span></div>');
+    m.querySelector("#cmX").addEventListener("click", () => { sess = { cid: null, list: [] }; m.remove(); });
+    m.querySelector("#cmWa").addEventListener("click", () => {
+      let ph = phoneOf(cli);
+      if (ph.length < 10) { m.querySelector("#cmMsg").textContent = "Cliente sem telefone válido cadastrado."; return; }
+      if (!/^55/.test(ph) || ph.length < 12) ph = "55" + ph;
+      window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(text), "_blank");
+      sess = { cid: null, list: [] };
+    });
   }
   function sendWa(cli, p) {
     if (!p) return;
