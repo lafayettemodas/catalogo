@@ -120,34 +120,36 @@
       const blocos = ord.map((c) => {
         const S = cents(c.saldo); let m = pmap[c.pedido_id];
         if (!m) { const mm = String(c.observacoes || "").match(/(\d+)\s*[x×]\s*([\d.,]+)/i); if (mm) { const vv = parseFloat(mm[2].replace(/\./g, "").replace(",", ".")); if (vv > 0) m = { n: parseInt(mm[1], 10), v: vv }; } }
-        const v = m && m.v > 0 ? cents(m.v) : 0;
-        const ps = [];
-        if (!v) ps.push({ label: "Saldo", val: S });
-        else { const cnt = Math.max(1, Math.round(S / v)); const ini = Math.max(1, (m.n || cnt) - cnt + 1); for (let i = 0; i < cnt; i++) ps.push({ label: (ini + i) + "/" + (m.n || cnt), val: i === cnt - 1 ? S - v * (cnt - 1) : v }); }
-        return { c, S, ps, txt: parcPlain(c) };
+        const v = m && m.v > 0 ? cents(m.v) : 0; const ps = [];
+        if (!v) ps.push(S); else { const cnt = Math.max(1, Math.round(S / v)); for (let i = 0; i < cnt; i++) ps.push(i === cnt - 1 ? S - v * (cnt - 1) : v); }
+        return { c, S, ps, k: 0, unit: v ? v : S, txt: parcPlain(c) };
       });
+      const sumK = (b) => b.ps.slice(0, b.k).reduce((a, x) => a + x, 0);
       const ov = document.createElement("div"); ov.id = "crSimModal";
       ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px";
-      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:780px;width:100%;max-height:92vh;display:flex;flex-direction:column;border:1px solid #e8dcc8">' +
-        '<div style="padding:14px 18px 6px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#6b5a3e">Simular pagamento</h3><button type="button" class="secondary" id="smX">Fechar</button></div>' +
-        '<div class="hint-text" style="margin:6px 0 4px">Marque as parcelas que a cliente vai pagar. Apenas simulação: nada é gravado e o crediário real não muda. Cliente: <strong>' + esc(cli.nome) + '</strong> · Saldo atual: <strong>' + money(saldo) + '</strong></div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0"><button type="button" class="secondary" id="smNext">Marcar a próxima parcela de cada compra</button><button type="button" class="secondary" id="smClear">Limpar</button></div></div>' +
-        '<div id="smList" style="padding:0 18px;overflow:auto;flex:1">' + blocos.map((b, i) => '<div style="border:1px solid #efe6d3;border-radius:10px;padding:8px 10px;margin:8px 0;background:#fcf8ef"><div style="font-weight:600;color:#4a3d28">#' + b.c.numero + " - " + dateF(b.c.data) + (b.txt ? " - " + b.txt : "") + ' <span class="hint-text" style="font-weight:400">· saldo ' + money(b.c.saldo) + '</span></div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">' +
-          b.ps.map((p, j) => '<label style="display:flex;align-items:center;gap:6px;border:1px solid #e6d9c0;background:#fff;border-radius:8px;padding:5px 9px;cursor:pointer"><input type="checkbox" data-b="' + i + '" data-p="' + j + '"> ' + p.label + " · <strong>" + money(p.val / 100) + "</strong></label>").join("") + "</div></div>").join("") + "</div>" +
-        '<div id="smTot" style="padding:10px 18px 14px;border-top:1px solid #e8dcc8;background:#f8f1e3;border-radius:0 0 14px 14px"></div></div>';
+      const btn = "width:34px;height:34px;border-radius:50%;border:1px solid #c9b48a;background:#fff;font-size:1.2rem;cursor:pointer;line-height:1";
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:92vh;display:flex;flex-direction:column;border:1px solid #e8dcc8">' +
+        '<div style="padding:14px 18px 8px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#6b5a3e">Simular pagamento</h3><button type="button" class="secondary" id="smX">Fechar</button></div>' +
+        '<div class="hint-text" style="margin-top:6px">' + esc(cli.nome) + ' · saldo devedor <strong>' + money(saldo) + '</strong><br>Escolha quantas parcelas de cada compra. Só simulação, nada é gravado.</div></div>' +
+        '<div style="padding:0 18px;overflow:auto;flex:1">' + blocos.map((b, i) => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #efe6d3;padding:10px 0">' +
+          '<div style="min-width:0"><div style="font-weight:600;color:#4a3d28">#' + b.c.numero + ' · ' + dateF(b.c.data) + '</div><div class="hint-text" style="margin:0">' + (b.txt ? b.txt + ' · ' : '') + 'saldo ' + money(b.c.saldo) + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:8px"><button type="button" style="' + btn + '" data-m="' + i + '">−</button><div style="text-align:center;min-width:64px"><div style="font-size:1.1rem;font-weight:700" id="smK' + i + '">0</div><div class="hint-text" style="margin:0;font-size:.7rem">de ' + b.ps.length + ' parcela(s)</div></div><button type="button" style="' + btn + '" data-p="' + i + '">+</button>' +
+          '<div style="min-width:92px;text-align:right;font-weight:600" id="smV' + i + '">R$ 0,00</div></div></div>').join("") + "</div>" +
+        '<div style="padding:12px 18px 16px;border-top:1px solid #e8dcc8;background:#f8f1e3;border-radius:0 0 14px 14px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span>Total a pagar</span><strong id="smTotal" style="font-size:1.5rem;color:#6b3f1d">R$ 0,00</strong></div>' +
+        '<div style="display:flex;justify-content:space-between;margin-top:4px"><span class="hint-text" style="margin:0">Saldo devedor após</span><strong id="smApos">' + money(saldo) + '</strong></div>' +
+        '<div style="margin-top:10px;display:flex;gap:8px"><button type="button" class="secondary" id="smNext">1 parcela de cada</button><button type="button" class="secondary" id="smClear">Limpar</button></div></div></div>';
       document.body.appendChild(ov);
-      const cbs = () => [...ov.querySelectorAll("#smList input[type=checkbox]")];
-      const calc = () => {
-        let soma = 0, qtd = 0; const por = {};
-        cbs().forEach((i) => { if (i.checked) { const p = blocos[i.dataset.b].ps[i.dataset.p]; soma += p.val; qtd++; por[i.dataset.b] = (por[i.dataset.b] || 0) + p.val; } });
-        const detalhe = Object.keys(por).map((k) => "#" + blocos[k].c.numero + ": " + money(por[k] / 100) + " (saldo após " + money((blocos[k].S - por[k]) / 100) + ")").join(" · ");
-        ov.querySelector("#smTot").innerHTML = '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:baseline"><div>Parcelas marcadas: <strong>' + qtd + '</strong></div><div style="font-size:1.15rem">Soma a pagar: <strong style="color:#6b3f1d">' + money(soma / 100) + '</strong></div><div>Saldo total após: <strong>' + money((cents(saldo) - soma) / 100) + "</strong></div></div>" + (detalhe ? '<div class="hint-text" style="margin-top:4px">' + detalhe + "</div>" : "");
-      };
-      ov.querySelector("#smList").addEventListener("change", calc);
-      ov.querySelector("#smNext").addEventListener("click", () => { cbs().forEach((i) => { i.checked = i.dataset.p === "0"; }); calc(); });
-      ov.querySelector("#smClear").addEventListener("click", () => { cbs().forEach((i) => { i.checked = false; }); calc(); });
-      ov.querySelector("#smX").addEventListener("click", () => ov.remove()); ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
-      calc();
+      const q = (id) => ov.querySelector("#" + id);
+      const draw = () => { let tot = 0; blocos.forEach((b, i) => { const s = sumK(b); tot += s; q("smK" + i).textContent = b.k; q("smV" + i).textContent = money(s / 100); }); q("smTotal").textContent = money(tot / 100); q("smApos").textContent = money((cents(saldo) - tot) / 100); };
+      ov.addEventListener("click", (e) => {
+        const t = e.target; if (t === ov) { ov.remove(); return; }
+        if (t.dataset && t.dataset.p !== undefined) { const b = blocos[t.dataset.p]; if (b.k < b.ps.length) b.k++; draw(); }
+        if (t.dataset && t.dataset.m !== undefined) { const b = blocos[t.dataset.m]; if (b.k > 0) b.k--; draw(); }
+      });
+      q("smNext").addEventListener("click", () => { blocos.forEach((b) => { b.k = Math.min(1, b.ps.length); }); draw(); });
+      q("smClear").addEventListener("click", () => { blocos.forEach((b) => { b.k = 0; }); draw(); });
+      q("smX").addEventListener("click", () => ov.remove());
+      draw();
     });
     box.querySelectorAll("button[data-pe]").forEach((b) => b.addEventListener("click", () => {
       const id = b.dataset.pe, c = (r.compras || []).find((x) => x.pedido_id === id) || {}, m = pmap[id];
