@@ -50,8 +50,10 @@
     if (rs.error) { box.innerHTML = '<span class="cl-err">Erro: ' + esc(rs.error.message) + "</span>"; return; }
     const r = rs.data, pend = pe.data || [], saldo = Number(r.saldo);
     const pmap = {};
-    try { const ids = (r.compras || []).map((c) => c.pedido_id).filter(Boolean); if (ids.length) { const { data: pp } = await supabaseClient.from("pedidos").select("id, parcelas, parcela_valor, total").in("id", ids); (pp || []).forEach((p) => { if (p.parcelas) pmap[p.id] = { n: p.parcelas, v: p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas }; }); } } catch (e) { }
-    const parcTxt = (c) => { const m = pmap[c.pedido_id]; if (!m) { const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? esc(mm[0].trim()) : "-"; } const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
+    try { const ids = (r.compras || []).map((c) => c.pedido_id).filter(Boolean); if (ids.length) { const { data: pp } = await supabaseClient.from("pedidos").select("id, parcelas, parcela_valor, total").in("id", ids); (pp || []).forEach((p) => { if (p.parcelas) pmap[p.id] = { n: p.parcelas, v: p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas }; }); const { data: px } = await supabaseClient.from("pedido_parcelas").select("pedido_id, parcelas, parcela_valor").in("pedido_id", ids); (px || []).forEach((p) => { const tot = ((r.compras || []).find((c) => c.pedido_id === p.pedido_id) || {}).valor; pmap[p.pedido_id] = { n: p.parcelas, v: p.parcela_valor != null ? Number(p.parcela_valor) : Number(tot) / p.parcelas }; }); } } catch (e) { }
+    const parcBtn = (c) => ' <button type="button" data-pe="' + esc(c.pedido_id) + '" title="Editar parcelas" style="border:1px solid #d9c9a8;background:#fff;border-radius:6px;cursor:pointer;padding:0 6px;font-size:.8rem">✎</button>';
+    const parcTxt0 = (c) => { const m = pmap[c.pedido_id]; if (!m) { const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? esc(mm[0].trim()) : "-"; } const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
+    const parcTxt = (c) => '<span data-pt="' + esc(c.pedido_id) + '">' + parcTxt0(c) + "</span>" + parcBtn(c);
     const abertas = r.compras.filter((c) => Number(c.saldo) > 0);
     const token = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
     let h = '<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:10px">' +
@@ -108,6 +110,26 @@
     if (!pc && card && card.parentNode) { pc = document.createElement("div"); pc.id = "fcPagCard"; pc.style.cssText = "border:1px solid #e7e2da;background:#fff;border-radius:14px;padding:16px;margin:14px 0"; card.parentNode.insertBefore(pc, card.nextSibling); }
     if (pc) { pc.style.display = ""; pc.innerHTML = '<h4 style="margin:0 0 10px">Pagamentos recebidos</h4>' + pagHtml; }
     box.querySelectorAll("button[data-pv]").forEach((b) => b.addEventListener("click", () => { if (window.pvOpenOrder) window.pvOpenOrder(b.dataset.pv); }));
+    box.querySelectorAll("button[data-pe]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.pe, c = (r.compras || []).find((x) => x.pedido_id === id) || {}, m = pmap[id];
+      const ob = String(c.observacoes || "").match(/(\d+)\s*[x×]\s*([\d.,]+)?/i);
+      const n0 = m ? m.n : (ob ? parseInt(ob[1], 10) : 1);
+      const v0 = m ? m.v : (ob && ob[2] ? parseFloat(ob[2].replace(/\./g, "").replace(",", ".")) : Number(c.valor) / n0);
+      const td = b.parentNode;
+      td.innerHTML = '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="number" min="1" max="24" value="' + n0 + '" id="peN" style="width:56px"> x <input type="text" inputmode="decimal" id="peV" value="' + (isFinite(v0) ? v0.toFixed(2).replace(".", ",") : "") + '" style="width:90px"><button type="button" class="primary" id="peOk" style="padding:3px 10px">Salvar</button><button type="button" class="secondary" id="peNo" style="padding:3px 10px">Cancelar</button><span id="peMsg" class="cl-msg"></span></div>';
+      const nI = td.querySelector("#peN"), vI = td.querySelector("#peV");
+      nI.addEventListener("input", () => { const n = Math.max(1, parseInt(nI.value, 10) || 1); vI.value = (Number(c.valor) / n).toFixed(2).replace(".", ","); });
+      td.querySelector("#peNo").addEventListener("click", () => render(box, cli, paidId));
+      td.querySelector("#peOk").addEventListener("click", async () => {
+        const n = parseInt(nI.value, 10), v = parseFloat(String(vI.value).replace(/\./g, "").replace(",", "."));
+        if (!(n >= 1 && n <= 24)) { td.querySelector("#peMsg").textContent = "Parcelas de 1 a 24."; return; }
+        if (!(v >= 0)) { td.querySelector("#peMsg").textContent = "Valor inválido."; return; }
+        td.querySelector("#peOk").disabled = true;
+        const { error } = await supabaseClient.rpc("pedido_parcelas_salvar", { p_pedido: id, p_parcelas: n, p_valor: v });
+        if (error) { td.querySelector("#peMsg").textContent = "Erro: " + error.message; td.querySelector("#peOk").disabled = false; return; }
+        render(box, cli, paidId);
+      });
+    }));
     box.querySelectorAll("button[data-lanc]").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;
       const { error } = await supabaseClient.rpc("crediario_lancar_pedido", { p_pedido: b.dataset.lanc });
