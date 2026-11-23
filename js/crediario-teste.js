@@ -55,6 +55,8 @@
     const parcTxt0 = (c) => { const m = pmap[c.pedido_id]; if (!m) { const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? esc(mm[0].trim()) : "-"; } const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
     const parcPlain = (c) => { const m = pmap[c.pedido_id]; if (m) return m.n + "x " + m.v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? mm[0].trim() : ""; };
     const parcTxt = (c) => '<span data-pt="' + esc(c.pedido_id) + '">' + parcTxt0(c) + "</span>" + parcBtn(c);
+    const hojeP = (r.pagamentos || []).filter((p) => String(p.data).slice(0, 10) === today());
+    const hojeTot = hojeP.reduce((a, p) => a + Number(p.valor || 0), 0);
     const comprasTab = (r.compras || []).filter((c) => !/quit/i.test(c.situacao)).sort((a, b) => String(b.data).localeCompare(String(a.data)) || Number(b.numero) - Number(a.numero));
     const abertas = r.compras.filter((c) => Number(c.saldo) > 0);
     const token = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
@@ -95,7 +97,7 @@
         '<div class="field" style="flex:1 1 130px;margin:0"><label>Forma</label><select id="crForma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option></select></div>' +
         '<div class="field" style="flex:1 1 140px;margin:0"><label>Data</label><input type="date" id="crData" readonly tabindex="-1" style="pointer-events:none;background:#f3efe9"></div>' +
         '<div class="field" style="flex:2 1 180px;margin:0"><label>Observação</label><input type="text" id="crObs"></div></div>' +
-        '<div id="crInfo" class="hint-text" style="margin:8px 0 0"></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button type="button" class="primary" id="crPay">Receber pagamento</button><button type="button" class="secondary" id="crSim">Simular pagamento</button><button type="button" class="secondary" id="crAll">Quitar</button><span id="crMsg" class="cl-msg"></span></div></div>';
+        '<div id="crInfo" class="hint-text" style="margin:8px 0 0"></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button type="button" class="primary" id="crPay">Receber pagamento</button><button type="button" class="secondary" id="crSim">Simular pagamento</button><button type="button" class="secondary" id="crAll">Quitar</button><span id="crHoje" style="margin-left:6px;padding:7px 12px;border-radius:999px;background:#e8f5e9;border:1px solid #bfe0c3;color:#256029;font-weight:600;white-space:nowrap">Recebido hoje: ' + money(hojeTot) + (hojeP.length ? " (" + hojeP.length + " pagamento" + (hojeP.length > 1 ? "s" : "") + ")" : "") + '</span><span id="crMsg" class="cl-msg"></span></div></div>';
     }
     h += "<h5 style=\"margin:14px 0 6px\">Compras no crediário</h5>";
     h += comprasTab.length ? '<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Pedido</th><th>Data</th><th>Valor</th><th>Abatido</th><th>Saldo</th><th>Parcelas</th><th>Situação</th><th></th></tr></thead><tbody>' +
