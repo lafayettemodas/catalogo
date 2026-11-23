@@ -51,7 +51,7 @@
     const r = rs.data, pend = pe.data || [], saldo = Number(r.saldo);
     const pmap = {};
     try { const ids = (r.compras || []).map((c) => c.pedido_id).filter(Boolean); if (ids.length) { const { data: pp } = await supabaseClient.from("pedidos").select("id, parcelas, parcela_valor, total").in("id", ids); (pp || []).forEach((p) => { if (p.parcelas) pmap[p.id] = { n: p.parcelas, v: p.parcela_valor != null ? Number(p.parcela_valor) : Number(p.total) / p.parcelas }; }); } } catch (e) { }
-    const parcTxt = (c) => { const m = pmap[c.pedido_id]; if (!m) return "-"; const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
+    const parcTxt = (c) => { const m = pmap[c.pedido_id]; if (!m) { const mm = String(c.observacoes || "").match(/(\d+\s*\+\s*)?\d+\s*[x×]\s*[\d.,]*/i); return mm ? esc(mm[0].trim()) : "-"; } const f = (x) => x.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const rest = (Number(c.saldo) > 0 && m.v > 0) ? Math.ceil(Number(c.saldo) / m.v - 1e-9) : 0; return m.n + "x " + f(m.v) + (rest ? '<br><small class="hint-text">saldo = ' + rest + " parcela(s)</small>" : ""); };
     const abertas = r.compras.filter((c) => Number(c.saldo) > 0);
     const token = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
     let h = '<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:10px">' +
