@@ -17,6 +17,7 @@
   const dm = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const waNum = (tel) => { let d = String(tel || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) d = "55" + d; return d.length >= 12 ? d : ""; };
+  const fmtTel = (t) => { const d = String(t || "").replace(/\D/g, ""); return d.length === 11 ? d.replace(/(\d{2})(\d{5})(\d{4})/, "$1 $2-$3") : t; };
   const firstName = (n) => { const f = String(n || "").trim().split(/\s+/)[0] || ""; return f.charAt(0).toUpperCase() + f.slice(1).toLowerCase(); };
   const encSummary = (r) => {
     const p = (r.encomendas || []).filter((e) => e.situacao === "pendente");
@@ -73,8 +74,8 @@
   #rlAnivBadge{background:#c0392b;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:6px;display:none}
   .rl-del{border:1px solid #e6d9c0;background:#fff;color:#a33;border-radius:6px;padding:4px 6px;cursor:pointer;line-height:0}
   .rl-del:hover{background:#fdeaea;border-color:#c0392b}
-  .rl-tels{border:1px solid #e6d9c0;background:#fff;color:#6b5a3e;border-radius:999px;font-size:.66rem;padding:0 6px;cursor:pointer;margin-left:4px}
-  .rl-tels:hover{background:#f8f1e3}
+  .rl-tels{cursor:pointer}
+  .rl-tels:hover{text-decoration:underline}
   .rl-note{font-size:.78rem;color:#7a6a50;background:#fcf8ef;border:1px solid #efe6d3;border-radius:8px;padding:8px 10px;margin:8px 0}
   `;
 
@@ -183,7 +184,7 @@
     return '<tr data-id="' + esc(r.id) + '"' + (s.late ? ' class="late"' : "") + ">" +
       '<td style="text-align:center"><input type="checkbox" class="rl-sel"' + (sel.has(r.id) ? " checked" : "") + "></td>" +
       '<td class="c-nome" title="Abrir cadastro"><a>' + esc(r.nome) + "</a></td>" +
-      '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel">' + esc(r.telefone || "") + ' <button type="button" class="rl-tels" title="Telefones desta cliente">' + ((r.telefones || []).length ? "+" + r.telefones.length + " tel." : "+ tel.") + "</button></div></td>" +
+      '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + (esc(r.telefone || "") || "—") + "</div>" + (r.telefones || []).map((t) => '<div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + esc(fmtTel(t.telefone)) + (t.rotulo ? " (" + esc(t.rotulo) + ")" : "") + "</div>").join("") + "</td>" +
       '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="5" placeholder="dd/mm" value="' + esc(dm(r)) + '"></td>' +
       '<td style="width:110px"><input type="text" data-f="tamanhos" value="' + esc(r.tamanhos || "") + '"></td>' +
       '<td style="min-width:190px"><input type="text" data-f="preferencias" value="' + esc(r.preferencias || "") + '"></td>' +
