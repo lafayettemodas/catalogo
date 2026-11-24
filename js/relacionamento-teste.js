@@ -725,8 +725,10 @@
     const markPhoto = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'); const bt = tr && tr.querySelector('[data-photo="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Foto " + (i + 1) + " enviada"; bt.dataset.sent = "1"; bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "1px solid #9fd3ac";
       const nx = [...tr.querySelectorAll("[data-photo]")].find((x) => x.dataset.sent !== "1"); tr.querySelectorAll("[data-photo]").forEach((x) => { if (x.dataset.sent !== "1") x.style.outline = ""; }); if (nx) { nx.style.outline = "2px solid #7a5a3a"; } };
     photoDone.forEach((k) => { const [eid, ix] = k.split("|"); markPhoto(eid, +ix); });
+    const greenAll = (b) => { ["background", "border-color"].forEach((p) => b.style.setProperty(p, "#25D366", "important")); b.style.setProperty("color", "#fff", "important"); };
     const markLink = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'), bt = tr && tr.querySelector('[data-linkp="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Link " + (i + 1); bt.style.background = "#25D366"; bt.style.color = "#fff"; bt.style.borderColor = "#25D366"; };
     linkDone.forEach((k) => { const [eid, ix] = k.split("|"); markLink(eid, +ix); });
+    envs.forEach((e) => { if (items.length && items.every((p, i) => photoDone.includes(e.id + "|" + i))) { const tr = host.querySelector('[data-e="' + e.id + '"]'), pb = tr && tr.querySelector("[data-photoall]"); if (pb) { pb.textContent = "Fotos enviadas ✓"; pb.dataset.o = "Fotos enviadas ✓"; greenAll(pb); } } });
     const prevUrls = {};
     const intro = (env, row) => { const ob = row && row.querySelector("button[data-confirm]"); const enviado = row && /Enviado/.test((row.querySelector("button[disabled]") || {}).textContent || ""); const jaFoto = photoDone.some((k) => k.indexOf(env.id + "|") === 0) || linkDone.some((k) => k.indexOf(env.id + "|") === 0); return (ob || enviado || jaFoto || !env.mensagem) ? "" : env.mensagem + "\n\n"; };
     if (items.length) {
@@ -761,7 +763,7 @@
           if (navigator.canShare && navigator.canShare({ files: cards })) {
             await navigator.share({ files: cards });
             items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); });
-            saveQ(); pa.textContent = "Fotos enviadas ✓"; hint.textContent = cards.length + " foto(s) enviadas, cada uma com nome, ref. e preço na própria imagem.";
+            saveQ(); pa.textContent = "Fotos enviadas ✓"; greenAll(pa); hint.textContent = cards.length + " foto(s) enviadas, cada uma com nome, ref. e preço na própria imagem.";
           } else alert("Este aparelho não permite enviar várias fotos.");
         } catch (e) { if (!e || e.name !== "AbortError") alert("Erro: " + ((e && e.message) || e)); }
         return;
