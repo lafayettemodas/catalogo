@@ -274,8 +274,9 @@
   function updateAnivAlert() {
     const pend = anivPending(), n = pend.length;
     const bd = $("rlAnivBadge"); if (bd) { bd.textContent = n || ""; bd.style.display = n ? "inline-block" : "none"; }
-    const sb = document.querySelector('.sidebar-link[data-view="relac"]');
-    if (sb) { let b = sb.querySelector(".rl-sb-badge"); if (n) { if (!b) { b = document.createElement("span"); b.className = "rl-sb-badge"; sb.appendChild(b); } b.textContent = n; } else if (b) b.remove(); }
+    const sb0 = document.querySelector('.sidebar-link[data-view="relac"] .rl-sb-badge'); if (sb0) sb0.remove();
+    const tb = document.querySelector('#rlTabs [data-tab="aniv"]');
+    if (tb) { let b = tb.querySelector(".rl-tab-badge"); if (n) { if (!b) { b = document.createElement("span"); b.className = "rl-tab-badge"; b.style.cssText = "display:inline-block;margin-left:6px;min-width:18px;padding:0 5px;border-radius:9px;background:#d32f2f;color:#fff;font-size:.7rem;font-weight:700;line-height:18px;text-align:center"; tb.appendChild(b); } b.textContent = n; } else if (b) b.remove(); }
     const bn = $("rlAnivBanner");
     if (bn) {
       if (n) { bn.style.display = "block"; bn.innerHTML = '<div class="rl-alert"><span><strong>Aniversário hoje:</strong> ' + esc(pend.map((r) => r.nome).join(", ")) + '</span><button type="button" class="rl-btn main" id="rlAnivNow">Enviar mensagem agora</button></div>'; $("rlAnivNow").addEventListener("click", () => openAniv()); }
@@ -857,7 +858,7 @@
       if (error) { alert("Erro: " + error.message); b.disabled = false; return; }
       Object.assign(e, patch); refreshRow(r.id); renderEnc();
     });
-    setTab("cli");
+    setTab("cli"); updateAnivAlert();
   }
   function setTab(t) {
     tabNow = t;
