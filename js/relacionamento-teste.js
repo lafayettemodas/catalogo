@@ -839,6 +839,9 @@
     hint.after(bar);
     let n = bar.nextSibling; while (n) { const nx = n.nextSibling; main.appendChild(n); n = nx; }
     panel.appendChild(main); panel.appendChild(an); panel.appendChild(en);
+    const bn0 = $("rlAnivBanner"); if (bn0) an.appendChild(bn0);
+    const lst = document.createElement("div"); lst.id = "anList"; an.appendChild(lst);
+    ["rlAnivBtn", "rlWelBtn"].forEach((i) => { const b = $(i); if (b) b.remove(); });
     bar.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
     an.addEventListener("change", (ev) => { if (ev.target.id === "anMesSel") { anMes = +ev.target.value; renderAniv(); } if (ev.target.id === "anAll") an.querySelectorAll(".anTab").forEach((c) => { if (!c.disabled) c.checked = ev.target.checked; }); });
     an.addEventListener("click", (ev) => { if (ev.target.closest("#anSendSel")) { const ids = Array.from(an.querySelectorAll(".anTab:checked")).map((c) => c.value); if (!ids.length) { alert("Marque ao menos uma cliente."); return; } openAnivSel(ids); } });
@@ -865,7 +868,7 @@
   }
   function drawTabs() { if (tabNow === "aniv") renderAniv(); else if (tabNow === "enc") renderEnc(); }
   function renderAniv() {
-    const box = $("rlPaneAniv"); if (!box) return;
+    const box = $("anList"); if (!box) return;
     const now = new Date(), sent = anivSent();
     const list = rows.filter((r) => r.aniversario && bParts(r)[1] === anMes).sort((a, b) => bParts(a)[2] - bParts(b)[2] || String(a.nome).localeCompare(String(b.nome), "pt-BR"));
     box.innerHTML = '<div class="rl-bar"><div class="f"><label>Mês</label><select id="anMesSel">' + MESES.map((m, i) => '<option value="' + (i + 1) + '"' + (anMes === i + 1 ? " selected" : "") + ">" + m + "</option>").join("") + '</select></div>' +
