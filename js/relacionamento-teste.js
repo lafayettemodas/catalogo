@@ -695,7 +695,8 @@
     const QK = "rlQueue"; let svd = null; try { svd = JSON.parse(localStorage.getItem(QK) || "null"); } catch (e) { }
     const doneIds = (window.__rlRestoring && svd && svd.done) ? svd.done.slice() : [];
     const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
-    const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, ts: Date.now() })); } catch (e) { } };
+    const linkDone = (window.__rlRestoring && svd && svd.links) ? svd.links.slice() : [];
+    const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, links: linkDone, ts: Date.now() })); } catch (e) { } };
     saveQ();
     let cards = null, cardsP = null;
     const mkCard = async (p) => {
@@ -724,8 +725,10 @@
     const markPhoto = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'); const bt = tr && tr.querySelector('[data-photo="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Foto " + (i + 1) + " enviada"; bt.dataset.sent = "1"; bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "1px solid #9fd3ac";
       const nx = [...tr.querySelectorAll("[data-photo]")].find((x) => x.dataset.sent !== "1"); tr.querySelectorAll("[data-photo]").forEach((x) => { if (x.dataset.sent !== "1") x.style.outline = ""; }); if (nx) { nx.style.outline = "2px solid #7a5a3a"; } };
     photoDone.forEach((k) => { const [eid, ix] = k.split("|"); markPhoto(eid, +ix); });
+    const markLink = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'), bt = tr && tr.querySelector('[data-linkp="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Link " + (i + 1); bt.style.background = "#25D366"; bt.style.color = "#fff"; bt.style.borderColor = "#25D366"; };
+    linkDone.forEach((k) => { const [eid, ix] = k.split("|"); markLink(eid, +ix); });
     const prevUrls = {};
-    const intro = (env, row) => { const ob = row && row.querySelector("button[data-confirm]"); const enviado = row && /Enviado/.test((row.querySelector("button[disabled]") || {}).textContent || ""); const jaFoto = photoDone.some((k) => k.indexOf(env.id + "|") === 0); return (ob || enviado || jaFoto || !env.mensagem) ? "" : env.mensagem + "\n\n"; };
+    const intro = (env, row) => { const ob = row && row.querySelector("button[data-confirm]"); const enviado = row && /Enviado/.test((row.querySelector("button[disabled]") || {}).textContent || ""); const jaFoto = photoDone.some((k) => k.indexOf(env.id + "|") === 0) || linkDone.some((k) => k.indexOf(env.id + "|") === 0); return (ob || enviado || jaFoto || !env.mensagem) ? "" : env.mensagem + "\n\n"; };
     if (items.length) {
       const st = document.createElement("div"); st.className = "hint-text"; st.id = "qPrev"; st.textContent = "Preparando a prévia dos links..."; host.querySelector("#qProg").after(st);
       (async () => {
