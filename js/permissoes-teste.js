@@ -39,7 +39,7 @@
 
   function applyHiding() {
     let ao = $("pmAdminOnly"); if (!ao) { ao = document.createElement("style"); ao.id = "pmAdminOnly"; document.head.appendChild(ao); }
-    ao.textContent = (me && me.admin) ? "" : "#rlHist,#rlRemoved{display:none!important}";
+    ao.textContent = (me && me.admin) ? "" : "#rlHist,#rlRemoved,#rlRemSel{display:none!important}";
     let st = $("pmHide");
     if (!st) { st = document.createElement("style"); st.id = "pmHide"; document.head.appendChild(st); }
     if (!me || me.admin || me.abas == null) { st.textContent = ""; return; }
