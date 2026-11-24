@@ -825,12 +825,94 @@
       "<tr><td>" + fmt(e.enviado_em || e.criado_em) + "</td><td>" + esc(nm[e.cliente_id] || e.telefone || "-") + "</td><td>" + (e.status === "enviado" ? '<span class="rl-b ok">Enviado</span>' : e.status === "falha" ? '<span class="rl-b pendente">Falha</span>' : '<span class="rl-b" style="background:#fff3d6;color:#8a5a00">Preparado</span>') + "</td><td>" + esc(e.canal) + '</td><td style="max-width:260px">' + esc(String(e.mensagem).slice(0, 120)) + "</td></tr>").join("") + "</tbody></table></div>";
   }
 
+  // ---------- abas internas: Clientes | Aniversariantes do mês | Pedidos e encomendas ----------
+  let tabNow = "cli", anMes = new Date().getMonth() + 1, encQ = "", encF = "pend";
+  const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  function buildTabs() {
+    const panel = document.querySelector("#viewRelac .rl-panel"); if (!panel || $("rlTabs")) return;
+    const hint = panel.querySelector(".hint-text"); if (!hint) return;
+    const bar = document.createElement("div"); bar.id = "rlTabs"; bar.style.cssText = "display:flex;gap:6px;margin:10px 0;flex-wrap:wrap";
+    bar.innerHTML = [["cli", "Clientes"], ["aniv", "Aniversariantes do mês"], ["enc", "Pedidos e encomendas"]].map((t) => '<button type="button" class="rl-btn" data-tab="' + t[0] + '">' + t[1] + "</button>").join("");
+    const main = document.createElement("div"); main.id = "rlMain";
+    const an = document.createElement("div"); an.id = "rlPaneAniv"; an.style.display = "none";
+    const en = document.createElement("div"); en.id = "rlPaneEnc"; en.style.display = "none";
+    hint.after(bar);
+    let n = bar.nextSibling; while (n) { const nx = n.nextSibling; main.appendChild(n); n = nx; }
+    panel.appendChild(main); panel.appendChild(an); panel.appendChild(en);
+    bar.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
+    an.addEventListener("change", (ev) => { if (ev.target.id === "anMesSel") { anMes = +ev.target.value; renderAniv(); } if (ev.target.id === "anAll") an.querySelectorAll(".anTab").forEach((c) => { if (!c.disabled) c.checked = ev.target.checked; }); });
+    an.addEventListener("click", (ev) => { if (ev.target.closest("#anSendSel")) { const ids = Array.from(an.querySelectorAll(".anTab:checked")).map((c) => c.value); if (!ids.length) { alert("Marque ao menos uma cliente."); return; } openAnivSel(ids); } });
+    en.addEventListener("input", (ev) => { if (ev.target.id === "enQ") { encQ = ev.target.value; const p = ev.target.selectionStart; renderEnc(); const i = $("enQ"); if (i) { i.focus(); try { i.setSelectionRange(p, p); } catch (e) { } } } });
+    en.addEventListener("change", (ev) => { if (ev.target.id === "enF") { encF = ev.target.value; renderEnc(); } });
+    en.addEventListener("click", async (ev) => {
+      const op = ev.target.closest("[data-eopen]"); if (op) { openEnc(op.dataset.eopen); return; }
+      const b = ev.target.closest("[data-econc]"); if (!b) return;
+      const r = find(b.dataset.c), e = r && (r.encomendas || []).find((x) => x.id === b.dataset.econc); if (!e) return; b.disabled = true;
+      const conc = e.situacao === "pendente";
+      const patch = conc ? { situacao: "concluida", concluido_em: new Date().toISOString() } : { situacao: "pendente", concluido_em: null };
+      const { error } = await supabaseClient.from("cliente_encomendas").update(patch).eq("id", e.id);
+      if (error) { alert("Erro: " + error.message); b.disabled = false; return; }
+      Object.assign(e, patch); refreshRow(r.id); renderEnc();
+    });
+    setTab("cli");
+  }
+  function setTab(t) {
+    tabNow = t;
+    const set = (id, on) => { const el = $(id); if (el) el.style.display = on ? "" : "none"; };
+    set("rlMain", t === "cli"); set("rlPaneAniv", t === "aniv"); set("rlPaneEnc", t === "enc");
+    document.querySelectorAll("#rlTabs [data-tab]").forEach((b) => b.classList.toggle("main", b.dataset.tab === t));
+    drawTabs();
+  }
+  function drawTabs() { if (tabNow === "aniv") renderAniv(); else if (tabNow === "enc") renderEnc(); }
+  function renderAniv() {
+    const box = $("rlPaneAniv"); if (!box) return;
+    const now = new Date(), sent = anivSent();
+    const list = rows.filter((r) => r.aniversario && bParts(r)[1] === anMes).sort((a, b) => bParts(a)[2] - bParts(b)[2] || String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+    box.innerHTML = '<div class="rl-bar"><div class="f"><label>Mês</label><select id="anMesSel">' + MESES.map((m, i) => '<option value="' + (i + 1) + '"' + (anMes === i + 1 ? " selected" : "") + ">" + m + "</option>").join("") + '</select></div>' +
+      '<button type="button" class="rl-btn main" id="anSendSel">Enviar mensagem para as marcadas</button></div>' +
+      '<div class="rl-info"><span>' + list.length + " aniversariante(s) em " + MESES[anMes - 1] + "</span></div>" +
+      (list.length ? '<div class="rl-wrap"><table class="rl"><thead><tr><th style="width:30px"><input type="checkbox" id="anAll" title="Marcar todas"></th><th>Dia</th><th>Nome da cliente</th><th>WhatsApp</th><th>Última compra</th><th></th></tr></thead><tbody>' +
+        list.map((r) => { const p = bParts(r), ok = !!waNum(r.telefone), hoje = p[1] === now.getMonth() + 1 && p[2] === now.getDate(), was = sent.indexOf(r.id) >= 0;
+          return '<tr' + (hoje ? ' style="background:#fff4dc"' : "") + '><td style="text-align:center"><input type="checkbox" class="anTab" value="' + esc(r.id) + '"' + (ok ? "" : " disabled") + "></td><td><strong>" + dm(r) + "</strong></td><td>" + esc(r.nome) + "</td><td>" + (esc(r.telefone || "") || "—") + (ok ? "" : " <small>(sem telefone válido)</small>") + "</td><td>" + (r.ultima_compra ? dateBR(r.ultima_compra) : "—") + "</td><td>" + (hoje ? '<span class="rl-b pendente">Hoje</span> ' : "") + (was ? '<span class="rl-b ok">Enviado hoje</span>' : "") + "</td></tr>"; }).join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente com aniversário neste mês.</p>');
+  }
+  function openAnivSel(ids) {
+    const m = modal("Mensagem de aniversariante", '<div id="anBody2"></div>'), body = m.q("#anBody2");
+    const first = firstName((find(ids[0]) || {}).nome || "") || "Maria";
+    body.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label><textarea id="anMsg2"></textarea>' +
+      '<div class="rl-note">Prévia para <strong>' + esc(first) + '</strong>:<div id="anPrev2" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="anCancel2">Fechar</button><button type="button" class="rl-btn main" id="anGo2">Preparar envio (' + ids.length + ")</button></div>";
+    const msg = m.q("#anMsg2"); msg.value = lsGet(ANIV_KEY, ANIV_DEFAULT);
+    const prev = () => { m.q("#anPrev2").textContent = msg.value.replace(/\{nome\}/g, first); };
+    msg.addEventListener("input", () => { lsSet(ANIV_KEY, msg.value); prev(); }); prev();
+    m.q("#anCancel2").addEventListener("click", m.close);
+    m.q("#anGo2").addEventListener("click", async (ev) => {
+      if (!msg.value.trim()) { alert("Escreva a mensagem."); return; }
+      ev.target.disabled = true;
+      const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: msg.value, p_clientes: ids });
+      if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
+      queue(m, body, data, [], (e) => { markAnivSent(e.cliente_id); updateAnivAlert(); if (tabNow === "aniv") renderAniv(); });
+    });
+  }
+  function renderEnc() {
+    const box = $("rlPaneEnc"); if (!box) return;
+    const q = norm(encQ), all = [];
+    rows.forEach((r) => (r.encomendas || []).forEach((e) => { if (encF === "pend" && e.situacao !== "pendente") return; if (q && !norm(r.nome + " " + e.produto).includes(q)) return; all.push({ r: r, e: e }); }));
+    all.sort((a, b) => String(b.e.criado_em).localeCompare(String(a.e.criado_em)));
+    const hadFocus = document.activeElement && document.activeElement.id === "enQ";
+    box.innerHTML = '<div class="rl-bar"><div class="f"><label>Pesquisar</label><input type="text" id="enQ" placeholder="Cliente ou produto..." value="' + esc(encQ) + '" style="min-width:220px"></div>' +
+      '<div class="f"><label>Situação</label><select id="enF"><option value="pend"' + (encF === "pend" ? " selected" : "") + '>Pendentes</option><option value="todas"' + (encF === "todas" ? " selected" : "") + ">Todas</option></select></div></div>" +
+      '<div class="rl-info"><span>' + all.length + " encomenda(s)</span></div>" +
+      (all.length ? '<div class="rl-wrap"><table class="rl"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Produto solicitado</th><th>Situação</th><th>Data</th><th></th></tr></thead><tbody>' +
+        all.map((x) => "<tr><td><strong>" + esc(x.r.nome) + "</strong></td><td>" + (esc(x.r.telefone || "") || "—") + "</td><td>" + esc(x.e.produto) + "</td><td>" + (x.e.situacao === "pendente" ? '<span class="rl-b pendente">Pendente</span>' : '<span class="rl-b ok">Concluída</span>') + "</td><td>" + dateBR(x.e.criado_em) + (x.e.concluido_em ? "<br><small>concl. " + dateBR(x.e.concluido_em) + "</small>" : "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-btn" data-econc="' + esc(x.e.id) + '" data-c="' + esc(x.r.id) + '">' + (x.e.situacao === "pendente" ? "Concluir" : "Reabrir") + '</button> <button type="button" class="rl-btn" data-eopen="' + esc(x.r.id) + '">Editar</button></td></tr>').join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma encomenda encontrada.</p>');
+    if (hadFocus) { const i = $("enQ"); if (i) i.focus(); }
+  }
+
   async function load() {
     $("rlMsg").textContent = "Carregando...";
     const { data, error } = await supabaseClient.rpc("relacionamento_listar");
     if (error) { $("rlMsg").textContent = "Erro: " + error.message; return; }
     rows = (data || []).slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
-    loaded = true; indicator(); draw(); updateAnivAlert();
+    loaded = true; indicator(); draw(); updateAnivAlert(); buildTabs(); drawTabs();
   }
 
   function boot() {
