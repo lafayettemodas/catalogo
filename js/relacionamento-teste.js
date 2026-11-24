@@ -14,7 +14,7 @@
   const dateBR = (s) => { if (!s) return ""; const [y, m, d] = String(s).slice(0, 10).split("-"); return d + "/" + m + "/" + y; };
   const daysSince = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); const a = new Date(y, m - 1, d), b = new Date(); b.setHours(0, 0, 0, 0); return Math.round((b - a) / MS); };
   const statusOf = (r) => { const d = daysSince(r.ultimo_contato); if (d === null) return { t: "pendente", d: null, late: false }; return d > 30 ? { t: "pendente", d, late: true } : { t: "em dia", d, late: false }; };
-  const dmIn = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1] + (p[0] && p[0] !== "2000" ? "/" + p[0] : ""); };
+  const dmIn = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const dm = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const waNum = (tel) => { let d = String(tel || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) d = "55" + d; return d.length >= 12 ? d : ""; };
@@ -190,7 +190,7 @@
       '<td style="text-align:center"><input type="checkbox" class="rl-sel"' + (sel.has(r.id) ? " checked" : "") + "></td>" +
       '<td class="c-nome" title="Abrir cadastro"><a>' + esc(r.nome) + "</a></td>" +
       '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + (esc(r.telefone || "") || "—") + "</div>" + (r.telefones || []).map((t) => '<div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + esc(fmtTel(t.telefone)) + (t.rotulo ? " (" + esc(t.rotulo) + ")" : "") + "</div>").join("") + "</td>" +
-      '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="10" placeholder="dd/mm/aaaa" value="' + esc(dmIn(r)) + '"></td>' +
+      '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="5" placeholder="dd/mm" value="' + esc(dmIn(r)) + '"></td>' +
       '<td style="width:110px"><input type="text" data-f="tamanhos" value="' + esc(r.tamanhos || "") + '"></td>' +
       '<td style="min-width:190px"><input type="text" data-f="preferencias" value="' + esc(r.preferencias || "") + '"></td>' +
       '<td style="width:128px"><input type="date" data-f="ultima_compra" value="' + esc(String(r.ultima_compra || "").slice(0, 10)) + '"></td>' +
@@ -369,7 +369,7 @@
     const m = modal("Adicionar cliente", '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
       '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Nome da cliente *<input type="text" id="adNome"></label>' +
       '<label style="font-size:.8rem;font-weight:700">WhatsApp (DDD + número)<input type="text" id="adTel" placeholder="48 99999-9999"></label>' +
-      '<label style="font-size:.8rem;font-weight:700">Aniversário (dd/mm ou dd/mm/aaaa)<input type="text" id="adAniv" maxlength="10" placeholder="dd/mm/aaaa"></label>' +
+      '<label style="font-size:.8rem;font-weight:700">Aniversário (dd/mm)<input type="text" id="adAniv" maxlength="5" placeholder="dd/mm"></label>' +
       '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Outro telefone (opcional)<input type="text" id="adTel2" placeholder="48 99999-9999"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Tamanhos<input type="text" id="adTam" placeholder="Ex.: M, 38"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Preferências<input type="text" id="adPref" placeholder="Ex.: vestidos"></label>' +
@@ -915,9 +915,8 @@
 
   document.addEventListener("input", (ev) => {
     const t = ev.target; if (!t || !t.matches || !t.matches('input[data-f="aniversario"], #adAniv')) return;
-    const del = ev.inputType && ev.inputType.indexOf("delete") === 0, v = t.value.replace(/\D/g, "").slice(0, 8);
-    let o = v.slice(0, 2); if (v.length > 2) o += "/" + v.slice(2, 4); if (v.length > 4) o += "/" + v.slice(4, 8);
-    if (!del && (v.length === 2 || v.length === 4)) o += "/";
+    const del = ev.inputType && ev.inputType.indexOf("delete") === 0, v = t.value.replace(/\D/g, "").slice(0, 4);
+    let o = v.slice(0, 2); if (v.length > 2) o += "/" + v.slice(2, 4); if (!del && v.length === 2) o += "/";
     if (t.value !== o) t.value = o;
   });
 
