@@ -784,7 +784,7 @@
         if (!u || !u.ok) { alert("A prévia do link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
         const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
         window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(intro(env, row) + p.name + " — " + money(pPrice(p)) + "\n" + u.url), "_blank");
-        const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); saveQ(); markPhoto(env.id, i);
+        const key = env.id + "|" + i; if (!linkDone.includes(key)) linkDone.push(key); saveQ(); markLink(env.id, i);
         return;
       }
       const pb = ev.target.closest("[data-photo]"); if (pb) {
