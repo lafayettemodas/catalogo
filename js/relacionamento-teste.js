@@ -845,6 +845,7 @@
     const bn0 = $("rlAnivBanner"); if (bn0) an.appendChild(bn0);
     const lst = document.createElement("div"); lst.id = "anList"; an.appendChild(lst);
     ["rlAnivBtn", "rlWelBtn"].forEach((i) => { const b = $(i); if (b) b.remove(); });
+    if (!$("rlSaveFix")) { const st = document.createElement("style"); st.id = "rlSaveFix"; st.textContent = "#rlSave.ok{color:#2a8a4a!important}#rlSave.err{color:#c0392b!important}#rlSave.wait{color:#b07a00!important}"; document.head.appendChild(st); }
     const pB = $("rlProd"); if (pB) pB.classList.add("main");
     const sB = $("rlSend"); if (sB) ["background", "border-color"].forEach((p) => sB.style.setProperty(p, "#25D366", "important")), sB.style.setProperty("color", "#fff", "important");
     const addB = $("rlAddCli"); if (addB) { addB.textContent = "+ Adicionar cliente"; bar.appendChild(addB); }
