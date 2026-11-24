@@ -1,4 +1,4 @@
-// Clientes - Relacionamento: planilha unica com todas as clientes do cadastro atual.
+// Clientes - Relacionamento (TESTE): planilha unica com todas as clientes do cadastro atual.
 // Dados: clientes (cadastro), cliente_relacionamento, cliente_encomendas, whatsapp_campanhas, whatsapp_envios.
 // Tudo salva automaticamente. Envio de WhatsApp: manual (wa.me) com registro; API oficial fica pronta para ligar depois.
 (function relacionamento() {
@@ -14,6 +14,7 @@
   const dateBR = (s) => { if (!s) return ""; const [y, m, d] = String(s).slice(0, 10).split("-"); return d + "/" + m + "/" + y; };
   const daysSince = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); const a = new Date(y, m - 1, d), b = new Date(); b.setHours(0, 0, 0, 0); return Math.round((b - a) / MS); };
   const statusOf = (r) => { const d = daysSince(r.ultimo_contato); if (d === null) return { t: "pendente", d: null, late: false }; return d > 30 ? { t: "pendente", d, late: true } : { t: "em dia", d, late: false }; };
+  const dmIn = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const dm = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const waNum = (tel) => { let d = String(tel || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) d = "55" + d; return d.length >= 12 ? d : ""; };
@@ -189,7 +190,7 @@
       '<td style="text-align:center"><input type="checkbox" class="rl-sel"' + (sel.has(r.id) ? " checked" : "") + "></td>" +
       '<td class="c-nome" title="Abrir cadastro"><a>' + esc(r.nome) + "</a></td>" +
       '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + (esc(r.telefone || "") || "—") + "</div>" + (r.telefones || []).map((t) => '<div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + esc(fmtTel(t.telefone)) + (t.rotulo ? " (" + esc(t.rotulo) + ")" : "") + "</div>").join("") + "</td>" +
-      '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="5" placeholder="dd/mm" value="' + esc(dm(r)) + '"></td>' +
+      '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="5" placeholder="dd/mm" value="' + esc(dmIn(r)) + '"></td>' +
       '<td style="width:110px"><input type="text" data-f="tamanhos" value="' + esc(r.tamanhos || "") + '"></td>' +
       '<td style="min-width:190px"><input type="text" data-f="preferencias" value="' + esc(r.preferencias || "") + '"></td>' +
       '<td style="width:128px"><input type="date" data-f="ultima_compra" value="' + esc(String(r.ultima_compra || "").slice(0, 10)) + '"></td>' +
@@ -241,10 +242,10 @@
       const raw = t.value.trim();
       if (!raw) v = "";
       else {
-        const m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})$/);
-        const d = m ? +m[1] : 0, mo = m ? +m[2] : 0, dt = new Date(2000, mo - 1, d);
-        if (!m || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { t.classList.add("bad"); return; }
-        const y = r.aniversario ? String(r.aniversario).slice(0, 4) : "2000";
+        const m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{4}))?$/);
+        const d = m ? +m[1] : 0, mo = m ? +m[2] : 0, yy = m && m[3] ? +m[3] : 0, dt = new Date(yy || 2000, mo - 1, d);
+        if (!m || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1 || (yy && (yy < 1900 || yy > new Date().getFullYear()))) { t.classList.add("bad"); return; }
+        const y = yy ? String(yy) : (r.aniversario ? String(r.aniversario).slice(0, 4) : "2000");
         v = y + "-" + pad(mo) + "-" + pad(d);
       }
       t.classList.remove("bad");
@@ -264,7 +265,8 @@
   const anivSent = () => { try { const o = JSON.parse(lsGet("rlAnivSent", "{}")); return o.d === todayStr() ? (o.ids || []) : []; } catch (e) { return []; } };
   const markAnivSent = (id) => { const ids = anivSent(); if (ids.indexOf(id) < 0) ids.push(id); lsSet("rlAnivSent", JSON.stringify({ d: todayStr(), ids: ids })); };
   const bParts = (r) => String(r.aniversario).slice(0, 10).split("-").map(Number);
-  function anivToday() { const t = new Date(), mo = t.getMonth() + 1, d = t.getDate(); return rows.filter((r) => { if (!r.aniversario) return false; const p = bParts(r); return p[1] === mo && p[2] === d; }); }
+  function anivAlertToday(r) { if (!r.aniversario) return false; const t = new Date(), t0 = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime(), p = bParts(r); return [t.getFullYear(), t.getFullYear() + 1].some((y) => { const d = new Date(y, p[1] - 1, p[2]), w = d.getDay(); if (w === 6) d.setDate(d.getDate() - 1); else if (w === 0) d.setDate(d.getDate() - 2); return d.getTime() === t0; }); }
+  function anivToday() { return rows.filter(anivAlertToday); }
   function anivPending() { const s = anivSent(); return anivToday().filter((r) => s.indexOf(r.id) < 0); }
   function anivNext() {
     const now = new Date(), b0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), out = [];
@@ -274,11 +276,12 @@
   function updateAnivAlert() {
     const pend = anivPending(), n = pend.length;
     const bd = $("rlAnivBadge"); if (bd) { bd.textContent = n || ""; bd.style.display = n ? "inline-block" : "none"; }
-    const sb = document.querySelector('.sidebar-link[data-view="relac"]');
-    if (sb) { let b = sb.querySelector(".rl-sb-badge"); if (n) { if (!b) { b = document.createElement("span"); b.className = "rl-sb-badge"; sb.appendChild(b); } b.textContent = n; } else if (b) b.remove(); }
+    const sb0 = document.querySelector('.sidebar-link[data-view="relac"] .rl-sb-badge'); if (sb0) sb0.remove();
+    const tb = document.querySelector('#rlTabs [data-tab="aniv"]');
+    if (tb) { let b = tb.querySelector(".rl-tab-badge"); if (n) { if (!b) { b = document.createElement("span"); b.className = "rl-tab-badge"; b.style.cssText = "display:inline-block;margin-left:6px;min-width:18px;padding:0 5px;border-radius:9px;background:#d32f2f;color:#fff;font-size:.7rem;font-weight:700;line-height:18px;text-align:center"; tb.appendChild(b); } b.textContent = n; } else if (b) b.remove(); }
     const bn = $("rlAnivBanner");
     if (bn) {
-      if (n) { bn.style.display = "block"; bn.innerHTML = '<div class="rl-alert"><span><strong>Aniversário hoje:</strong> ' + esc(pend.map((r) => r.nome).join(", ")) + '</span><button type="button" class="rl-btn main" id="rlAnivNow">Enviar mensagem agora</button></div>'; $("rlAnivNow").addEventListener("click", () => openAniv()); }
+      if (n) { bn.style.display = "block"; bn.innerHTML = '<div class="rl-alert"><span><strong>Aniversário:</strong> ' + esc(pend.map((r) => { const q = bParts(r), t = new Date(); return r.nome + ((q[1] === t.getMonth() + 1 && q[2] === t.getDate()) ? "" : " (" + dm(r) + ")"); }).join(", ")) + '</span><button type="button" class="rl-btn main" id="rlAnivNow">Enviar mensagem agora</button></div>'; $("rlAnivNow").addEventListener("click", () => openAniv()); }
       else { bn.style.display = "none"; bn.innerHTML = ""; }
     }
     let t = $("rlAnivToast");
@@ -388,9 +391,9 @@
       if (key) { const dupT = rows.find((r) => phoneKey(r.telefone) === key); if (dupT) { err("Este WhatsApp já pertence a: " + dupT.nome + "."); return; } }
       let aniv = null;
       if (an) {
-        const mm = an.match(/^(\d{1,2})[\/\-.](\d{1,2})$/), d = mm ? +mm[1] : 0, mo = mm ? +mm[2] : 0, dt = new Date(2000, mo - 1, d);
-        if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { err("Aniversário inválido: use dd/mm."); return; }
-        aniv = "2000-" + pad(mo) + "-" + pad(d);
+        const mm = an.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{4}))?$/), d = mm ? +mm[1] : 0, mo = mm ? +mm[2] : 0, yy = mm && mm[3] ? +mm[3] : 0, dt = new Date(yy || 2000, mo - 1, d);
+        if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1 || (yy && (yy < 1900 || yy > new Date().getFullYear()))) { err("Aniversário inválido: use dd/mm ou dd/mm/aaaa."); return; }
+        aniv = (yy || 2000) + "-" + pad(mo) + "-" + pad(d);
       }
       const vv = await supabaseClient.rpc("cliente_validar", { p_nome: nome, p_tel: tel, p_novo: true });
       if (vv.error) { err("Erro ao validar: " + vv.error.message); return; }
@@ -511,7 +514,7 @@
     const ov = document.createElement("div"); ov.className = "rl-ov";
     ov.innerHTML = '<div class="rl-md"><header><h3>' + esc(title) + '</h3><button type="button" class="rl-btn" data-x>Fechar</button></header><div class="bd">' + html + "</div></div>";
     document.body.appendChild(ov);
-    const close = () => ov.remove();
+    const close = () => { if (ov.querySelector("#qProg")) { try { localStorage.removeItem("rlQueue"); } catch (e) { } } ov.remove(); };
     ov.querySelector("[data-x]").addEventListener("click", close);
     ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
     return { el: ov, close, q: (s) => ov.querySelector(s) };
@@ -677,7 +680,7 @@
       const blob = await (await fetch(url)).blob();
       if (window.matchMedia("(pointer:coarse)").matches && navigator.canShare) {
         const f = new File([blob], "produto.jpg", { type: blob.type || "image/jpeg" });
-        if (navigator.canShare({ files: [f] })) { await navigator.share({ title: p.name, text: p.name + " — " + money(pPrice(p)), url: pLink(p), files: [f] }); btn.disabled = false; btn.textContent = orig; return; }
+        if (navigator.canShare({ files: [f] })) { await navigator.share({ title: p.name, text: p.name + " — " + money(pPrice(p)), url: pLink(p), files: [f] }); btn.disabled = false; btn.textContent = orig; return true; }
       }
       const bmp = await createImageBitmap(blob), cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height; cv.getContext("2d").drawImage(bmp, 0, 0);
       const png = await new Promise((r) => cv.toBlob(r, "image/png"));
@@ -689,28 +692,133 @@
 
   function queue(m, host, data, items, onSent) {
     const envs = data.envios || []; let done = 0; items = items || [];
-    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-photo="' + i + '">Enviar foto ' + (i + 1) + " · " + esc(pRef(p)) + "</button>").join("") + "</div>" : "";
-    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Abrir WhatsApp" para enviar a mensagem. Se escolheu peças, use também os botões "Enviar foto" (foto + legenda com preço e link). Depois toque em "Confirmar envio".</div>' +
-      '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Abrir WhatsApp</button>' + photoBtns() + "</div>").join("") + "</div>" +
+    const QK = "rlQueue"; let svd = null; try { svd = JSON.parse(localStorage.getItem(QK) || "null"); } catch (e) { }
+    const doneIds = (window.__rlRestoring && svd && svd.done) ? svd.done.slice() : [];
+    const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
+    const linkDone = (window.__rlRestoring && svd && svd.links) ? svd.links.slice() : [];
+    const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, links: linkDone, ts: Date.now() })); } catch (e) { } };
+    saveQ();
+    let cards = null, cardsP = null;
+    const mkCard = async (p) => {
+      const url = pPhoto(p); if (!url) return null;
+      const bmp = await createImageBitmap(await (await fetch(url)).blob());
+      const W = 900, H = Math.min(1200, Math.round(bmp.height * W / bmp.width)), BH = 170;
+      const cv = document.createElement("canvas"); cv.width = W; cv.height = H + BH; const cx = cv.getContext("2d");
+      cx.fillStyle = "#fff"; cx.fillRect(0, 0, W, H + BH); cx.drawImage(bmp, 0, 0, W, H);
+      cx.fillStyle = "#3d3220"; cx.textBaseline = "top";
+      let fs = 46; cx.font = "bold " + fs + "px sans-serif"; const nm = String(p.name || "");
+      while (cx.measureText(nm).width > W - 60 && fs > 24) { fs -= 2; cx.font = "bold " + fs + "px sans-serif"; }
+      cx.fillText(nm, 30, H + 18);
+      cx.font = "32px sans-serif"; cx.fillStyle = "#6b5a3e"; cx.fillText(pRef(p) ? "Ref. " + pRef(p) : "", 30, H + 78);
+      cx.font = "bold 44px sans-serif"; cx.fillStyle = "#8b6b3f"; const pr = money(pPrice(p)); cx.fillText(pr, W - 30 - cx.measureText(pr).width, H + 90);
+      const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.88));
+      return new File([blob], "peca-" + (pRef(p) || p.id) + ".jpg", { type: "image/jpeg" });
+    };
+    const prep = () => { if (!cardsP) cardsP = Promise.all(items.map((p) => mkCard(p).catch(() => null))).then((f) => { cards = f.filter(Boolean); return cards; }); return cardsP; };
+    const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + (items.length >= 1 ? '<button type="button" class="rl-btn main" style="padding:3px 9px;font-size:.72rem" data-photoall="1" title="Envia todas as fotos de uma vez; nome, ref. e preço vão escritos em cada imagem">Enviar todas as fotos (' + items.length + ')</button>' : "") + "</div>" : "";
+    host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Inicie a conversa" para enviar a mensagem. Se escolheu peças, use "Enviar todas as fotos" (cada foto leva nome, ref. e preço) e os botões "Link". Depois toque em "Confirmar envio".</div>' +
+      '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px;background:#25D366;color:#fff;border-color:#25D366">Inicie a conversa</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
-    const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
+    const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog(); if (items.length) prep();
+    doneIds.forEach((id) => { const tr = host.querySelector('[data-e="' + id + '"]'); const bt = tr && tr.querySelector("button[data-open],button[data-confirm]"); if (bt) { bt.textContent = "Enviado"; bt.disabled = true; bt.removeAttribute("data-open"); bt.removeAttribute("data-confirm"); bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "0"; done++; } });
+    prog();
+    const markPhoto = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'); const bt = tr && tr.querySelector('[data-photo="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Foto " + (i + 1) + " enviada"; bt.dataset.sent = "1"; bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "1px solid #9fd3ac";
+      const nx = [...tr.querySelectorAll("[data-photo]")].find((x) => x.dataset.sent !== "1"); tr.querySelectorAll("[data-photo]").forEach((x) => { if (x.dataset.sent !== "1") x.style.outline = ""; }); if (nx) { nx.style.outline = "2px solid #7a5a3a"; } };
+    photoDone.forEach((k) => { const [eid, ix] = k.split("|"); markPhoto(eid, +ix); });
+    const greenAll = (b) => { ["background", "border-color"].forEach((p) => b.style.setProperty(p, "#25D366", "important")); b.style.setProperty("color", "#fff", "important"); };
+    const markLink = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'), bt = tr && tr.querySelector('[data-linkp="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Link " + (i + 1); bt.style.background = "#25D366"; bt.style.color = "#fff"; bt.style.borderColor = "#25D366"; };
+    linkDone.forEach((k) => { const [eid, ix] = k.split("|"); markLink(eid, +ix); });
+    envs.forEach((e) => { if (items.length && items.every((p, i) => photoDone.includes(e.id + "|" + i))) { const tr = host.querySelector('[data-e="' + e.id + '"]'), pb = tr && tr.querySelector("[data-photoall]"); if (pb) { pb.textContent = "Fotos enviadas ✓"; pb.dataset.o = "Fotos enviadas ✓"; greenAll(pb); } } });
+    const prevUrls = {};
+    const intro = (env, row) => { const ob = row && row.querySelector("button[data-confirm]"); const enviado = row && /Enviado/.test((row.querySelector("button[disabled]") || {}).textContent || ""); const jaFoto = photoDone.some((k) => k.indexOf(env.id + "|") === 0) || linkDone.some((k) => k.indexOf(env.id + "|") === 0); return (ob || enviado || jaFoto || !env.mensagem) ? "" : env.mensagem + "\n\n"; };
+    if (items.length) {
+      const st = document.createElement("div"); st.className = "hint-text"; st.id = "qPrev"; st.textContent = "Preparando a prévia dos links..."; host.querySelector("#qProg").after(st);
+      (async () => {
+        try {
+          const { data, error } = await supabaseClient.functions.invoke("gerar-previa", { body: { ids: items.map((p) => p.id) } });
+          if (error || !data || !data.previas) throw (error || new Error((data && data.error) || "falha"));
+          items.forEach((p) => { if (data.previas[p.id]) prevUrls[p.id] = { url: data.previas[p.id].url, ok: false }; });
+          const check = async () => { let all = true; for (const p of items) { const u = prevUrls[p.id]; if (!u) { all = false; continue; } if (u.ok) continue; try { const r = await fetch(u.url + "?v=" + Date.now(), { cache: "no-store" }); u.ok = r.ok; } catch (e) { } if (!u.ok) all = false; }
+            st.textContent = all ? "Prévia dos links pronta: o botão Link abre direto a conversa da cliente com a foto da peça." : "Publicando a prévia dos links (pode levar alguns minutos)..."; return all; };
+          let n = 0; const iv = setInterval(async () => { if (!document.body.contains(host) || ++n > 120 || await check()) clearInterval(iv); }, 6000); check();
+        } catch (e) { st.textContent = "Prévia dos links indisponível: " + ((e && e.message) || e); }
+      })();
+    }
     host.addEventListener("click", async (ev) => {
-      const pb = ev.target.closest("[data-photo]"); if (pb) { await sendPhoto(pb, items[+pb.dataset.photo]); return; }
+      const pa = ev.target.closest("[data-photoall]");
+      if (pa) {
+        const row = pa.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e)); if (!env) return;
+        let hint = row.querySelector(".qHint"); if (!hint) { hint = document.createElement("div"); hint.className = "qHint"; hint.style.cssText = "margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff4dc;border:1px solid #f0dca8;font-size:.78rem;font-weight:600"; row.appendChild(hint); }
+        const orig = pa.dataset.o || pa.textContent; pa.dataset.o = orig;
+        if (!cards) {
+          pa.disabled = true; pa.textContent = "Preparando fotos..."; hint.textContent = "Preparando as fotos, aguarde...";
+          try { await prep(); } catch (e) { }
+          pa.disabled = false; pa.textContent = orig;
+          if (!cards || !cards.length) { hint.textContent = "Nenhuma peça com foto."; return; }
+          hint.textContent = "Fotos prontas. Toque de novo em “" + orig + "”."; return;
+        }
+        if (!cards.length) { hint.textContent = "Nenhuma peça com foto."; return; }
+        hint.textContent = "No WhatsApp escolha o contato: " + (env.nome || env.telefone) + " (" + (env.telefone || "") + ")";
+        try {
+          if (navigator.canShare && navigator.canShare({ files: cards })) {
+            await navigator.share({ files: cards });
+            items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); });
+            saveQ(); pa.textContent = "Fotos enviadas ✓"; greenAll(pa); hint.textContent = cards.length + " foto(s) enviadas, cada uma com nome, ref. e preço na própria imagem.";
+          } else alert("Este aparelho não permite enviar várias fotos.");
+        } catch (e) { if (!e || e.name !== "AbortError") alert("Erro: " + ((e && e.message) || e)); }
+        return;
+      }
+      const la = ev.target.closest("[data-linkall]");
+      if (la) {
+        const row = la.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e));
+        if (!env) return;
+        if (items.some((p) => !(prevUrls[p.id] && prevUrls[p.id].ok))) { alert("A prévia de algum link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
+        const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
+        const txt = intro(env, row) + items.map((p) => p.name + " — " + money(pPrice(p)) + "\n" + prevUrls[p.id].url).join("\n\n");
+        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(txt), "_blank");
+        items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); }); saveQ();
+        return;
+      }
+      const lb = ev.target.closest("[data-linkp]");
+      if (lb) {
+        const row = lb.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e)), i = +lb.dataset.linkp, p = items[i], u = p && prevUrls[p.id];
+        if (!env) return;
+        if (!u || !u.ok) { alert("A prévia do link ainda está sendo publicada. Aguarde aparecer 'Prévia dos links pronta'."); return; }
+        const n = waNum(env.telefone); if (!n) { alert("Telefone inválido."); return; }
+        window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(intro(env, row) + p.name + " — " + money(pPrice(p)) + "\n" + u.url), "_blank");
+        const key = env.id + "|" + i; if (!linkDone.includes(key)) linkDone.push(key); saveQ(); markLink(env.id, i);
+        return;
+      }
+      const pb = ev.target.closest("[data-photo]"); if (pb) {
+        const row = pb.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e));
+        let hint = row && row.querySelector(".qHint"); if (row && !hint) { hint = document.createElement("div"); hint.className = "qHint"; hint.style.cssText = "margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff4dc;border:1px solid #f0dca8;font-size:.78rem;font-weight:600"; row.appendChild(hint); }
+        if (hint && env) hint.textContent = "No WhatsApp, escolha o contato: " + (env.nome || env.telefone) + " (" + (env.telefone || "") + ")";
+        const ok = await sendPhoto(pb, items[+pb.dataset.photo]);
+        if (ok === true && env) { const key = env.id + "|" + pb.dataset.photo; if (!photoDone.includes(key)) photoDone.push(key); saveQ(); markPhoto(env.id, +pb.dataset.photo); if (hint) hint.textContent = "Foto enviada para " + (env.nome || env.telefone) + ". Toque na próxima foto."; }
+        return;
+      }
       const b = ev.target.closest("[data-open],[data-confirm]"); if (!b) return;
       const tr = b.closest("[data-e]"), e = envs.find((x) => x.id === tr.dataset.e);
       if (b.hasAttribute("data-open")) {
         const n = waNum(e.telefone); if (!n) { alert("Telefone inválido."); return; }
         window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(e.mensagem), "_blank");
         b.removeAttribute("data-open"); b.setAttribute("data-confirm", ""); b.textContent = "Confirmar envio";
-        b.style.background = "#fff"; b.style.color = "#6b5a3e"; b.style.border = "1px solid #7a5a3a";
+        b.style.background = "#d32f2f"; b.style.color = "#fff"; b.style.border = "1px solid #d32f2f";
         return;
       }
       b.disabled = true; b.textContent = "Registrando...";
       const { error } = await supabaseClient.rpc("whatsapp_registrar_envio", { p_envio: e.id, p_status: "enviado" });
       if (error) { b.disabled = false; b.textContent = "Confirmar envio"; alert("Erro ao registrar: " + error.message); return; }
-      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog(); if (onSent) onSent(e);
+      b.textContent = "Enviado"; b.style.background = "#dff3e5"; b.style.color = "#1c6b2c"; b.style.border = "0"; done++; prog(); doneIds.push(e.id); saveQ(); if (onSent) onSent(e);
       const r = find(e.cliente_id); if (r) { r.ultimo_contato = todayStr(); refreshRow(r.id); }
     });
+  }
+
+  function restoreQueue() {
+    let sv = null; try { sv = JSON.parse(localStorage.getItem("rlQueue") || "null"); } catch (e) { }
+    if (!sv || !sv.envios || !sv.envios.length || Date.now() - sv.ts > 3 * 3600 * 1000 || (sv.done || []).length >= sv.envios.length) return;
+    window.__rlRestoring = true;
+    try { const m = modal("Enviar WhatsApp", '<div id="snStep1"></div>'); queue(m, m.q("#snStep1"), { envios: sv.envios }, sv.items || []); } finally { window.__rlRestoring = false; }
   }
 
   async function openHist() {
@@ -725,12 +833,109 @@
       "<tr><td>" + fmt(e.enviado_em || e.criado_em) + "</td><td>" + esc(nm[e.cliente_id] || e.telefone || "-") + "</td><td>" + (e.status === "enviado" ? '<span class="rl-b ok">Enviado</span>' : e.status === "falha" ? '<span class="rl-b pendente">Falha</span>' : '<span class="rl-b" style="background:#fff3d6;color:#8a5a00">Preparado</span>') + "</td><td>" + esc(e.canal) + '</td><td style="max-width:260px">' + esc(String(e.mensagem).slice(0, 120)) + "</td></tr>").join("") + "</tbody></table></div>";
   }
 
+  // ---------- abas internas: Clientes | Aniversariantes do mês | Pedidos e encomendas ----------
+  let tabNow = "cli", anMes = new Date().getMonth() + 1, encQ = "", encF = "pend";
+  const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  function buildTabs() {
+    const panel = document.querySelector("#viewRelac .rl-panel"); if (!panel || $("rlTabs")) return;
+    const hint = panel.querySelector(".hint-text"); if (!hint) return;
+    const bar = document.createElement("div"); bar.id = "rlTabs"; bar.style.cssText = "display:flex;gap:6px;margin:10px 0;flex-wrap:wrap";
+    bar.innerHTML = [["cli", "Clientes"], ["aniv", "Aniversariantes do mês"], ["enc", "Pedidos e encomendas"]].map((t) => '<button type="button" class="rl-btn" data-tab="' + t[0] + '">' + t[1] + "</button>").join("");
+    const main = document.createElement("div"); main.id = "rlMain";
+    const an = document.createElement("div"); an.id = "rlPaneAniv"; an.style.display = "none";
+    const en = document.createElement("div"); en.id = "rlPaneEnc"; en.style.display = "none";
+    hint.after(bar);
+    let n = bar.nextSibling; while (n) { const nx = n.nextSibling; main.appendChild(n); n = nx; }
+    panel.appendChild(main); panel.appendChild(an); panel.appendChild(en);
+    const bn0 = $("rlAnivBanner"); if (bn0) an.appendChild(bn0);
+    const lst = document.createElement("div"); lst.id = "anList"; an.appendChild(lst);
+    ["rlAnivBtn", "rlWelBtn"].forEach((i) => { const b = $(i); if (b) b.remove(); });
+    if (!$("rlSaveFix")) { const st = document.createElement("style"); st.id = "rlSaveFix"; st.textContent = "#rlSave.ok{color:#2a8a4a!important}#rlSave.err{color:#c0392b!important}#rlSave.wait{color:#b07a00!important}"; document.head.appendChild(st); }
+    const pB = $("rlProd"); if (pB) pB.classList.add("main");
+    const sB = $("rlSend"); if (sB) ["background", "border-color"].forEach((p) => sB.style.setProperty(p, "#25D366", "important")), sB.style.setProperty("color", "#fff", "important");
+    const addB = $("rlAddCli"); if (addB) { addB.textContent = "+ Adicionar cliente"; bar.appendChild(addB); }
+    ["rlAniv", "rlUC", "rlSt", "rlEnc"].forEach((i) => { const s = $(i), f = s && s.closest(".f"); if (s) s.value = ""; if (f) f.style.display = "none"; });
+    bar.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
+    an.addEventListener("change", (ev) => { if (ev.target.id === "anMesSel") { anMes = +ev.target.value; renderAniv(); } if (ev.target.id === "anAll") an.querySelectorAll(".anTab").forEach((c) => { if (!c.disabled) c.checked = ev.target.checked; }); });
+    an.addEventListener("click", (ev) => { if (ev.target.closest("#anSendSel")) { const ids = Array.from(an.querySelectorAll(".anTab:checked")).map((c) => c.value); if (!ids.length) { alert("Marque ao menos uma cliente."); return; } openAnivSel(ids); } });
+    en.addEventListener("input", (ev) => { if (ev.target.id === "enQ") { encQ = ev.target.value; const p = ev.target.selectionStart; renderEnc(); const i = $("enQ"); if (i) { i.focus(); try { i.setSelectionRange(p, p); } catch (e) { } } } });
+    en.addEventListener("change", (ev) => { if (ev.target.id === "enF") { encF = ev.target.value; renderEnc(); } });
+    en.addEventListener("click", async (ev) => {
+      const op = ev.target.closest("[data-eopen]"); if (op) { openEnc(op.dataset.eopen); return; }
+      const b = ev.target.closest("[data-econc]"); if (!b) return;
+      const r = find(b.dataset.c), e = r && (r.encomendas || []).find((x) => x.id === b.dataset.econc); if (!e) return; b.disabled = true;
+      const conc = e.situacao === "pendente";
+      const patch = conc ? { situacao: "concluida", concluido_em: new Date().toISOString() } : { situacao: "pendente", concluido_em: null };
+      const { error } = await supabaseClient.from("cliente_encomendas").update(patch).eq("id", e.id);
+      if (error) { alert("Erro: " + error.message); b.disabled = false; return; }
+      Object.assign(e, patch); refreshRow(r.id); renderEnc();
+    });
+    setTab("cli"); updateAnivAlert();
+  }
+  function setTab(t) {
+    tabNow = t;
+    const set = (id, on) => { const el = $(id); if (el) el.style.display = on ? "" : "none"; };
+    set("rlMain", t === "cli"); set("rlPaneAniv", t === "aniv"); set("rlPaneEnc", t === "enc");
+    document.querySelectorAll("#rlTabs [data-tab]").forEach((b) => b.classList.toggle("main", b.dataset.tab === t));
+    drawTabs();
+  }
+  function drawTabs() { if (tabNow === "aniv") renderAniv(); else if (tabNow === "enc") renderEnc(); }
+  function renderAniv() {
+    const box = $("anList"); if (!box) return;
+    const now = new Date(), sent = anivSent();
+    const list = rows.filter((r) => r.aniversario && bParts(r)[1] === anMes).sort((a, b) => bParts(a)[2] - bParts(b)[2] || String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+    box.innerHTML = '<div class="rl-bar"><div class="f"><label>Mês</label><select id="anMesSel">' + MESES.map((m, i) => '<option value="' + (i + 1) + '"' + (anMes === i + 1 ? " selected" : "") + ">" + m + "</option>").join("") + '</select></div>' +
+      '<button type="button" class="rl-btn main" id="anSendSel">Enviar mensagem para as marcadas</button></div>' +
+      '<div class="rl-info"><span>' + list.length + " aniversariante(s) em " + MESES[anMes - 1] + "</span></div>" +
+      (list.length ? '<div class="rl-wrap"><table class="rl"><thead><tr><th style="width:30px"><input type="checkbox" id="anAll" title="Marcar todas"></th><th>Dia</th><th>Nome da cliente</th><th>WhatsApp</th><th>Última compra</th><th></th></tr></thead><tbody>' +
+        list.map((r) => { const p = bParts(r), ok = !!waNum(r.telefone), hoje = anivAlertToday(r), was = sent.indexOf(r.id) >= 0;
+          return '<tr' + (hoje ? ' style="background:#fff4dc"' : "") + '><td style="text-align:center"><input type="checkbox" class="anTab" value="' + esc(r.id) + '"' + (ok ? "" : " disabled") + "></td><td><strong>" + dm(r) + "</strong></td><td>" + esc(r.nome) + "</td><td>" + (esc(r.telefone || "") || "—") + (ok ? "" : " <small>(sem telefone válido)</small>") + "</td><td>" + (r.ultima_compra ? dateBR(r.ultima_compra) : "—") + "</td><td>" + (hoje ? '<span class="rl-b pendente">Avisar hoje</span> ' : "") + (was ? '<span class="rl-b ok">Enviado hoje</span>' : "") + "</td></tr>"; }).join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente com aniversário neste mês.</p>');
+  }
+  function openAnivSel(ids) {
+    const m = modal("Mensagem de aniversariante", '<div id="anBody2"></div>'), body = m.q("#anBody2");
+    const first = firstName((find(ids[0]) || {}).nome || "") || "Maria";
+    body.innerHTML = '<label style="font-weight:700;font-size:.85rem">Mensagem (use {nome} para o primeiro nome da cliente)</label><textarea id="anMsg2"></textarea>' +
+      '<div class="rl-note">Prévia para <strong>' + esc(first) + '</strong>:<div id="anPrev2" style="margin-top:4px;white-space:pre-wrap;color:#333"></div></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="rl-btn" id="anCancel2">Fechar</button><button type="button" class="rl-btn main" id="anGo2">Preparar envio (' + ids.length + ")</button></div>";
+    const msg = m.q("#anMsg2"); msg.value = lsGet(ANIV_KEY, ANIV_DEFAULT);
+    const prev = () => { m.q("#anPrev2").textContent = msg.value.replace(/\{nome\}/g, first); };
+    msg.addEventListener("input", () => { lsSet(ANIV_KEY, msg.value); prev(); }); prev();
+    m.q("#anCancel2").addEventListener("click", m.close);
+    m.q("#anGo2").addEventListener("click", async (ev) => {
+      if (!msg.value.trim()) { alert("Escreva a mensagem."); return; }
+      ev.target.disabled = true;
+      const { data, error } = await supabaseClient.rpc("whatsapp_preparar_envio", { p_mensagem: msg.value, p_clientes: ids });
+      if (error) { alert("Erro: " + error.message); ev.target.disabled = false; return; }
+      queue(m, body, data, [], (e) => { markAnivSent(e.cliente_id); updateAnivAlert(); if (tabNow === "aniv") renderAniv(); });
+    });
+  }
+  function renderEnc() {
+    const box = $("rlPaneEnc"); if (!box) return;
+    const q = norm(encQ), all = [];
+    rows.forEach((r) => (r.encomendas || []).forEach((e) => { if (encF === "pend" && e.situacao !== "pendente") return; if (q && !norm(r.nome + " " + e.produto).includes(q)) return; all.push({ r: r, e: e }); }));
+    all.sort((a, b) => String(b.e.criado_em).localeCompare(String(a.e.criado_em)));
+    const hadFocus = document.activeElement && document.activeElement.id === "enQ";
+    box.innerHTML = '<div class="rl-bar"><div class="f"><label>Pesquisar</label><input type="text" id="enQ" placeholder="Cliente ou produto..." value="' + esc(encQ) + '" style="min-width:220px"></div>' +
+      '<div class="f"><label>Situação</label><select id="enF"><option value="pend"' + (encF === "pend" ? " selected" : "") + '>Pendentes</option><option value="todas"' + (encF === "todas" ? " selected" : "") + ">Todas</option></select></div></div>" +
+      '<div class="rl-info"><span>' + all.length + " encomenda(s)</span></div>" +
+      (all.length ? '<div class="rl-wrap"><table class="rl"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Produto solicitado</th><th>Situação</th><th>Data</th><th></th></tr></thead><tbody>' +
+        all.map((x) => "<tr><td><strong>" + esc(x.r.nome) + "</strong></td><td>" + (esc(x.r.telefone || "") || "—") + "</td><td>" + esc(x.e.produto) + "</td><td>" + (x.e.situacao === "pendente" ? '<span class="rl-b pendente">Pendente</span>' : '<span class="rl-b ok">Concluída</span>') + "</td><td>" + dateBR(x.e.criado_em) + (x.e.concluido_em ? "<br><small>concl. " + dateBR(x.e.concluido_em) + "</small>" : "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-btn" data-econc="' + esc(x.e.id) + '" data-c="' + esc(x.r.id) + '">' + (x.e.situacao === "pendente" ? "Concluir" : "Reabrir") + '</button> <button type="button" class="rl-btn" data-eopen="' + esc(x.r.id) + '">Editar</button></td></tr>').join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma encomenda encontrada.</p>');
+    if (hadFocus) { const i = $("enQ"); if (i) i.focus(); }
+  }
+
+  document.addEventListener("input", (ev) => {
+    const t = ev.target; if (!t || !t.matches || !t.matches('input[data-f="aniversario"], #adAniv')) return;
+    const del = ev.inputType && ev.inputType.indexOf("delete") === 0, v = t.value.replace(/\D/g, "").slice(0, 4);
+    let o = v.slice(0, 2); if (v.length > 2) o += "/" + v.slice(2, 4); if (!del && v.length === 2) o += "/";
+    if (t.value !== o) t.value = o;
+  });
+
   async function load() {
     $("rlMsg").textContent = "Carregando...";
     const { data, error } = await supabaseClient.rpc("relacionamento_listar");
     if (error) { $("rlMsg").textContent = "Erro: " + error.message; return; }
     rows = (data || []).slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
-    loaded = true; indicator(); draw(); updateAnivAlert();
+    loaded = true; indicator(); draw(); updateAnivAlert(); buildTabs(); drawTabs();
   }
 
   function boot() {
@@ -750,7 +955,7 @@
         const r = prev.apply(this, arguments);
         const lay = document.querySelector(".admin-layout"), wrap = lay && lay.parentElement;
         if (wrap) wrap.style.maxWidth = (v === "relac") ? "98vw" : "";
-        if (v === "relac" && $("viewRelac")) load();
+        if (v === "relac" && $("viewRelac")) { load().then(() => { if (!window.__rlQTried) { window.__rlQTried = true; restoreQueue(); } }); }
         return r;
       };
     }
