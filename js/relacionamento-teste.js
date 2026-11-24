@@ -694,11 +694,28 @@
     const photoDone = (window.__rlRestoring && svd && svd.photos) ? svd.photos.slice() : [];
     const saveQ = () => { try { localStorage.setItem(QK, JSON.stringify({ envios: envs, items: items, done: doneIds, photos: photoDone, ts: Date.now() })); } catch (e) { } };
     saveQ();
+    let cards = null, cardsP = null;
+    const mkCard = async (p) => {
+      const url = pPhoto(p); if (!url) return null;
+      const bmp = await createImageBitmap(await (await fetch(url)).blob());
+      const W = 900, H = Math.min(1200, Math.round(bmp.height * W / bmp.width)), BH = 170;
+      const cv = document.createElement("canvas"); cv.width = W; cv.height = H + BH; const cx = cv.getContext("2d");
+      cx.fillStyle = "#fff"; cx.fillRect(0, 0, W, H + BH); cx.drawImage(bmp, 0, 0, W, H);
+      cx.fillStyle = "#3d3220"; cx.textBaseline = "top";
+      let fs = 46; cx.font = "bold " + fs + "px sans-serif"; const nm = String(p.name || "");
+      while (cx.measureText(nm).width > W - 60 && fs > 24) { fs -= 2; cx.font = "bold " + fs + "px sans-serif"; }
+      cx.fillText(nm, 30, H + 18);
+      cx.font = "32px sans-serif"; cx.fillStyle = "#6b5a3e"; cx.fillText(pRef(p) ? "Ref. " + pRef(p) : "", 30, H + 78);
+      cx.font = "bold 44px sans-serif"; cx.fillStyle = "#8b6b3f"; const pr = money(pPrice(p)); cx.fillText(pr, W - 30 - cx.measureText(pr).width, H + 90);
+      const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.88));
+      return new File([blob], "peca-" + (pRef(p) || p.id) + ".jpg", { type: "image/jpeg" });
+    };
+    const prep = () => { if (!cardsP) cardsP = Promise.all(items.map((p) => mkCard(p).catch(() => null))).then((f) => { cards = f.filter(Boolean); return cards; }); return cardsP; };
     const photoBtns = () => items.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:.72rem;font-weight:700">Fotos:</span>' + items.map((p, i) => '<button type="button" class="rl-btn" style="padding:3px 9px;font-size:.72rem" data-linkp="' + i + '" title="Abre a conversa da cliente com a foto da peça em prévia de link">Link ' + (i + 1) + "</button>").join("") + (items.length >= 1 ? '<button type="button" class="rl-btn main" style="padding:3px 9px;font-size:.72rem" data-photoall="1" title="Envia todas as fotos de uma vez; nome, ref. e preço vão escritos em cada imagem">Enviar todas as fotos (' + items.length + ')</button>' : "") + "</div>" : "";
     host.innerHTML = '<div class="rl-note"><strong>Envio preparado.</strong> Toque em "Inicie a conversa" para enviar a mensagem. Se escolheu peças, use "Enviar todas as fotos" (cada foto leva nome, ref. e preço) e os botões "Link". Depois toque em "Confirmar envio".</div>' +
       '<div id="qProg" style="font-weight:700;margin:6px 0"></div><div style="max-height:360px;overflow:auto">' + envs.map((e) => '<div data-e="' + esc(e.id) + '" style="border:1px solid #e6d9c0;border-radius:10px;padding:10px;margin-bottom:8px"><div style="font-weight:700">' + esc(e.nome) + '</div><div class="rl-tel" style="margin-bottom:6px">' + esc(e.telefone || "") + '</div><button type="button" class="rl-wa" data-open style="padding:7px 14px">Inicie a conversa</button>' + photoBtns() + "</div>").join("") + "</div>" +
       ((data.ignorados || []).length ? '<p class="hint-text">Ignoradas: ' + data.ignorados.map((i) => esc(i.nome) + " (" + esc(i.motivo) + ")").join("; ") + "</p>" : "");
-    const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog();
+    const prog = () => { host.querySelector("#qProg").textContent = done + " de " + envs.length + " enviadas"; }; prog(); if (items.length) prep();
     doneIds.forEach((id) => { const tr = host.querySelector('[data-e="' + id + '"]'); const bt = tr && tr.querySelector("button[data-open],button[data-confirm]"); if (bt) { bt.textContent = "Enviado"; bt.disabled = true; bt.removeAttribute("data-open"); bt.removeAttribute("data-confirm"); bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "0"; done++; } });
     prog();
     const markPhoto = (envId, i) => { const tr = host.querySelector('[data-e="' + envId + '"]'); const bt = tr && tr.querySelector('[data-photo="' + i + '"]'); if (!bt) return; bt.textContent = "✓ Foto " + (i + 1) + " enviada"; bt.dataset.sent = "1"; bt.style.background = "#dff3e5"; bt.style.color = "#1c6b2c"; bt.style.border = "1px solid #9fd3ac";
@@ -724,33 +741,23 @@
       if (pa) {
         const row = pa.closest("[data-e]"), env = envs.find((x) => x.id === (row && row.dataset.e)); if (!env) return;
         let hint = row.querySelector(".qHint"); if (!hint) { hint = document.createElement("div"); hint.className = "qHint"; hint.style.cssText = "margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff4dc;border:1px solid #f0dca8;font-size:.78rem;font-weight:600"; row.appendChild(hint); }
-        const orig = pa.dataset.o || pa.textContent; pa.dataset.o = orig; pa.disabled = true; pa.textContent = "Montando fotos...";
+        const orig = pa.dataset.o || pa.textContent; pa.dataset.o = orig;
+        if (!cards) {
+          pa.disabled = true; pa.textContent = "Preparando fotos..."; hint.textContent = "Preparando as fotos, aguarde...";
+          try { await prep(); } catch (e) { }
+          pa.disabled = false; pa.textContent = orig;
+          if (!cards || !cards.length) { hint.textContent = "Nenhuma peça com foto."; return; }
+          hint.textContent = "Fotos prontas. Toque de novo em “" + orig + "”."; return;
+        }
+        if (!cards.length) { hint.textContent = "Nenhuma peça com foto."; return; }
+        hint.textContent = "No WhatsApp escolha o contato: " + (env.nome || env.telefone) + " (" + (env.telefone || "") + ")";
         try {
-          const mk = async (p) => {
-            const url = pPhoto(p); if (!url) return null;
-            const bmp = await createImageBitmap(await (await fetch(url)).blob());
-            const W = 900, H = Math.min(1200, Math.round(bmp.height * W / bmp.width)), BH = 170;
-            const cv = document.createElement("canvas"); cv.width = W; cv.height = H + BH; const cx = cv.getContext("2d");
-            cx.fillStyle = "#fff"; cx.fillRect(0, 0, W, H + BH); cx.drawImage(bmp, 0, 0, W, H);
-            cx.fillStyle = "#3d3220"; cx.textBaseline = "top";
-            let fs = 46; cx.font = "bold " + fs + "px sans-serif"; const nm = String(p.name || "");
-            while (cx.measureText(nm).width > W - 60 && fs > 24) { fs -= 2; cx.font = "bold " + fs + "px sans-serif"; }
-            cx.fillText(nm, 30, H + 18);
-            cx.font = "32px sans-serif"; cx.fillStyle = "#6b5a3e"; cx.fillText(pRef(p) ? "Ref. " + pRef(p) : "", 30, H + 78);
-            cx.font = "bold 44px sans-serif"; cx.fillStyle = "#8b6b3f"; const pr = money(pPrice(p)); cx.fillText(pr, W - 30 - cx.measureText(pr).width, H + 90);
-            const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.88));
-            return new File([blob], "peca-" + (pRef(p) || p.id) + ".jpg", { type: "image/jpeg" });
-          };
-          const files = (await Promise.all(items.map(mk))).filter(Boolean);
-          if (!files.length) { alert("Nenhuma peça com foto."); return; }
-          hint.textContent = "No WhatsApp escolha o contato: " + (env.nome || env.telefone) + " (" + (env.telefone || "") + ")";
-          if (navigator.canShare && navigator.canShare({ files })) {
-            await navigator.share({ files });
+          if (navigator.canShare && navigator.canShare({ files: cards })) {
+            await navigator.share({ files: cards });
             items.forEach((p, i) => { const key = env.id + "|" + i; if (!photoDone.includes(key)) photoDone.push(key); markPhoto(env.id, i); });
-            saveQ(); pa.dataset.o = "Fotos enviadas ✓"; hint.textContent = files.length + " foto(s) enviadas, cada uma com nome, ref. e preço na própria imagem.";
+            saveQ(); pa.textContent = "Fotos enviadas ✓"; hint.textContent = cards.length + " foto(s) enviadas, cada uma com nome, ref. e preço na própria imagem.";
           } else alert("Este aparelho não permite enviar várias fotos.");
         } catch (e) { if (!e || e.name !== "AbortError") alert("Erro: " + ((e && e.message) || e)); }
-        finally { pa.disabled = false; pa.textContent = pa.dataset.o; }
         return;
       }
       const la = ev.target.closest("[data-linkall]");
