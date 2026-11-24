@@ -14,6 +14,7 @@
   const dateBR = (s) => { if (!s) return ""; const [y, m, d] = String(s).slice(0, 10).split("-"); return d + "/" + m + "/" + y; };
   const daysSince = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); const a = new Date(y, m - 1, d), b = new Date(); b.setHours(0, 0, 0, 0); return Math.round((b - a) / MS); };
   const statusOf = (r) => { const d = daysSince(r.ultimo_contato); if (d === null) return { t: "pendente", d: null, late: false }; return d > 30 ? { t: "pendente", d, late: true } : { t: "em dia", d, late: false }; };
+  const dmIn = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1] + (p[0] && p[0] !== "2000" ? "/" + p[0] : ""); };
   const dm = (r) => { if (!r.aniversario) return ""; const p = String(r.aniversario).slice(0, 10).split("-"); return p[2] + "/" + p[1]; };
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const waNum = (tel) => { let d = String(tel || "").replace(/\D/g, ""); if (d.length === 10 || d.length === 11) d = "55" + d; return d.length >= 12 ? d : ""; };
@@ -189,7 +190,7 @@
       '<td style="text-align:center"><input type="checkbox" class="rl-sel"' + (sel.has(r.id) ? " checked" : "") + "></td>" +
       '<td class="c-nome" title="Abrir cadastro"><a>' + esc(r.nome) + "</a></td>" +
       '<td style="white-space:nowrap"><button type="button" class="rl-wa"' + (n ? "" : " disabled") + ' title="' + (n ? "Abrir conversa" : "Sem telefone válido") + '">WhatsApp</button><div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + (esc(r.telefone || "") || "—") + "</div>" + (r.telefones || []).map((t) => '<div class="rl-tel rl-tels" title="Gerenciar telefones desta cliente">' + esc(fmtTel(t.telefone)) + (t.rotulo ? " (" + esc(t.rotulo) + ")" : "") + "</div>").join("") + "</td>" +
-      '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="5" placeholder="dd/mm" value="' + esc(dm(r)) + '"></td>' +
+      '<td style="width:74px"><input type="text" data-f="aniversario" maxlength="10" placeholder="dd/mm/aaaa" value="' + esc(dmIn(r)) + '"></td>' +
       '<td style="width:110px"><input type="text" data-f="tamanhos" value="' + esc(r.tamanhos || "") + '"></td>' +
       '<td style="min-width:190px"><input type="text" data-f="preferencias" value="' + esc(r.preferencias || "") + '"></td>' +
       '<td style="width:128px"><input type="date" data-f="ultima_compra" value="' + esc(String(r.ultima_compra || "").slice(0, 10)) + '"></td>' +
@@ -241,10 +242,10 @@
       const raw = t.value.trim();
       if (!raw) v = "";
       else {
-        const m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})$/);
-        const d = m ? +m[1] : 0, mo = m ? +m[2] : 0, dt = new Date(2000, mo - 1, d);
-        if (!m || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { t.classList.add("bad"); return; }
-        const y = r.aniversario ? String(r.aniversario).slice(0, 4) : "2000";
+        const m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{4}))?$/);
+        const d = m ? +m[1] : 0, mo = m ? +m[2] : 0, yy = m && m[3] ? +m[3] : 0, dt = new Date(yy || 2000, mo - 1, d);
+        if (!m || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1 || (yy && (yy < 1900 || yy > new Date().getFullYear()))) { t.classList.add("bad"); return; }
+        const y = yy ? String(yy) : (r.aniversario ? String(r.aniversario).slice(0, 4) : "2000");
         v = y + "-" + pad(mo) + "-" + pad(d);
       }
       t.classList.remove("bad");
@@ -264,7 +265,8 @@
   const anivSent = () => { try { const o = JSON.parse(lsGet("rlAnivSent", "{}")); return o.d === todayStr() ? (o.ids || []) : []; } catch (e) { return []; } };
   const markAnivSent = (id) => { const ids = anivSent(); if (ids.indexOf(id) < 0) ids.push(id); lsSet("rlAnivSent", JSON.stringify({ d: todayStr(), ids: ids })); };
   const bParts = (r) => String(r.aniversario).slice(0, 10).split("-").map(Number);
-  function anivToday() { const t = new Date(), mo = t.getMonth() + 1, d = t.getDate(); return rows.filter((r) => { if (!r.aniversario) return false; const p = bParts(r); return p[1] === mo && p[2] === d; }); }
+  function anivAlertToday(r) { if (!r.aniversario) return false; const t = new Date(), t0 = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime(), p = bParts(r); return [t.getFullYear(), t.getFullYear() + 1].some((y) => { const d = new Date(y, p[1] - 1, p[2]), w = d.getDay(); if (w === 6) d.setDate(d.getDate() - 1); else if (w === 0) d.setDate(d.getDate() - 2); return d.getTime() === t0; }); }
+  function anivToday() { return rows.filter(anivAlertToday); }
   function anivPending() { const s = anivSent(); return anivToday().filter((r) => s.indexOf(r.id) < 0); }
   function anivNext() {
     const now = new Date(), b0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), out = [];
@@ -279,7 +281,7 @@
     if (tb) { let b = tb.querySelector(".rl-tab-badge"); if (n) { if (!b) { b = document.createElement("span"); b.className = "rl-tab-badge"; b.style.cssText = "display:inline-block;margin-left:6px;min-width:18px;padding:0 5px;border-radius:9px;background:#d32f2f;color:#fff;font-size:.7rem;font-weight:700;line-height:18px;text-align:center"; tb.appendChild(b); } b.textContent = n; } else if (b) b.remove(); }
     const bn = $("rlAnivBanner");
     if (bn) {
-      if (n) { bn.style.display = "block"; bn.innerHTML = '<div class="rl-alert"><span><strong>Aniversário hoje:</strong> ' + esc(pend.map((r) => r.nome).join(", ")) + '</span><button type="button" class="rl-btn main" id="rlAnivNow">Enviar mensagem agora</button></div>'; $("rlAnivNow").addEventListener("click", () => openAniv()); }
+      if (n) { bn.style.display = "block"; bn.innerHTML = '<div class="rl-alert"><span><strong>Aniversário:</strong> ' + esc(pend.map((r) => { const q = bParts(r), t = new Date(); return r.nome + ((q[1] === t.getMonth() + 1 && q[2] === t.getDate()) ? "" : " (" + dm(r) + ")"); }).join(", ")) + '</span><button type="button" class="rl-btn main" id="rlAnivNow">Enviar mensagem agora</button></div>'; $("rlAnivNow").addEventListener("click", () => openAniv()); }
       else { bn.style.display = "none"; bn.innerHTML = ""; }
     }
     let t = $("rlAnivToast");
@@ -367,7 +369,7 @@
     const m = modal("Adicionar cliente", '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
       '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Nome da cliente *<input type="text" id="adNome"></label>' +
       '<label style="font-size:.8rem;font-weight:700">WhatsApp (DDD + número)<input type="text" id="adTel" placeholder="48 99999-9999"></label>' +
-      '<label style="font-size:.8rem;font-weight:700">Aniversário (dd/mm)<input type="text" id="adAniv" maxlength="5" placeholder="dd/mm"></label>' +
+      '<label style="font-size:.8rem;font-weight:700">Aniversário (dd/mm ou dd/mm/aaaa)<input type="text" id="adAniv" maxlength="10" placeholder="dd/mm/aaaa"></label>' +
       '<label style="grid-column:1/-1;font-size:.8rem;font-weight:700">Outro telefone (opcional)<input type="text" id="adTel2" placeholder="48 99999-9999"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Tamanhos<input type="text" id="adTam" placeholder="Ex.: M, 38"></label>' +
       '<label style="font-size:.8rem;font-weight:700">Preferências<input type="text" id="adPref" placeholder="Ex.: vestidos"></label>' +
@@ -389,9 +391,9 @@
       if (key) { const dupT = rows.find((r) => phoneKey(r.telefone) === key); if (dupT) { err("Este WhatsApp já pertence a: " + dupT.nome + "."); return; } }
       let aniv = null;
       if (an) {
-        const mm = an.match(/^(\d{1,2})[\/\-.](\d{1,2})$/), d = mm ? +mm[1] : 0, mo = mm ? +mm[2] : 0, dt = new Date(2000, mo - 1, d);
-        if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1) { err("Aniversário inválido: use dd/mm."); return; }
-        aniv = "2000-" + pad(mo) + "-" + pad(d);
+        const mm = an.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{4}))?$/), d = mm ? +mm[1] : 0, mo = mm ? +mm[2] : 0, yy = mm && mm[3] ? +mm[3] : 0, dt = new Date(yy || 2000, mo - 1, d);
+        if (!mm || mo < 1 || mo > 12 || dt.getMonth() !== mo - 1 || (yy && (yy < 1900 || yy > new Date().getFullYear()))) { err("Aniversário inválido: use dd/mm ou dd/mm/aaaa."); return; }
+        aniv = (yy || 2000) + "-" + pad(mo) + "-" + pad(d);
       }
       const vv = await supabaseClient.rpc("cliente_validar", { p_nome: nome, p_tel: tel, p_novo: true });
       if (vv.error) { err("Erro ao validar: " + vv.error.message); return; }
@@ -876,8 +878,8 @@
       '<button type="button" class="rl-btn main" id="anSendSel">Enviar mensagem para as marcadas</button></div>' +
       '<div class="rl-info"><span>' + list.length + " aniversariante(s) em " + MESES[anMes - 1] + "</span></div>" +
       (list.length ? '<div class="rl-wrap"><table class="rl"><thead><tr><th style="width:30px"><input type="checkbox" id="anAll" title="Marcar todas"></th><th>Dia</th><th>Nome da cliente</th><th>WhatsApp</th><th>Última compra</th><th></th></tr></thead><tbody>' +
-        list.map((r) => { const p = bParts(r), ok = !!waNum(r.telefone), hoje = p[1] === now.getMonth() + 1 && p[2] === now.getDate(), was = sent.indexOf(r.id) >= 0;
-          return '<tr' + (hoje ? ' style="background:#fff4dc"' : "") + '><td style="text-align:center"><input type="checkbox" class="anTab" value="' + esc(r.id) + '"' + (ok ? "" : " disabled") + "></td><td><strong>" + dm(r) + "</strong></td><td>" + esc(r.nome) + "</td><td>" + (esc(r.telefone || "") || "—") + (ok ? "" : " <small>(sem telefone válido)</small>") + "</td><td>" + (r.ultima_compra ? dateBR(r.ultima_compra) : "—") + "</td><td>" + (hoje ? '<span class="rl-b pendente">Hoje</span> ' : "") + (was ? '<span class="rl-b ok">Enviado hoje</span>' : "") + "</td></tr>"; }).join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente com aniversário neste mês.</p>');
+        list.map((r) => { const p = bParts(r), ok = !!waNum(r.telefone), hoje = anivAlertToday(r), was = sent.indexOf(r.id) >= 0;
+          return '<tr' + (hoje ? ' style="background:#fff4dc"' : "") + '><td style="text-align:center"><input type="checkbox" class="anTab" value="' + esc(r.id) + '"' + (ok ? "" : " disabled") + "></td><td><strong>" + dm(r) + "</strong></td><td>" + esc(r.nome) + "</td><td>" + (esc(r.telefone || "") || "—") + (ok ? "" : " <small>(sem telefone válido)</small>") + "</td><td>" + (r.ultima_compra ? dateBR(r.ultima_compra) : "—") + "</td><td>" + (hoje ? '<span class="rl-b pendente">Avisar hoje</span> ' : "") + (was ? '<span class="rl-b ok">Enviado hoje</span>' : "") + "</td></tr>"; }).join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma cliente com aniversário neste mês.</p>');
   }
   function openAnivSel(ids) {
     const m = modal("Mensagem de aniversariante", '<div id="anBody2"></div>'), body = m.q("#anBody2");
@@ -910,6 +912,14 @@
         all.map((x) => "<tr><td><strong>" + esc(x.r.nome) + "</strong></td><td>" + (esc(x.r.telefone || "") || "—") + "</td><td>" + esc(x.e.produto) + "</td><td>" + (x.e.situacao === "pendente" ? '<span class="rl-b pendente">Pendente</span>' : '<span class="rl-b ok">Concluída</span>') + "</td><td>" + dateBR(x.e.criado_em) + (x.e.concluido_em ? "<br><small>concl. " + dateBR(x.e.concluido_em) + "</small>" : "") + '</td><td style="white-space:nowrap"><button type="button" class="rl-btn" data-econc="' + esc(x.e.id) + '" data-c="' + esc(x.r.id) + '">' + (x.e.situacao === "pendente" ? "Concluir" : "Reabrir") + '</button> <button type="button" class="rl-btn" data-eopen="' + esc(x.r.id) + '">Editar</button></td></tr>').join("") + "</tbody></table></div>" : '<p class="hint-text">Nenhuma encomenda encontrada.</p>');
     if (hadFocus) { const i = $("enQ"); if (i) i.focus(); }
   }
+
+  document.addEventListener("input", (ev) => {
+    const t = ev.target; if (!t || !t.matches || !t.matches('input[data-f="aniversario"], #adAniv')) return;
+    const del = ev.inputType && ev.inputType.indexOf("delete") === 0, v = t.value.replace(/\D/g, "").slice(0, 8);
+    let o = v.slice(0, 2); if (v.length > 2) o += "/" + v.slice(2, 4); if (v.length > 4) o += "/" + v.slice(4, 8);
+    if (!del && (v.length === 2 || v.length === 4)) o += "/";
+    if (t.value !== o) t.value = o;
+  });
 
   async function load() {
     $("rlMsg").textContent = "Carregando...";
