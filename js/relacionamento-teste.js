@@ -845,6 +845,7 @@
     const bn0 = $("rlAnivBanner"); if (bn0) an.appendChild(bn0);
     const lst = document.createElement("div"); lst.id = "anList"; an.appendChild(lst);
     ["rlAnivBtn", "rlWelBtn"].forEach((i) => { const b = $(i); if (b) b.remove(); });
+    ["rlAniv", "rlUC", "rlSt", "rlEnc"].forEach((i) => { const s = $(i), f = s && s.closest(".f"); if (s) s.value = ""; if (f) f.style.display = "none"; });
     bar.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
     an.addEventListener("change", (ev) => { if (ev.target.id === "anMesSel") { anMes = +ev.target.value; renderAniv(); } if (ev.target.id === "anAll") an.querySelectorAll(".anTab").forEach((c) => { if (!c.disabled) c.checked = ev.target.checked; }); });
     an.addEventListener("click", (ev) => { if (ev.target.closest("#anSendSel")) { const ids = Array.from(an.querySelectorAll(".anTab:checked")).map((c) => c.value); if (!ids.length) { alert("Marque ao menos uma cliente."); return; } openAnivSel(ids); } });
