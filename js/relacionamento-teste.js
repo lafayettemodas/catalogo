@@ -801,7 +801,7 @@
         const n = waNum(e.telefone); if (!n) { alert("Telefone inválido."); return; }
         window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(e.mensagem), "_blank");
         b.removeAttribute("data-open"); b.setAttribute("data-confirm", ""); b.textContent = "Confirmar envio";
-        b.style.background = "#fff"; b.style.color = "#6b5a3e"; b.style.border = "1px solid #7a5a3a";
+        b.style.background = "#d32f2f"; b.style.color = "#fff"; b.style.border = "1px solid #d32f2f";
         return;
       }
       b.disabled = true; b.textContent = "Registrando...";
