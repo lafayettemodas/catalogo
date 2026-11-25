@@ -389,6 +389,8 @@
       const dupN = rows.find((r) => norm(r.nome) === norm(nome));
       if (dupN) { err("Já existe uma cliente com este nome: " + dupN.nome + "."); return; }
       if (key) { const dupT = rows.find((r) => phoneKey(r.telefone) === key); if (dupT) { err("Este WhatsApp já pertence a: " + dupT.nome + "."); return; } }
+      { const rem = await supabaseClient.rpc("relacionamento_removidas"); const hit = (rem.data || []).find((c) => norm(c.nome) === norm(nome) || (key && phoneKey(c.telefone) === key));
+        if (hit) { if (confirm('"' + hit.nome + '" já está cadastrada, mas foi removida da lista.\n\nTrazer de volta para a lista?')) { const rs = await supabaseClient.rpc("relacionamento_restaurar", { p_clientes: [hit.id] }); if (rs.error) { err("Erro: " + rs.error.message); return; } m.close(); await load(); $("rlQ").value = hit.nome; draw(); $("rlMsg").textContent = "Cliente trazida de volta: " + hit.nome + "."; } else err("Esta cliente já existe (removida da lista)."); return; } }
       let aniv = null;
       if (an) {
         const mm = an.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{4}))?$/), d = mm ? +mm[1] : 0, mo = mm ? +mm[2] : 0, yy = mm && mm[3] ? +mm[3] : 0, dt = new Date(yy || 2000, mo - 1, d);
